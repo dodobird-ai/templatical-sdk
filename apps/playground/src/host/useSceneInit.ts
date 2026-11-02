@@ -1,6 +1,9 @@
 import { init, unmount as unmountEditor } from "@templatical/editor";
-import type { TemplaticalEditor } from "@templatical/editor";
-import type { MergeTag } from "@templatical/types";
+import type {
+  ApplyOperationsResult,
+  TemplaticalEditor,
+} from "@templatical/editor";
+import type { MergeTag, Operation, TemplateContent } from "@templatical/types";
 import { overlayTemplateSettings } from "./hostOverlays";
 import { compileMjmlDemo } from "./providers";
 import { resolveShadowDom } from "./shadowMode";
@@ -55,12 +58,19 @@ export async function mountScene(
     __tplPlaygroundGetMjml?: (options?: { locale?: string }) => Promise<string>;
     __tplPlaygroundGetHtml?: () => Promise<string>;
     __tplPlaygroundSetMergeTags?: (tags: MergeTag[]) => void;
+    __tplPlaygroundApplyOperations?: (
+      operations: Operation[],
+    ) => ApplyOperationsResult;
+    __tplPlaygroundGetContent?: () => TemplateContent;
   };
   testHooks.__tplPlaygroundGetMjml = (options) =>
     editor.toMjml?.(options) ?? Promise.resolve("");
   testHooks.__tplPlaygroundGetHtml = () =>
     editor.toHtml?.() ?? Promise.resolve("");
   testHooks.__tplPlaygroundSetMergeTags = (tags) => editor.setMergeTags(tags);
+  testHooks.__tplPlaygroundApplyOperations = (operations) =>
+    editor.applyOperations(operations);
+  testHooks.__tplPlaygroundGetContent = () => editor.getContent();
   return editor;
 }
 

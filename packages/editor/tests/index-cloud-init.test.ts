@@ -370,6 +370,7 @@ describe("initCloud — a thin wrapper over init()", () => {
     const { instance } = await mountCloud(fakeEditor);
 
     expect(Object.keys(instance).sort()).toEqual([
+      "applyOperations",
       "create",
       "getContent",
       "getCustomBlockStylesheet",

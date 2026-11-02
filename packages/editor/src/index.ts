@@ -21,6 +21,7 @@ import type {
   MediaResult,
   MergeTag,
   MergeTagsConfig,
+  Operation,
   RenderProvider,
   SavedBlocksProvider,
   TestEmailProvider,
@@ -46,6 +47,7 @@ import {
   validateLayout,
 } from "@templatical/types";
 import { resolveTemplateDefaults } from "./utils/resolveTemplateDefaults";
+import type { ApplyOperationsResult } from "./composables/useHostOperations";
 
 import Editor from "./Editor.vue";
 import type { CloudRuntime } from "./cloud/runtime";
@@ -767,6 +769,32 @@ interface TemplaticalEditorBase {
    * throws, as it does in `setContent`.
    */
   insertBlock(block: Block): string | null;
+  /**
+   * Edit the open template from your own code — an assistant, a macro, a
+   * migration — with a batch of {@link Operation}s, the vocabulary
+   * collaboration and the AI chat already use.
+   *
+   * The batch applies in order and **all or nothing**: when one operation is
+   * refused, nothing changes and the result names it (`opIndex`, 0-based) and
+   * says why (`code`, an `OperationErrorCode`). An applied batch is **one undo
+   * step**: Ctrl/Cmd+Z puts back exactly the content from before the call,
+   * redo applies it again, and the user's next edit is a step of its own. It
+   * marks the editor dirty and reaches `onChange` and autosave like any edit.
+   *
+   * Operations name the template's own content, in the default language;
+   * locale operations edit a language version. Bare merge tags are converted
+   * the same way `setContent` converts them, and the editor applies a copy, so
+   * objects in the batch never become editor state. An empty batch applies and
+   * records nothing. The batch is checked against the template, not against
+   * `localization.locales`, so filter batches you did not write yourself. With
+   * `collaboration`, the batch is sent as this session's own edit and can be
+   * refused for a lock another session holds.
+   *
+   * Throws for a slot or wrapper block, as `setContent` does, while a version
+   * from the version history is on the canvas (code `version_preview`), and on
+   * an instance that is unmounted or was replaced by a later `init()`.
+   */
+  applyOperations(operations: readonly Operation[]): ApplyOperationsResult;
   setTheme(theme: UiTheme): void;
   /**
    * Replace the configured merge tags after `init()`.
@@ -1384,6 +1412,12 @@ function createEditorInstance({
         normalizeBlockForConfig(block, config.mergeTags),
       );
     },
+    applyOperations(operations: readonly Operation[]) {
+      if (!editorRef.value) {
+        throw new Error("[Templatical] Editor not ready");
+      }
+      return editorRef.value.applyOperations(operations);
+    },
     setTheme(theme: UiTheme) {
       if (editorRef.value) {
         editorRef.value.setTheme(theme);
@@ -1705,6 +1739,7 @@ export type {
   CollaborationRemoteChange,
   Operation,
   OperationBatch,
+  OperationErrorCode,
   OperationsAfterResult,
   RevisionedBatch,
   AiAppliedBatch,
@@ -1739,6 +1774,7 @@ export { createLocalStorageMediaProvider } from "@templatical/core";
 export type { LocalStorageMediaProviderOptions } from "@templatical/core";
 
 export type { ResolveImageUrl } from "./composables/useImageUrlResolver";
+export type { ApplyOperationsResult } from "./composables/useHostOperations";
 export type { FontOption } from "./composables/useFonts";
 export type { HtmlBlockPreviewConfig } from "./utils/resolveHtmlBlockPreview";
 

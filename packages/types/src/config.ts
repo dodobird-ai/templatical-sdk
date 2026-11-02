@@ -295,6 +295,7 @@ export type SdkErrorCode =
   | "ai_output_invalid"
   | "ai_provider_error"
   | "unknown_locale"
+  | "version_preview"
   | (string & {});
 
 export class SdkError extends Error {

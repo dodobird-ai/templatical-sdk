@@ -1149,6 +1149,32 @@ The block is inserted as given. A block from the palette is built with the edito
 
 The editor inserts a copy with fresh ids, section children included, so the same block can be inserted any number of times. Look the block up by the returned id, not by `block.id`. Bare merge tags in its text are converted the same way `setContent` converts them. A slot or wrapper block throws, as it does in `setContent`.
 
+### `applyOperations(operations)`
+
+Edits the open template from your own code, such as an assistant next to the editor, with a batch of [operations](/api/operations), the vocabulary collaboration and the AI chat use. The batch is all or nothing and is one undo step: a single Cmd/Ctrl+Z puts back exactly the content from before the call, redo applies it again, and the user's next edit is a step of its own.
+
+```ts
+const result = editor.applyOperations([
+  { op: "updateBlock", blockId: "title_1", set: { content: "Spring sale" } },
+  { op: "updateSettings", set: { backgroundColor: "#fdf6ec" } },
+]);
+
+if (!result.applied) {
+  // result.code, result.opIndex, result.message
+  console.warn(`Operation ${result.opIndex} was refused: ${result.code}`);
+}
+```
+
+**Parameter:** `operations: Operation[]`
+
+**Returns:** `ApplyOperationsResult`, either `{ applied: true }` or `{ applied: false, code, opIndex, message, blockId? }`. `code` is one of the [operation error codes](/api/operations#errors), `opIndex` is the 0-based index of the refused operation, and `blockId` names the block the refusal is about, when there is one. When a batch is refused, nothing in it applies and nothing is added to the undo history.
+
+An applied batch marks the editor dirty and reaches `onChange` and autosave like any other edit. The editor applies a copy, so later changes to your objects don't reach it. Bare merge tags in the batch are converted the same way `setContent` converts them. An empty batch applies and records nothing. The batch is checked against the template, not against your configuration: a locale operation for a language missing from `localization.locales` applies, although the editor shows that version read-only, so filter batches you didn't write yourself, such as a model's. With [`collaboration`](/backend/collaboration), the batch is sent as this session's own edit, and a block another session holds refuses it with `lock_held`.
+
+It throws for a slot or wrapper block, as `setContent` does, while a version from the version history is on the canvas (`SdkError` with code `version_preview`), and on an instance that was unmounted or replaced by a later `init()`.
+
+`setContent` records no undo step. To replace the whole template as one undo step, pass a `setContent` operation: `editor.applyOperations([{ op: "setContent", content }])`.
+
 ### `setTheme(theme)`
 
 Switches the UI color scheme at runtime without re-initializing the editor.
@@ -12918,6 +12944,7 @@ There is nothing to call and nothing to enable. It runs wherever content arrives
 | `init({ content })` / `initCloud({ content })` | before mount |
 | `editor.setContent(content)` | before the content reaches the canvas |
 | `editor.insertBlock(block)` | before the block reaches the canvas |
+| `editor.applyOperations(operations)` | before the batch is applied |
 | `editor.create({ content })` | before the content becomes editor state |
 | `editor.load(id)` | as the [`templates`](/backend/templates) provider's result returns |
 | [Version history](/backend/version-history) preview and restore | as each version reaches the canvas |

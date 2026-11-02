@@ -244,6 +244,32 @@ Der Block wird so eingefügt, wie er übergeben wird. Ein Block aus der Block-Pa
 
 Der Editor fügt eine Kopie mit neuen IDs ein, auch für die Kinder einer Section, sodass derselbe Block beliebig oft eingefügt werden kann. Suchen Sie den Block über die zurückgegebene ID, nicht über `block.id`. Merge-Tags, die als reine Tokens im Text stehen, werden genauso umgewandelt wie bei `setContent`. Ein Slot- oder Wrapper-Block löst einen Fehler aus, wie bei `setContent`.
 
+### `applyOperations(operations)`
+
+Bearbeitet das geöffnete Template aus Ihrem eigenen Code, etwa durch einen Assistenten neben dem Editor, mit einem Batch von [Operationen](/de/api/operations), demselben Vokabular, das Zusammenarbeit und der KI-Chat verwenden. Der Batch gilt ganz oder gar nicht und ist ein einziger Rückgängig-Schritt: Ein Cmd/Ctrl+Z stellt genau den Inhalt von vor dem Aufruf wieder her, Wiederholen wendet ihn erneut an, und die nächste Bearbeitung des Nutzers ist ein eigener Schritt.
+
+```ts
+const result = editor.applyOperations([
+  { op: "updateBlock", blockId: "title_1", set: { content: "Spring sale" } },
+  { op: "updateSettings", set: { backgroundColor: "#fdf6ec" } },
+]);
+
+if (!result.applied) {
+  // result.code, result.opIndex, result.message
+  console.warn(`Operation ${result.opIndex} was refused: ${result.code}`);
+}
+```
+
+**Parameter:** `operations: Operation[]`
+
+**Rückgabewert:** `ApplyOperationsResult`, entweder `{ applied: true }` oder `{ applied: false, code, opIndex, message, blockId? }`. `code` ist einer der [Fehlercodes für Operationen](/de/api/operations#fehler), `opIndex` der 0-basierte Index der abgelehnten Operation, und `blockId` nennt den Block, um den es bei der Ablehnung geht, sofern es einen gibt. Wird ein Batch abgelehnt, wird nichts davon angewendet und nichts zum Rückgängig-Verlauf hinzugefügt.
+
+Ein angewendeter Batch markiert den Editor als geändert und erreicht `onChange` und das automatische Speichern wie jede andere Bearbeitung. Der Editor wendet eine Kopie an, sodass spätere Änderungen an Ihren Objekten ihn nicht erreichen. Merge-Tags, die als reine Tokens im Batch stehen, werden genauso umgewandelt wie bei `setContent`. Ein leerer Batch gilt als angewendet und zeichnet nichts auf. Der Batch wird gegen das Template geprüft, nicht gegen Ihre Konfiguration: Eine Sprachoperation für eine Sprache, die in `localization.locales` fehlt, wird angewendet, obwohl der Editor diese Version schreibgeschützt anzeigt. Filtern Sie daher Batches, die Sie nicht selbst geschrieben haben, etwa die eines Modells. Mit [`collaboration`](/de/backend/collaboration) wird der Batch als eigene Bearbeitung dieser Sitzung gesendet, und ein Block, den eine andere Sitzung hält, lehnt ihn mit `lock_held` ab.
+
+Die Methode löst einen Fehler aus bei einem Slot- oder Wrapper-Block, wie `setContent`, solange eine Version aus dem Versionsverlauf auf der Arbeitsfläche liegt (`SdkError` mit dem Code `version_preview`), und bei einer Instanz, die mit `unmount()` abgebaut oder durch einen späteren `init()`-Aufruf ersetzt wurde.
+
+`setContent` zeichnet keinen Rückgängig-Schritt auf. Um das ganze Template als einen Rückgängig-Schritt zu ersetzen, übergeben Sie eine `setContent`-Operation: `editor.applyOperations([{ op: "setContent", content }])`.
+
 ### `setTheme(theme)`
 
 Wechselt das UI-Farbschema zur Laufzeit, ohne den Editor neu zu initialisieren.
