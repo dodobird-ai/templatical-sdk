@@ -658,6 +658,27 @@ const es: typeof en = {
     contentDirection: "De derecha a izquierda",
     contentDirectionHint:
       "Dirección de escritura del correo, independiente del idioma del editor. Si no se indica, sigue el idioma del contenido (árabe, hebreo, …).",
+    customHead: "Cabecera personalizada",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "Se añade al <head> del correo como bloque <style>, después de los estilos integrados. No se inserta en línea ni se aplica en el lienzo.",
+    customHeadTags: "Etiquetas de cabecera",
+    customHeadTagsHint:
+      "Etiquetas meta y link, estilos y comentarios condicionales de Outlook, añadidos al <head> del correo tal cual.",
+    customHeadRefusal: {
+      markupInCss:
+        "El CSS no puede contener «<». Este CSS queda fuera del correo hasta que se corrija.",
+      forbiddenElement:
+        "<{element}> no está permitido aquí. Estas etiquetas quedan fuera del correo hasta que se elimine.",
+      eventHandler:
+        "Los atributos de manejadores de eventos ({attribute}) no están permitidos. Estas etiquetas quedan fuera del correo hasta que se elimine.",
+      unsafeUrl:
+        "La URL de {attribute} usa un esquema no permitido. Estas etiquetas quedan fuera del correo hasta que se corrija.",
+      unclosedComment:
+        "Un comentario abierto con <!-- nunca se cierra con -->. Estas etiquetas quedan fuera del correo hasta que se cierre.",
+      unclosedTag:
+        "Una etiqueta nunca se cierra con >. Estas etiquetas quedan fuera del correo hasta que se cierre.",
+    },
     tips: "Consejos",
     tip1: "600px es el ancho estándar para las plantillas de correo electrónico",
     tip2: "Usa fuentes seguras para la web para una mejor compatibilidad",

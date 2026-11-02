@@ -105,6 +105,8 @@ Neben einzelnen Blockstilen hat das Template selbst globale Einstellungen, die d
 | `locale` | `string` | BCP-47-Inhaltssprache (`<html lang>`). Bei einem leeren Template Standard `en` |
 | `direction` | `'ltr' \| 'rtl'` | Schreibrichtung. Ungesetzt folgt der Inhaltssprache |
 | `preheaderText` | `string` | Vorschauzeile im Posteingang |
+| `customHeadCss` | `string` | Zusätzliches CSS für den `<head>` der E-Mail. Siehe [Eigener Head](#custom-head) |
+| `customHeadTags` | `string` | Zusätzliche `<head>`-Tags. Siehe [Eigener Head](#custom-head) |
 
 Diese werden über die `init()`-Konfiguration des Editors oder durch direkte Änderung des Template-JSON konfiguriert:
 
@@ -132,3 +134,47 @@ Einzelne Blöcke können die `fontFamily` auf Template-Ebene überschreiben, ind
 Die Textfarbe funktioniert genauso: Textblöcke (Title, Paragraph, Menu, Table) erben `textColor` aus den Template-Einstellungen, und jeder Block, der seine eigene Farbe setzt, überschreibt sie. Passen Sie den Dokument-Standard über `init({ templateDefaults: { textColor } })` an.
 
 Links folgen derselben Kaskade: Setzen Sie eine Dokument-`linkColor`, um allen Links (Rich-Text und Menu) eine Farbe zu geben, oder lassen Sie sie ungesetzt, damit Links die umgebende Textfarbe erben. `linkUnderline` (standardmäßig aktiv) unterstreicht Body-Links – Buttons und Menu-Elemente behalten ihre eigene text-decoration. Eine block- oder elementspezifische Farbe (z. B. die Farbe eines Menu-Elements) überschreibt weiterhin die Dokument-Linkfarbe. Einzelne Rich-Text-Links können im Link-Dialog auch eine eigene Farbe erhalten, die die Dokument-Linkfarbe überschreibt – und da die Farbe am Link selbst sitzt, passt die Unterstreichung dazu.
+
+## Eigener Head {#custom-head}
+
+Ein Template kann eigene `<head>`-Inhalte mitbringen: CSS, das die eingebauten Styles nicht abdecken, und Tags wie `<meta>` oder bedingte Kommentare für Outlook. Autoren bearbeiten beides in der Karte **Eigener Head** im Einstellungs-Tab; im Inhalt sind es zwei Einstellungen:
+
+```ts
+content.settings.customHeadCss = '.footer a { color: #666666 !important; }';
+content.settings.customHeadTags = [
+  '<meta name="x-apple-disable-message-reformatting">',
+  "<!--[if mso]><style>td { font-family: 'Segoe UI', Arial, sans-serif; }</style><![endif]-->",
+].join('\n');
+```
+
+Der Renderer fügt sie am Ende von `<mj-head>` ein, nach allen eingebauten und Custom-Block-Regeln:
+
+```xml
+<mj-raw>
+<meta name="x-apple-disable-message-reformatting">
+<!--[if mso]><style>td { font-family: 'Segoe UI', Arial, sans-serif; }</style><![endif]-->
+</mj-raw>
+<mj-style>
+.footer a { color: #666666 !important; }
+</mj-style>
+```
+
+- **CSS ist ein normales `<style>`.** Es wird nicht inline gesetzt; Regeln, die Clients ohne `<style>`-Unterstützung überstehen müssen, gehören an die Blöcke selbst. Weil es zuletzt kommt, gewinnt es bei Gleichstand gegen die eingebauten Regeln.
+- **Bedingte Kommentare gehören in die Tags, nicht ins CSS.** MJML entfernt einen Kommentar, der direkt in `<mj-head>` steht; der Inhalt von `<mj-raw>` erreicht den kompilierten `<head>` unverändert.
+- **Die Arbeitsfläche ignoriert beides.** Der Editor wendet Head-Inhalte von Autoren nie an und führt sie nie aus; zu sehen sind sie in der Export-Vorschau oder in der versendeten E-Mail.
+- **Ungesetzt oder leer fügt nichts hinzu.** Ein Template ohne eigenen Head wird Byte für Byte wie bisher gerendert.
+- **Pro Sprache.** Wie andere Einstellungen kann eine Sprachversion beide Felder in ihrer `l10n`-Ebene überschreiben.
+
+### Was abgelehnt wird
+
+Ein Wert, der das MJML-Dokument zerstören oder Code ausführen könnte, wird ganz aus dem Rendering weggelassen, nie teilweise, und der Renderer meldet den Grund per `console.warn`. Das Panel zeigt denselben Grund schon beim Tippen unter dem Feld; der Wert bleibt so gespeichert, wie er eingegeben wurde, damit er korrigiert werden kann.
+
+| Feld | Abgelehnt | Warum |
+| --- | --- | --- |
+| `customHeadCss` | jedes `<` | Es könnte das `<mj-style>` oder das kompilierte `<style>` schließen. In einem CSS-String `\3C` schreiben. |
+| `customHeadTags` | `<script>`, `<iframe>`, `<frame>`, `<frameset>`, `<object>`, `<embed>`, `<applet>`, `<base>`, `<form>`, `<html>`, `<head>`, `<body>`, `<mjml>` und jedes `<mj-*>`-Tag, öffnend oder schließend | Aktive Inhalte, Dokumentstruktur oder das Ende von `<mj-raw>` |
+| `customHeadTags` | ein `on*`-Attribut | Event-Handler laufen in Browsern, die das HTML anzeigen |
+| `customHeadTags` | ein URL-Attribut (`href`, `src`, …) außerhalb der Link-Schemata des Editors | `javascript:`, `data:` und ähnliche |
+| `customHeadTags` | ein `<!--` ohne `-->`, ein Tag ohne `>` | Beides würde den Rest des Heads verschlucken |
+
+`checkCustomHeadCss` und `checkCustomHeadTags` aus `@templatical/types` liefern das Ergebnis (`empty`, `accepted` mit dem getrimmten Wert oder `refused` mit einem typisierten Grund) für Hosts, die vor dem Speichern prüfen. Wie die Einstellungs-Allowlist läuft die Prüfung im Browser und im Renderer, nicht auf Ihrem Server; prüfen Sie, was Sie speichern. Um Autoren ganz aus dem Head herauszuhalten, lassen Sie beide Felder in [`templateSettings.fields`](/de/api/editor#restricting-the-settings-panel) weg.

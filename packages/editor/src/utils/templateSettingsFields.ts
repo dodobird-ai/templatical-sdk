@@ -11,7 +11,7 @@ export type TemplateSettingsField = Exclude<
 
 /** The cards `TemplateSettings.vue` groups those fields into. */
 export type TemplateSettingsCard =
-  "layout" | "appearance" | "language" | "preheader";
+  "layout" | "appearance" | "language" | "preheader" | "head";
 
 /**
  * Which card each setting is rendered in.
@@ -35,6 +35,8 @@ export const TEMPLATE_SETTINGS_FIELD_CARDS: Record<
   locale: "language",
   direction: "language",
   preheaderText: "preheader",
+  customHeadCss: "head",
+  customHeadTags: "head",
 };
 
 export const ALL_TEMPLATE_SETTINGS_FIELDS = Object.keys(

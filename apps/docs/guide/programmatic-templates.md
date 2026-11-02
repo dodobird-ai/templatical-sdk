@@ -273,6 +273,8 @@ content.settings.direction = 'ltr';
 | `preheaderText` | `string` | Preview text shown in inbox list |
 | `locale` | `string` | BCP-47 content language (`<html lang>`) |
 | `direction` | `'ltr' \| 'rtl'` | Writing direction. Unset follows the content language |
+| `customHeadCss` | `string` | Extra CSS for the email's `<head>`. See [Custom head](/guide/styling#custom-head) |
+| `customHeadTags` | `string` | Extra `<head>` tags. See [Custom head](/guide/styling#custom-head) |
 
 For default values and how to customize them, see [Block & Template Defaults](/guide/defaults).
 

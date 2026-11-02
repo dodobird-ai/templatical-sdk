@@ -422,3 +422,46 @@ export function getTagAttrValue(attrs: string, name: string): string | null {
 
   return null;
 }
+
+/**
+ * The names of every attribute in an open tag's attribute string, lower-cased,
+ * in source order. Same scan as {@link getTagAttrValue}: quote-aware, forward
+ * only, a boolean attribute counts, and a value never yields a name. Stops at
+ * an unterminated quoted value, after which nothing is readable.
+ */
+export function getTagAttrNames(attrs: string): string[] {
+  const names: string[] = [];
+  let i = 0;
+
+  while (i < attrs.length) {
+    while (i < attrs.length && (isWhitespace(attrs[i]) || attrs[i] === "/")) {
+      i++;
+    }
+    if (i >= attrs.length) break;
+
+    const nameStart = i;
+    while (i < attrs.length && isAttrNameChar(attrs[i])) i++;
+    const attrName = attrs.substring(nameStart, i).toLowerCase();
+    if (attrName === "") {
+      i++;
+      continue;
+    }
+    names.push(attrName);
+
+    while (i < attrs.length && isWhitespace(attrs[i])) i++;
+    if (attrs[i] !== "=") continue;
+    i++; // past `=`
+    while (i < attrs.length && isWhitespace(attrs[i])) i++;
+
+    const quote = attrs[i];
+    if (QUOTES.has(quote)) {
+      const valueEnd = attrs.indexOf(quote, i + 1);
+      if (valueEnd === -1) break;
+      i = valueEnd + 1;
+      continue;
+    }
+    while (i < attrs.length && !isWhitespace(attrs[i]) && attrs[i] !== ">") i++;
+  }
+
+  return names;
+}

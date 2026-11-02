@@ -109,6 +109,8 @@ describe("TEMPLATE_SETTINGS_FIELD_CARDS", () => {
     // is ever loosened, which would let a field ship with no way to hide it.
     expect(Object.keys(TEMPLATE_SETTINGS_FIELD_CARDS).sort()).toEqual([
       "backgroundColor",
+      "customHeadCss",
+      "customHeadTags",
       "direction",
       "fontFamily",
       "linkColor",
@@ -131,6 +133,8 @@ describe("TEMPLATE_SETTINGS_FIELD_CARDS", () => {
       locale: "language",
       direction: "language",
       preheaderText: "preheader",
+      customHeadCss: "head",
+      customHeadTags: "head",
     });
   });
 });
@@ -176,6 +180,7 @@ const CARDS = [
   "appearance",
   "language",
   "preheader",
+  "head",
   "tips",
 ] as const;
 
@@ -198,6 +203,7 @@ describe("TemplateSettings panel visibility", () => {
       "appearance",
       "language",
       "preheader",
+      "head",
       "tips",
     ]);
   });
@@ -215,6 +221,8 @@ describe("TemplateSettings panel visibility", () => {
       "template-settings-locale",
       "template-settings-direction",
       "template-settings-preheader",
+      "template-settings-custom-head-css",
+      "template-settings-custom-head-tags",
     ]) {
       expect(has(wrapper, testid), testid).toBe(true);
     }
@@ -231,6 +239,7 @@ describe("TemplateSettings panel visibility", () => {
       "appearance",
       "language",
       "preheader",
+      "head",
       "tips",
     ]);
   });
@@ -246,6 +255,7 @@ describe("TemplateSettings panel visibility", () => {
       "appearance",
       "language",
       "preheader",
+      "head",
       "tips",
     ]);
   });
@@ -262,6 +272,7 @@ describe("TemplateSettings panel visibility", () => {
       "layout",
       "appearance",
       "preheader",
+      "head",
       "tips",
     ]);
   });
@@ -275,6 +286,7 @@ describe("TemplateSettings panel visibility", () => {
       "layout",
       "appearance",
       "language",
+      "head",
       "tips",
     ]);
   });

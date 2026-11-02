@@ -597,6 +597,27 @@ const nl: typeof en = {
     contentDirection: "Rechts-naar-links",
     contentDirectionHint:
       "Schrijfrichting van de e-mail, onafhankelijk van de taal van de editor. Zonder waarde volgt dit de inhoudstaal (Arabisch, Hebreeuws, …).",
+    customHead: "Eigen head",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "Wordt als <style>-blok na de ingebouwde stijlen aan de <head> van de e-mail toegevoegd. Niet inline gezet en niet op het canvas toegepast.",
+    customHeadTags: "Head-tags",
+    customHeadTagsHint:
+      "Meta- en linktags, stijlen en voorwaardelijke opmerkingen voor Outlook, ongewijzigd aan de <head> van de e-mail toegevoegd.",
+    customHeadRefusal: {
+      markupInCss:
+        "CSS mag geen „<” bevatten. Deze CSS ontbreekt in de e-mail tot hij is verbeterd.",
+      forbiddenElement:
+        "<{element}> is hier niet toegestaan. Deze tags ontbreken in de e-mail tot het is verwijderd.",
+      eventHandler:
+        "Event-handlerattributen ({attribute}) zijn niet toegestaan. Deze tags ontbreken in de e-mail tot het is verwijderd.",
+      unsafeUrl:
+        "De URL in {attribute} gebruikt een niet-toegestaan schema. Deze tags ontbreken in de e-mail tot hij is verbeterd.",
+      unclosedComment:
+        "Een met <!-- geopende opmerking wordt nooit met --> gesloten. Deze tags ontbreken in de e-mail tot ze is gesloten.",
+      unclosedTag:
+        "Een tag wordt nooit met > gesloten. Deze tags ontbreken in de e-mail tot hij is gesloten.",
+    },
     tips: "Tips",
     tip1: "600px is de standaardbreedte voor e-mailsjablonen",
     tip2: "Gebruik webveilige lettertypen voor de beste compatibiliteit",

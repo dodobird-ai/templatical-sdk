@@ -5,7 +5,10 @@ import MergeTagTextarea from "./MergeTagTextarea.vue";
 import ToggleSwitch from "./ToggleSwitch.vue";
 import { useI18n } from "../composables/useI18n";
 import {
+  checkCustomHeadCss,
+  checkCustomHeadTags,
   resolveContentDirection,
+  type CustomHeadCheck,
   type TemplateSettings,
 } from "@templatical/types";
 import {
@@ -14,10 +17,11 @@ import {
   inputGroupInputClass,
   inputSuffixClass,
   labelClass,
+  monoTextareaClass,
   DEFAULT_BG_COLOR,
 } from "../constants/styleConstants";
-import { Circle, Eye, Globe, Info, Square } from "@lucide/vue";
-import { computed, inject } from "vue";
+import { Circle, Code, Eye, Globe, Info, Square } from "@lucide/vue";
+import { computed, inject, ref, watch } from "vue";
 import { fontSelectValue, withCurrentFont } from "../utils/withCurrentFont";
 import {
   FONTS_MANAGER_KEY,
@@ -41,7 +45,7 @@ const emit = defineEmits<{
 
 const PREHEADER_MAX_LENGTH = 150;
 
-const { t } = useI18n();
+const { t, format } = useI18n();
 
 const fontsManager = requireInject(FONTS_MANAGER_KEY, "TemplateSettings");
 const displayedFontFamily = computed(
@@ -87,6 +91,86 @@ function showsCard(card: TemplateSettingsCard): boolean {
 const showsAnyField = allowedFields.size > 0;
 
 const isRtl = computed(() => resolveContentDirection(props.settings) === "rtl");
+
+// Custom head: the textareas hold a draft so the verdict below each one
+// follows every keystroke, while the setting is written once per edit (on
+// `change`, i.e. blur) — one undo step for a block of CSS rather than one per
+// character. The watch picks up undo, redo and locale switches.
+type CustomHeadField = "customHeadCss" | "customHeadTags";
+const customHeadDraft = ref<Record<CustomHeadField, string>>({
+  customHeadCss: props.settings.customHeadCss ?? "",
+  customHeadTags: props.settings.customHeadTags ?? "",
+});
+watch(
+  () => [props.settings.customHeadCss, props.settings.customHeadTags],
+  ([css, tags]) => {
+    customHeadDraft.value = {
+      customHeadCss: css ?? "",
+      customHeadTags: tags ?? "",
+    };
+  },
+);
+const customHeadChecks = computed<Record<CustomHeadField, CustomHeadCheck>>(
+  () => ({
+    customHeadCss: checkCustomHeadCss(customHeadDraft.value.customHeadCss),
+    customHeadTags: checkCustomHeadTags(customHeadDraft.value.customHeadTags),
+  }),
+);
+
+function customHeadRefusalMessage(field: CustomHeadField): string | null {
+  const check = customHeadChecks.value[field];
+  if (check.status !== "refused") return null;
+  const refusal = check.refusal;
+  const messages = t.templateSettings.customHeadRefusal;
+  switch (refusal.reason) {
+    case "markup-in-css":
+      return messages.markupInCss;
+    case "forbidden-element":
+      return format(messages.forbiddenElement, { element: refusal.element });
+    case "event-handler":
+      return format(messages.eventHandler, { attribute: refusal.attribute });
+    case "unsafe-url":
+      return format(messages.unsafeUrl, { attribute: refusal.attribute });
+    case "unclosed-comment":
+      return messages.unclosedComment;
+    case "unclosed-tag":
+      return messages.unclosedTag;
+  }
+}
+
+// The two fields share one layout; only their words differ. Placeholders are
+// code, not prose, so they are not translated.
+const customHeadFields = computed(() =>
+  [
+    {
+      field: "customHeadCss" as const,
+      testId: "template-settings-custom-head-css",
+      label: t.templateSettings.customHeadCss,
+      hint: t.templateSettings.customHeadCssHint,
+      placeholder: ".footer a { color: #666666; }",
+    },
+    {
+      field: "customHeadTags" as const,
+      testId: "template-settings-custom-head-tags",
+      label: t.templateSettings.customHeadTags,
+      hint: t.templateSettings.customHeadTagsHint,
+      placeholder: '<meta name="x-apple-disable-message-reformatting">',
+    },
+  ].filter((entry) => shows(entry.field)),
+);
+
+function draftCustomHead(field: CustomHeadField, event: Event): void {
+  customHeadDraft.value = {
+    ...customHeadDraft.value,
+    [field]: (event.target as HTMLTextAreaElement).value,
+  };
+}
+
+// Stored as typed, refused or not, so the author can fix it; blank is unset.
+function commitCustomHead(field: CustomHeadField, event: Event): void {
+  const value = (event.target as HTMLTextAreaElement).value;
+  emit("update", { [field]: value.trim() === "" ? undefined : value });
+}
 
 // Cards lay their contents out with a flex gap rather than a bottom margin on
 // every child but the last. A margin leaves dead space under whichever field
@@ -417,6 +501,65 @@ const cardStackClass = `${cardClass} tpl:flex tpl:flex-col tpl:gap-3.5`;
               }}
             </span>
           </div>
+        </div>
+      </div>
+
+      <!-- Custom head card -->
+      <div
+        v-if="showsCard('head')"
+        :class="cardStackClass"
+        data-testid="template-settings-card-head"
+      >
+        <div
+          class="tpl:flex tpl:items-center tpl:gap-2 tpl:text-sm tpl:font-semibold tpl:text-[var(--tpl-text)]"
+        >
+          <Code
+            class="tpl:text-[var(--tpl-text-muted)]"
+            :size="14"
+            :stroke-width="2"
+          />
+          <span>{{ t.templateSettings.customHead }}</span>
+        </div>
+
+        <div
+          v-for="entry in customHeadFields"
+          :key="entry.field"
+          :data-testid="entry.testId"
+        >
+          <FieldRow
+            v-slot="{ controlId }"
+            :path="entry.field"
+            settings
+            :label="entry.label"
+          >
+            <textarea
+              :id="controlId"
+              :value="customHeadDraft[entry.field]"
+              :placeholder="entry.placeholder"
+              rows="5"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              :class="monoTextareaClass"
+              :aria-invalid="customHeadRefusalMessage(entry.field) !== null"
+              @input="draftCustomHead(entry.field, $event)"
+              @change="commitCustomHead(entry.field, $event)"
+            />
+          </FieldRow>
+          <p
+            v-if="customHeadRefusalMessage(entry.field) !== null"
+            role="alert"
+            class="tpl:mt-1 tpl:text-xs tpl:leading-relaxed tpl:text-[var(--tpl-danger)]"
+            data-testid="template-settings-custom-head-refusal"
+          >
+            {{ customHeadRefusalMessage(entry.field) }}
+          </p>
+          <p
+            v-else
+            class="tpl:mt-1 tpl:text-xs tpl:leading-relaxed tpl:text-[var(--tpl-text-dim)]"
+          >
+            {{ entry.hint }}
+          </p>
         </div>
       </div>
 

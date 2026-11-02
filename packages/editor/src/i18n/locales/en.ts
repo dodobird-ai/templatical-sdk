@@ -651,6 +651,27 @@ export default {
     contentDirection: "Right-to-left",
     contentDirectionHint:
       "Writing direction of the email, independent of the editor's own language. When unset, follows the content language (Arabic, Hebrew, …).",
+    customHead: "Custom head",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "Added to the email's <head> as a <style> block, after the built-in styles. Not inlined, and not applied on the canvas.",
+    customHeadTags: "Head tags",
+    customHeadTagsHint:
+      "Meta and link tags, styles and Outlook conditional comments, added to the email's <head> as written.",
+    customHeadRefusal: {
+      markupInCss:
+        "CSS can't contain “<”. This CSS is left out of the email until it's fixed.",
+      forbiddenElement:
+        "<{element}> isn't allowed here. These tags are left out of the email until it's removed.",
+      eventHandler:
+        "Event handler attributes ({attribute}) aren't allowed. These tags are left out of the email until it's removed.",
+      unsafeUrl:
+        "The {attribute} URL uses a scheme that isn't allowed. These tags are left out of the email until it's fixed.",
+      unclosedComment:
+        "A comment opened with <!-- is never closed with -->. These tags are left out of the email until it's closed.",
+      unclosedTag:
+        "A tag is never closed with >. These tags are left out of the email until it's closed.",
+    },
     tips: "Tips",
     tip1: "600px is the standard width for email templates",
     tip2: "Use web-safe fonts for best compatibility",

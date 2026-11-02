@@ -55,6 +55,8 @@ interface TemplateSettings {
   locales?: string[];             // Weitere Sprachversionen; locale ist der Standard
   l10n?: Record<string, SettingsLocaleLayer>; // Sprachebenen der Einstellungen
   direction?: ContentDirection;   // 'ltr' | 'rtl'; ungesetzt folgt der Inhaltssprache
+  customHeadCss?: string;         // Eigenes Head-CSS, ein <mj-style> am Ende von <mj-head>
+  customHeadTags?: string;        // Eigene Head-Tags (meta, link, Outlook-Kommentare), ein <mj-raw> in <mj-head>
 }
 
 type ContentDirection = 'ltr' | 'rtl';

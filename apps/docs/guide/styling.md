@@ -105,6 +105,8 @@ Beyond individual block styles, the template itself has global settings that aff
 | `locale` | `string` | BCP-47 content language (`<html lang>`). Defaults to `en` on a blank template |
 | `direction` | `'ltr' \| 'rtl'` | Writing direction. Unset follows the content language |
 | `preheaderText` | `string` | Inbox preview line |
+| `customHeadCss` | `string` | Extra CSS for the email's `<head>`. See [Custom head](#custom-head) |
+| `customHeadTags` | `string` | Extra `<head>` tags. See [Custom head](#custom-head) |
 
 These are configured through the editor's `init()` config or by modifying the template JSON directly:
 
@@ -132,3 +134,47 @@ Individual blocks can override the template-level `fontFamily` by setting their 
 Text color works the same way: text blocks (Title, Paragraph, Menu, Table) inherit `textColor` from the template settings, and any block that sets its own color overrides it. Customize the document default through `init({ templateDefaults: { textColor } })`.
 
 Links follow the same cascade: set a document `linkColor` to apply one color to every link (rich-text and menu), or leave it unset so links inherit the surrounding text color. `linkUnderline` (on by default) underlines body links — buttons and menu items keep their own text-decoration. A per-block or per-item color (e.g. a Menu item's color) still overrides the document link color. Individual rich-text links can also be given their own color in the link dialog, which overrides the document link color — and because the color sits on the link itself, its underline matches.
+
+## Custom head {#custom-head}
+
+A template can carry its own `<head>` content: CSS the built-in styles don't cover, and tags such as `<meta>` or Outlook conditional comments. Authors edit both in the **Custom head** card of the Settings tab; in content they are two settings:
+
+```ts
+content.settings.customHeadCss = '.footer a { color: #666666 !important; }';
+content.settings.customHeadTags = [
+  '<meta name="x-apple-disable-message-reformatting">',
+  "<!--[if mso]><style>td { font-family: 'Segoe UI', Arial, sans-serif; }</style><![endif]-->",
+].join('\n');
+```
+
+The renderer adds them at the end of `<mj-head>`, after every built-in and custom-block rule:
+
+```xml
+<mj-raw>
+<meta name="x-apple-disable-message-reformatting">
+<!--[if mso]><style>td { font-family: 'Segoe UI', Arial, sans-serif; }</style><![endif]-->
+</mj-raw>
+<mj-style>
+.footer a { color: #666666 !important; }
+</mj-style>
+```
+
+- **CSS is a plain `<style>`.** It is not inlined, so put rules that must survive clients without `<style>` support on the blocks themselves. Coming last, it wins ties with the built-in rules.
+- **Conditional comments go in the tags, not the CSS.** MJML strips a comment written directly in `<mj-head>`; the content of `<mj-raw>` reaches the compiled `<head>` as written.
+- **The canvas ignores both.** The editor never applies or runs author head content; see it in the export preview or the sent email.
+- **Unset or blank adds nothing.** A template without a custom head renders byte for byte as before.
+- **Per language.** Like other settings, a language version can override either field in its `l10n` layer.
+
+### What is refused
+
+A value that could break the MJML document or run code is left out of the render whole, never partly, and the renderer logs a `console.warn` naming the reason. The panel shows the same reason under the field as the author types; the value stays stored as typed so it can be fixed.
+
+| Field | Refused | Why |
+| --- | --- | --- |
+| `customHeadCss` | any `<` | It could close the `<mj-style>` or the compiled `<style>`. In a CSS string, write `\3C`. |
+| `customHeadTags` | `<script>`, `<iframe>`, `<frame>`, `<frameset>`, `<object>`, `<embed>`, `<applet>`, `<base>`, `<form>`, `<html>`, `<head>`, `<body>`, `<mjml>` and every `<mj-*>` tag, opening or closing | Active content, document structure, or the end of the `<mj-raw>` |
+| `customHeadTags` | an `on*` attribute | Event handlers run in browsers that show the HTML |
+| `customHeadTags` | a URL attribute (`href`, `src`, …) outside the editor's link schemes | `javascript:`, `data:` and similar |
+| `customHeadTags` | a `<!--` without `-->`, a tag without `>` | Either would swallow the rest of the head |
+
+`checkCustomHeadCss` and `checkCustomHeadTags` from `@templatical/types` return the verdict (`empty`, `accepted` with the trimmed value, or `refused` with a typed reason) for hosts that validate before saving. Like the settings allowlist, the check runs in the browser and in the renderer, not on your server; validate what you persist. To keep authors out of the head entirely, leave both fields out of [`templateSettings.fields`](/api/editor#restricting-the-settings-panel).

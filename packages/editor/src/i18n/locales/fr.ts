@@ -598,6 +598,27 @@ const fr: typeof en = {
     contentDirection: "De droite à gauche",
     contentDirectionHint:
       "Sens d'écriture de l'e-mail, indépendant de la langue de l'éditeur. S'il n'est pas défini, il suit la langue du contenu (arabe, hébreu, …).",
+    customHead: "En-tête personnalisé",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "Ajouté au <head> de l'e-mail dans un bloc <style>, après les styles intégrés. Non inliné et non appliqué au canevas.",
+    customHeadTags: "Balises d'en-tête",
+    customHeadTagsHint:
+      "Balises meta et link, styles et commentaires conditionnels Outlook, ajoutés tels quels au <head> de l'e-mail.",
+    customHeadRefusal: {
+      markupInCss:
+        "Le CSS ne peut pas contenir « < ». Ce CSS est exclu de l'e-mail jusqu'à sa correction.",
+      forbiddenElement:
+        "<{element}> n'est pas autorisé ici. Ces balises sont exclues de l'e-mail jusqu'à sa suppression.",
+      eventHandler:
+        "Les attributs de gestionnaire d'événements ({attribute}) ne sont pas autorisés. Ces balises sont exclues de l'e-mail jusqu'à leur suppression.",
+      unsafeUrl:
+        "L'URL de {attribute} utilise un schéma non autorisé. Ces balises sont exclues de l'e-mail jusqu'à sa correction.",
+      unclosedComment:
+        "Un commentaire ouvert par <!-- n'est jamais fermé par -->. Ces balises sont exclues de l'e-mail jusqu'à sa fermeture.",
+      unclosedTag:
+        "Une balise n'est jamais fermée par >. Ces balises sont exclues de l'e-mail jusqu'à sa fermeture.",
+    },
     tips: "Conseils",
     tip1: "600px est la largeur standard des modèles d'e-mail",
     tip2: "Utilisez des polices web sûres pour une compatibilité maximale",

@@ -167,7 +167,7 @@ Layout-`settings` ist ein vollständiges `TemplateSettings`. Gelesen wird nur `b
 | Feld | Gewinner |
 | --- | --- |
 | `backgroundColor` | Layout → `mj-body` |
-| `width`, `fontFamily`, `textColor`, `linkColor`, `linkUnderline`, `locale`, `preheaderText`, `direction` | Inhalt |
+| `width`, `fontFamily`, `textColor`, `linkColor`, `linkUnderline`, `locale`, `preheaderText`, `direction`, `customHeadCss`, `customHeadTags` | Inhalt |
 
 Inhalts-`settings.backgroundColor` wird nicht verändert. Die Template-Einstellungen bearbeiten es weiterhin. Es ist nicht `mj-body`, wenn ein Layout angewendet wird. `direction` kommt aus der verfassten Vorlage. Layout setzt kein `dir`.
 

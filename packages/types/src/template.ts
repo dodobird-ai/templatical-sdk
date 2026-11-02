@@ -54,6 +54,23 @@ export interface TemplateSettings {
    * stated decision, not a missing value.
    */
   direction?: ContentDirection;
+  /**
+   * Custom head CSS: author CSS emitted as its own `<mj-style>` at the end of
+   * `<mj-head>`, after every built-in rule, so it wins ties in the cascade. It
+   * is not inlined, and the editor canvas never applies it. Unset or blank
+   * renders nothing. A value containing `<` is left out of the render whole
+   * (see `checkCustomHeadCss`).
+   */
+  customHeadCss?: string;
+  /**
+   * Custom head tags: raw markup (`<meta>`, `<link>`, `<style>`, Outlook
+   * conditional comments) emitted inside an `<mj-raw>` at the end of
+   * `<mj-head>`, so it reaches the compiled `<head>` unchanged. Unset or blank
+   * renders nothing. A value with `<script>`, an `on*` attribute, an `mj-*`
+   * tag or another refused construct is left out of the render whole (see
+   * `checkCustomHeadTags`).
+   */
+  customHeadTags?: string;
 }
 
 export interface TemplateContent {
