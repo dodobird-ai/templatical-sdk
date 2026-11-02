@@ -12,6 +12,7 @@ declare global {
   interface Window {
     EyeDropper?: new () => { open(): Promise<{ sRGBHex: string }> };
     __eyeDropperOpens?: number;
+    __settleEyeDropper?: () => void;
   }
 }
 
@@ -20,10 +21,12 @@ declare global {
  * real one, but it waits for a click on the screen, which a test cannot give;
  * the stand-in settles at once the way `mode` says. Every `open()` is counted
  * on `window.__eyeDropperOpens` so a spec can tell the stand-in was reached.
+ * `hold` keeps the session open until the spec calls
+ * `window.__settleEyeDropper()`, then picks like `pick`.
  */
 async function stubEyeDropper(
   page: Page,
-  mode: "pick" | "cancel" | "unsupported",
+  mode: "pick" | "hold" | "cancel" | "unsupported",
 ) {
   await page.addInitScript((stubMode) => {
     if (stubMode === "unsupported") {
@@ -34,6 +37,11 @@ async function stubEyeDropper(
     window.EyeDropper = class {
       open(): Promise<{ sRGBHex: string }> {
         window.__eyeDropperOpens = (window.__eyeDropperOpens ?? 0) + 1;
+        if (stubMode === "hold") {
+          return new Promise((resolve) => {
+            window.__settleEyeDropper = () => resolve({ sRGBHex: "#12AB9F" });
+          });
+        }
         return stubMode === "pick"
           ? Promise.resolve({ sRGBHex: "#12AB9F" })
           : Promise.reject(
@@ -136,5 +144,36 @@ test.describe("Color picker eyedropper", () => {
     const { popover } = await openButtonColorPicker(editorPage, page);
     await expect(popover.locator('[role="radiogroup"]')).toBeVisible();
     await expect(popover.locator(EYEDROPPER)).toHaveCount(0);
+  });
+
+  test("works from the keyboard and keeps focus while a session is open", async ({
+    page,
+    scenePage,
+    editorPage,
+  }) => {
+    await stubEyeDropper(page, "hold");
+    await scenePage.goto("example-launchpad-launch");
+    await editorPage.waitForReady();
+    await editorPage.dismissOverlays();
+
+    const { panel, popover } = await openButtonColorPicker(editorPage, page);
+    const eyedropper = popover.locator(EYEDROPPER);
+    await eyedropper.focus();
+    await page.keyboard.press("Enter");
+
+    // Busy is aria-disabled, not native `disabled`: Chromium drops focus from
+    // a natively disabled button, so by the time the pick lands focus would
+    // be on <body> and Escape would have nothing to close.
+    await expect(eyedropper).toHaveAttribute("aria-busy", "true");
+    await expect(eyedropper).toBeFocused();
+
+    await page.evaluate(() => window.__settleEyeDropper?.());
+    await expect(
+      panel.locator('input[aria-label="Hex color value"]').first(),
+    ).toHaveValue("#12ab9f");
+    await expect(eyedropper).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(popover).toBeHidden();
   });
 });

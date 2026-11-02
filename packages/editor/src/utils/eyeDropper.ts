@@ -40,6 +40,20 @@ export function resolveEyeDropper(
 }
 
 /**
+ * A cancel is recognised by its `name` alone, not by `instanceof`: a
+ * DOMException from another realm (an iframe's EyeDropper) fails a prototype
+ * check yet is still the author pressing Escape.
+ */
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "AbortError"
+  );
+}
+
+/**
  * Classify a finished eyedropper session. The spec's `sRGBHex` is `#rrggbb`,
  * but early Chromium builds returned `rgb(...)`/`rgba(...)`, so the value goes
  * through the same normalization the picker uses for stored colors. A value
@@ -50,7 +64,7 @@ export function toEyeDropperOutcome(
 ): EyeDropperOutcome {
   if (settled.status === "rejected") {
     const error: unknown = settled.reason;
-    return error instanceof Error && error.name === "AbortError"
+    return isAbortError(error)
       ? { kind: "cancelled" }
       : { kind: "failed", error };
   }

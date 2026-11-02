@@ -33,10 +33,36 @@ function abortError(): DOMException {
   return new DOMException("The user canceled the selection.", "AbortError");
 }
 
-async function openPopover(props: Record<string, unknown>, provides = {}) {
-  const wrapper = mountEditor(ColorPicker, { props, provides });
+/**
+ * Mount the picker and open its popover. `attached` puts it in the document,
+ * which a click-outside test needs: a detached tree has no "outside".
+ */
+async function openPopover(
+  props: Record<string, unknown>,
+  provides = {},
+  attached = false,
+) {
+  const wrapper = mountEditor(ColorPicker, {
+    props,
+    provides,
+    ...(attached ? { attachTo: document.body } : {}),
+  });
   await wrapper.find("button").trigger("click");
   return wrapper;
+}
+
+/**
+ * A click on the page outside the picker. vueuse's onClickOutside drops a
+ * click that arrives in the same task as the previous one, so this waits a
+ * task first, the way a real second click would.
+ */
+async function clickOutside(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  document.body.dispatchEvent(
+    new PointerEvent("pointerdown", { bubbles: true }),
+  );
+  document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  await flushPromises();
 }
 
 afterEach(() => {
@@ -69,6 +95,12 @@ describe("toEyeDropperOutcome", () => {
   it("reads AbortError as a cancel and anything else as a failure", () => {
     expect(
       toEyeDropperOutcome({ status: "rejected", reason: abortError() }),
+    ).toEqual({ kind: "cancelled" });
+    // A DOMException from another realm (an iframe) is not `instanceof` this
+    // realm's Error; its name alone still marks it a cancel.
+    const foreignAbort = { name: "AbortError", message: "canceled" };
+    expect(
+      toEyeDropperOutcome({ status: "rejected", reason: foreignAbort }),
     ).toEqual({ kind: "cancelled" });
 
     const denied = new DOMException("No activation", "NotAllowedError");
@@ -144,7 +176,7 @@ describe("ColorPicker eyedropper", () => {
     expect(warn.mock.calls.filter(([tag]) => tag === "[Templatical]")).toEqual(
       [],
     );
-    expect(wrapper.get(EYEDROPPER).attributes("disabled")).toBeUndefined();
+    expect(wrapper.get(EYEDROPPER).attributes("aria-disabled")).toBe("false");
   });
 
   it("warns and keeps the value when the eyedropper fails", async () => {
@@ -181,7 +213,7 @@ describe("ColorPicker eyedropper", () => {
     expect(lockedByProp.find(EYEDROPPER).exists()).toBe(false);
   });
 
-  it("disables itself while a session is open and ignores a second click", async () => {
+  it("marks itself busy while a session is open and ignores a second click", async () => {
     let resolvePick: (value: { sRGBHex: string }) => void = () => {};
     const { open } = stubEyeDropper(
       () =>
@@ -192,7 +224,12 @@ describe("ColorPicker eyedropper", () => {
     const wrapper = await openPopover({ modelValue: "#333333" });
     await wrapper.get(EYEDROPPER).trigger("click");
     expect(wrapper.get(EYEDROPPER).attributes("aria-busy")).toBe("true");
-    expect(wrapper.get(EYEDROPPER).attributes("disabled")).toBeDefined();
+    expect(wrapper.get(EYEDROPPER).attributes("aria-disabled")).toBe("true");
+    // Busy is aria-disabled, not native `disabled`: a native disabled button
+    // drops keyboard focus to <body>, stranding the author outside the
+    // popover. So this second click really reaches the handler, and the
+    // session guard is what refuses it.
+    expect(wrapper.get(EYEDROPPER).attributes("disabled")).toBeUndefined();
 
     await wrapper.get(EYEDROPPER).trigger("click");
     expect(open).toHaveBeenCalledTimes(1);
@@ -221,5 +258,67 @@ describe("ColorPicker eyedropper", () => {
     resolvePick({ sRGBHex: "#0000ff" });
     await flushPromises();
     expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+  });
+
+  it("aborts a pending session when the picker unmounts", async () => {
+    const { signals } = stubEyeDropper(() => new Promise(() => {}));
+    const wrapper = await openPopover({ modelValue: "#333333" });
+    await wrapper.get(EYEDROPPER).trigger("click");
+    expect(signals[0]?.aborted).toBe(false);
+
+    wrapper.unmount();
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  it("emits nothing when the field is disabled while a session is open", async () => {
+    let resolvePick: (value: { sRGBHex: string }) => void = () => {};
+    const { signals } = stubEyeDropper(
+      () =>
+        new Promise((resolve) => {
+          resolvePick = resolve;
+        }),
+    );
+    const wrapper = await openPopover({ modelValue: "#333333" });
+    await wrapper.get(EYEDROPPER).trigger("click");
+
+    await wrapper.setProps({ disabled: true });
+    expect(signals[0]?.aborted).toBe(true);
+
+    resolvePick({ sRGBHex: "#0000ff" });
+    await flushPromises();
+    expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+  });
+
+  it("keeps the popover open for the click that picks outside it", async () => {
+    let resolvePick: (value: { sRGBHex: string }) => void = () => {};
+    const { signals } = stubEyeDropper(
+      () =>
+        new Promise((resolve) => {
+          resolvePick = resolve;
+        }),
+    );
+    const wrapper = await openPopover({ modelValue: "#333333" }, {}, true);
+    await wrapper.get(EYEDROPPER).trigger("click");
+
+    // The pick lands on the page, outside the popover.
+    await clickOutside();
+    expect(signals[0]?.aborted).toBe(false);
+    expect(wrapper.find(EYEDROPPER).exists()).toBe(true);
+
+    resolvePick({ sRGBHex: "#0000ff" });
+    await flushPromises();
+    expect(wrapper.emitted("update:modelValue")).toEqual([["#0000ff"]]);
+
+    // With no session open, an outside click closes the popover as before.
+    await clickOutside();
+    expect(wrapper.find(EYEDROPPER).exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("closes the popover on Escape from the eyedropper button", async () => {
+    stubEyeDropper(async () => ({ sRGBHex: "#00ff00" }));
+    const wrapper = await openPopover({ modelValue: "#333333" });
+    await wrapper.get(EYEDROPPER).trigger("keydown", { key: "Escape" });
+    expect(wrapper.find(EYEDROPPER).exists()).toBe(false);
   });
 });

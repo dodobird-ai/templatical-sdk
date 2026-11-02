@@ -102,6 +102,9 @@ const pickerTouched = ref(false);
 onClickOutside(
   popoverRef,
   () => {
+    // While the eyedropper is open, the click that picks a pixel lands
+    // outside the popover; closing here would abort the very pick it makes.
+    if (eyeDropperActive.value) return;
     open.value = false;
   },
   { ignore: [swatchRef] },
@@ -275,10 +278,17 @@ function stopEyeDropper(): void {
 }
 
 // Closing the popover or unmounting the picker ends a pending session, so a
-// late pick never lands on a field the author has moved away from.
-watch(open, (isOpen) => {
-  if (!isOpen) stopEyeDropper();
-});
+// late pick never lands on a field the author has moved away from. Sync, so
+// the abort happens in the same tick as the close: disabling the field closes
+// the popover synchronously too (see the `isDisabled` watcher), which makes a
+// pick arriving after the field became read-only already aborted.
+watch(
+  open,
+  (isOpen) => {
+    if (!isOpen) stopEyeDropper();
+  },
+  { flush: "sync" },
+);
 onBeforeUnmount(stopEyeDropper);
 
 async function pickFromScreen(): Promise<void> {
@@ -292,9 +302,10 @@ async function pickFromScreen(): Promise<void> {
   eyeDropperActive.value = false;
   switch (outcome.kind) {
     case "picked":
-      // Emitted like a wheel pick. Re-checked: the field may have been
-      // disabled (e.g. a locale switch) while the eyedropper was open.
-      if (!isDisabled.value) emit("update:modelValue", outcome.hex);
+      // Emitted like a wheel pick. A field disabled mid-session (e.g. a
+      // locale switch) never gets here: it closed the popover, which aborted
+      // the session above.
+      emit("update:modelValue", outcome.hex);
       return;
     case "cancelled":
       // Escape: the author changed their mind; nothing to report.
@@ -526,10 +537,11 @@ function toggleOpen(): void {
             v-if="showEyeDropper"
             type="button"
             data-testid="color-picker-eyedropper"
-            :disabled="isDisabled || eyeDropperActive"
+            :disabled="isDisabled"
+            :aria-disabled="eyeDropperActive"
             :aria-busy="eyeDropperActive"
             :title="t.colorPicker.pickFromScreen"
-            class="tpl:mt-2 tpl:flex tpl:w-full tpl:cursor-pointer tpl:items-center tpl:gap-2 tpl:rounded-[var(--tpl-radius-sm)] tpl:border tpl:border-[var(--tpl-border)] tpl:bg-[var(--tpl-bg)] tpl:px-2 tpl:py-1 tpl:text-left tpl:text-xs tpl:text-[var(--tpl-text)] tpl:outline-none tpl:transition-all tpl:duration-[120ms] tpl:ease-[cubic-bezier(0.16,1,0.3,1)] tpl:hover:border-[var(--tpl-text-dim)] tpl:focus-visible:ring-2 tpl:focus-visible:ring-[var(--tpl-primary)] tpl:disabled:cursor-wait tpl:disabled:opacity-60"
+            class="tpl:mt-2 tpl:flex tpl:w-full tpl:cursor-pointer tpl:items-center tpl:gap-2 tpl:rounded-[var(--tpl-radius-sm)] tpl:border tpl:border-[var(--tpl-border)] tpl:bg-[var(--tpl-bg)] tpl:px-2 tpl:py-1 tpl:text-left tpl:text-xs tpl:text-[var(--tpl-text)] tpl:outline-none tpl:transition-all tpl:duration-[120ms] tpl:ease-[cubic-bezier(0.16,1,0.3,1)] tpl:hover:border-[var(--tpl-text-dim)] tpl:focus-visible:ring-2 tpl:focus-visible:ring-[var(--tpl-primary)] tpl:disabled:cursor-not-allowed tpl:disabled:opacity-60 tpl:aria-disabled:cursor-wait tpl:aria-disabled:opacity-60"
             @click="pickFromScreen"
             @keydown.escape="open = false"
           >
