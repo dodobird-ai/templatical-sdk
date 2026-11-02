@@ -9,7 +9,9 @@ import {
   createTableBlock,
   createTitleBlock,
   generateId,
+  HEADING_LEVEL_FONT_SIZE,
   RICH_TEXT_SPACING,
+  TITLE_LINE_HEIGHT,
 } from "@templatical/types";
 import type {
   HeadingLevel,
@@ -78,12 +80,23 @@ function convertTitle(
     ownAttr(attrs, "font-family", "mj-text", cascade),
   );
 
+  // title.ts always writes the size and line height in effect, so only a value
+  // other than the level's size or TITLE_LINE_HEIGHT is the title's own.
+  const fontSize = parsePxValue(attrs["font-size"]);
+  const lineHeight = parseUnitlessLineHeight(attrs["line-height"]);
+
   const block = createTitleBlock({
     content: $heading.html() ?? "",
     level,
     textAlign: parseAlignment(attrs.align, "left"),
     ...(color ? { color } : {}),
     ...(fontFamily ? { fontFamily } : {}),
+    ...(fontSize > 0 && fontSize !== HEADING_LEVEL_FONT_SIZE[level]
+      ? { fontSize }
+      : {}),
+    ...(lineHeight !== undefined && lineHeight !== TITLE_LINE_HEIGHT
+      ? { lineHeight }
+      : {}),
     ...baseFields(attrs),
   });
 
@@ -102,6 +115,20 @@ function convertTitle(
         : {}),
     },
   };
+}
+
+/**
+ * A unitless `line-height` (`"1.15"`), the only form a title line height
+ * takes. A px or % value has no unitless equivalent without the font size, so
+ * it is left to the default.
+ */
+function parseUnitlessLineHeight(
+  value: string | undefined,
+): number | undefined {
+  const match = value?.match(/^\s*(\d*\.?\d+)\s*$/);
+  if (!match) return undefined;
+  const parsed = Number(match[1]);
+  return parsed > 0 ? parsed : undefined;
 }
 
 function convertTable(

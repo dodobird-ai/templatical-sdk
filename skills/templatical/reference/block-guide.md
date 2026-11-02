@@ -124,11 +124,16 @@ pixel width does not shrink on a phone.
 
 <!-- BEGIN GENERATED FIELDS: title -->
 **Required** — `content` (string), `level` (HeadingLevel), `textAlign` ("left" | "center" | "right").
-**Optional** — `l10n` (object), `color` (string), `fontFamily` (string).
+**Optional** — `l10n` (object), `color` (string), `fontFamily` (string), `fontSize` (int), `lineHeight` (int).
 <!-- END GENERATED FIELDS: title -->
 
 - `content` is the heading text; inline HTML is allowed.
 - `level` is one of `1`, `2`, `3`, `4` — `1` is the largest.
+- `fontSize` is the title's own size in px; omit it to take the level's size
+  (`36`, `28`, `22`, `18` for levels 1 to 4). The level still sets the heading
+  element, so keep it meaningful when you set a size.
+- `lineHeight` is a multiple of the font size, such as `1.15`; omit it for the
+  default `1.3`.
 - `color` inherits `settings.textColor` when unset.
 - A title is always bold (weight 700), so don't wrap the whole `content` in
   `<strong>`: in web-safe fonts it changes nothing.

@@ -15,7 +15,7 @@ To create blocks programmatically, see [Programmatic Templates](/guide/programma
 
 | Need | Block | Notes |
 |------|-------|-------|
-| Headings, titles | [Title](#title) | Fixed-size headings (H1-H4) with block-level formatting |
+| Headings, titles | [Title](#title) | Headings (H1-H4) with block-level formatting and an optional size of their own |
 | Body text, paragraphs | [Paragraph](#paragraph) | Rich text with inline formatting via TipTap |
 | Photos, banners, logos | [Image](#image) | Optional link wrapping, responsive width |
 | Call-to-action | [Button](#button) | Bulletproof buttons rendered through `mj-button` as HTML tables |
@@ -32,7 +32,9 @@ To create blocks programmatically, see [Programmatic Templates](/guide/programma
 
 ## Title
 
-A heading block with fixed size levels. Use titles for headings, section headers, and other prominent text.
+A heading block. Use titles for headings, section headers, and other prominent text.
+
+The heading level (H1-H4) sets the heading element and a default size. A title can also take a size of its own in px, and a line height, in the title settings. Leave either field empty to keep the default: the empty field shows the value in effect. The level still decides the element, so an H1 set to 20px is still the email's main heading.
 
 Titles are bold (weight 700) on the canvas, while you edit them, and in the email. Inline bold inside a title asks for a heavier weight, which web-safe fonts such as Arial don't have, so it shows only in a font that does.
 
@@ -43,6 +45,8 @@ Titles are bold (weight 700) on the canvas, while you edit them, and in the emai
 | `color` | `string` | Text color |
 | `textAlign` | `'left' \| 'center' \| 'right'` | Horizontal alignment |
 | `fontFamily` | `string` | Font family override |
+| `fontSize` | `number` | Font size in px, overriding the level's. Omit it for the level's size |
+| `lineHeight` | `number` | Line height as a multiple of the font size, such as `1.15`. Omit it for `1.3` |
 
 ## Paragraph
 

@@ -286,6 +286,8 @@ const nl: typeof en = {
     heading2: "Titel 2 (28px)",
     heading3: "Titel 3 (22px)",
     heading4: "Titel 4 (18px)",
+    fontSize: "Tekengrootte",
+    lineHeight: "Regelafstand",
     fontFamily: "Lettertype",
     inheritFont: "Lettertype van het sjabloon gebruiken",
     color: "Kleur",

@@ -287,6 +287,8 @@ const fr: typeof en = {
     heading2: "Titre 2 (28px)",
     heading3: "Titre 3 (22px)",
     heading4: "Titre 4 (18px)",
+    fontSize: "Taille de police",
+    lineHeight: "Interligne",
     fontFamily: "Police",
     inheritFont: "Utiliser la police du modèle",
     color: "Couleur",

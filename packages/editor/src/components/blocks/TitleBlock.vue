@@ -5,9 +5,9 @@ import type {
   ViewportSize,
 } from "@templatical/types";
 import {
-  HEADING_LEVEL_FONT_SIZE,
   TITLE_FONT_WEIGHT,
-  TITLE_LINE_HEIGHT,
+  resolveTitleFontSize,
+  resolveTitleLineHeight,
 } from "@templatical/types";
 import { computed, defineAsyncComponent } from "vue";
 import { unwrapParagraph } from "../../utils/unwrapParagraph";
@@ -32,12 +32,11 @@ const {
 } = useEditableTextBlock(() => props.block.content);
 
 const titleStyle = computed(() => {
-  const fontSize = HEADING_LEVEL_FONT_SIZE[props.block.level];
   const style: Record<string, string> = {
-    fontSize: `${fontSize}px`,
+    fontSize: `${resolveTitleFontSize(props.block)}px`,
     // On the wrapper so the view heading and the edit surface inherit the
     // same values the renderer writes onto the title's `mj-text` and heading.
-    lineHeight: String(TITLE_LINE_HEIGHT),
+    lineHeight: String(resolveTitleLineHeight(props.block)),
     fontWeight: String(TITLE_FONT_WEIGHT),
     textAlign: props.block.textAlign,
   };

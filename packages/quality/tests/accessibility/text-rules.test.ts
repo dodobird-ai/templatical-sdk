@@ -299,9 +299,49 @@ describe("a11y.text-low-contrast", () => {
     );
     expect(issues).toEqual([]);
   });
+
+  it("judges a title by its own size, not its level's", () => {
+    // #888888 on white is about 3.5:1: enough for large text only.
+    const at = (fontSize: number, level: 1 | 4) => {
+      const content = createDefaultTemplateContent();
+      content.settings.preheaderText = "x";
+      content.blocks = [
+        createTitleBlock({ content: "<p>Hi</p>", color: "#888888", level, fontSize }),
+      ];
+      return lintAccessibility(content).filter(
+        (i) => i.ruleId === "a11y.text-low-contrast",
+      );
+    };
+    // An H1 shrunk to 20px is no longer large text.
+    expect(at(20, 1)).toHaveLength(1);
+    // An H4 grown to 30px is.
+    expect(at(30, 4)).toEqual([]);
+  });
 });
 
 describe("a11y.text-too-small", () => {
+  it("fires for a title whose own size is under 14", () => {
+    const content = createDefaultTemplateContent();
+    content.settings.preheaderText = "x";
+    content.blocks = [createTitleBlock({ level: 4, fontSize: 12 })];
+    const issues = lintAccessibility(content).filter(
+      (i) => i.ruleId === "a11y.text-too-small",
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toBe("Text is 12px.");
+  });
+
+  it("does not fire for a title that keeps its level's size", () => {
+    const content = createDefaultTemplateContent();
+    content.settings.preheaderText = "x";
+    content.blocks = [createTitleBlock({ level: 4 })];
+    expect(
+      lintAccessibility(content).filter(
+        (i) => i.ruleId === "a11y.text-too-small",
+      ),
+    ).toEqual([]);
+  });
+
   it("fires for menu fontSize < 14", () => {
     const block = createMenuBlock({ fontSize: 12 });
     const content = createDefaultTemplateContent();

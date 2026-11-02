@@ -259,6 +259,43 @@ export const HEADING_LEVEL_FONT_SIZE: Record<HeadingLevel, number> = {
 export const TITLE_LINE_HEIGHT = 1.3;
 
 /**
+ * Whether a stored size can be rendered. Content arrives as JSON, so a
+ * `number` field may still hold `0`, a negative or `NaN`.
+ */
+function isRenderableSize(value: number | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+/**
+ * A title block's font size in px: its own `fontSize` when it sets a
+ * renderable one, otherwise its heading level's `HEADING_LEVEL_FONT_SIZE`.
+ *
+ * The renderer, the editor canvas and the quality rules all read a title's
+ * size through this, so they cannot disagree about it. A level outside 1-4
+ * takes the h2 size, as the renderer always did.
+ */
+export function resolveTitleFontSize(
+  block: Pick<TitleBlock, "level" | "fontSize">,
+): number {
+  if (isRenderableSize(block.fontSize)) {
+    return block.fontSize;
+  }
+  return HEADING_LEVEL_FONT_SIZE[block.level] ?? HEADING_LEVEL_FONT_SIZE[2];
+}
+
+/**
+ * A title block's line height, as a multiple of its font size: its own
+ * `lineHeight` when it sets a renderable one, otherwise `TITLE_LINE_HEIGHT`.
+ */
+export function resolveTitleLineHeight(
+  block: Pick<TitleBlock, "lineHeight">,
+): number {
+  return isRenderableSize(block.lineHeight)
+    ? block.lineHeight
+    : TITLE_LINE_HEIGHT;
+}
+
+/**
  * A title block's font weight.
  *
  * The renderer writes it onto the exported heading, and the editor sets it on
@@ -301,6 +338,17 @@ export interface TitleBlock extends BaseBlock {
   color?: string;
   textAlign: "left" | "center" | "right";
   fontFamily?: string;
+  /**
+   * Font size in px, overriding the heading level's. Absent means the level's
+   * size: 36, 28, 22 or 18 for levels 1 to 4. The level still decides the
+   * heading element.
+   */
+  fontSize?: number;
+  /**
+   * Line height as a multiple of the font size, such as 1.15. Absent means
+   * 1.3.
+   */
+  lineHeight?: number;
 }
 
 export interface ParagraphBlock extends BaseBlock {

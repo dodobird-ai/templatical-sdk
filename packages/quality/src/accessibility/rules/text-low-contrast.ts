@@ -1,7 +1,7 @@
 import { isTitle } from "@templatical/types";
 import type { Rule, RuleMeta } from "../../types";
 import { getContrastRatio, isOpaqueHex } from "../../contrast";
-import { HEADING_LEVEL_FONT_SIZE } from "@templatical/types";
+import { resolveTitleFontSize } from "@templatical/types";
 
 export const meta: RuleMeta = {
   id: "a11y.text-low-contrast",
@@ -19,7 +19,8 @@ export const textLowContrast: Rule = {
     if (!isOpaqueHex(color) || !isOpaqueHex(ctx.resolvedBackgroundColor)) {
       return null;
     }
-    const fontSize = HEADING_LEVEL_FONT_SIZE[block.level];
+    // The title's own size when it sets one, else its level's.
+    const fontSize = resolveTitleFontSize(block);
     // WCAG large text = 18pt (~24px). Headings have no structured bold
     // flag in this codebase (TipTap stores it inline), so we conservatively
     // skip the 14pt-bold (~18.66px) relaxation and apply the px threshold.

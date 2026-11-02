@@ -28,7 +28,8 @@ import { convertMjmlTemplate } from "../converter";
  * plus a wrapper, a grouped section, a single-viewport visibility, a display
  * condition on a top-level section, a display condition on a block nested
  * inside a section column, a paragraph carrying a hard `<br>` line break, a
- * button at each width (fit to content, full and px), and per-corner radii and
+ * button at each width (fit to content, full and px), a title with its own size
+ * and line height, and per-corner radii and
  * borders on a button, an image, a section and a wrapper, and a section
  * background image, a hero section and a wrapper background image.
  *
@@ -51,6 +52,15 @@ function buildFixtureTemplate(): TemplateContent {
               content: "Welcome",
               level: 1,
               textAlign: "center",
+            }),
+            // A title size and title line height of its own, which the
+            // renderer writes onto the mj-text and the importer reads back.
+            createTitleBlock({
+              content: "Sized",
+              level: 2,
+              textAlign: "left",
+              fontSize: 31,
+              lineHeight: 1.15,
             }),
             createParagraphBlock({
               content: "<p>Hello <strong>there</strong>.</p>",

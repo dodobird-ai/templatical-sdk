@@ -86,6 +86,20 @@ describe("TitleBlock canvas rendering", () => {
     expect(style).toContain("text-align: center");
   });
 
+  it("sizes the wrapper from the heading level when the title sets no size", () => {
+    const root = mount({ level: 3 }).find("div").element as HTMLElement;
+    expect(root.style.fontSize).toBe("22px");
+  });
+
+  it("sizes the wrapper from the title's own size and line height", () => {
+    const wrapper = mount({ level: 1, fontSize: 31, lineHeight: 1.05 });
+    const root = wrapper.find("div").element as HTMLElement;
+    expect(root.style.fontSize).toBe("31px");
+    expect(root.style.lineHeight).toBe("1.05");
+    // The level still decides the element.
+    expect(wrapper.find("h1").exists()).toBe(true);
+  });
+
   it("sets the renderer's title line height on the wrapper both modes share", () => {
     const wrapper = mount({ level: 2 });
     // The wrapper holds the view heading and, while editing, the edit surface,

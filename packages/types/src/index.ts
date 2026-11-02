@@ -46,6 +46,8 @@ export {
   HEADING_LEVEL_FONT_SIZE,
   TITLE_FONT_WEIGHT,
   TITLE_LINE_HEIGHT,
+  resolveTitleFontSize,
+  resolveTitleLineHeight,
   RICH_TEXT_SPACING,
   BORDER_CORNERS,
   BORDER_SIDES,

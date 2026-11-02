@@ -564,6 +564,14 @@
         },
         "fontFamily": {
           "type": "string"
+        },
+        "fontSize": {
+          "type": "number",
+          "description": "Font size in px, overriding the heading level's. Absent means the level's size: 36, 28, 22 or 18 for levels 1 to 4. The level still decides the heading element."
+        },
+        "lineHeight": {
+          "type": "number",
+          "description": "Line height as a multiple of the font size, such as 1.15. Absent means 1.3."
         }
       },
       "required": [
