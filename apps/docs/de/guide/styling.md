@@ -94,19 +94,20 @@ Dies ist nützlich, um unterschiedliche Inhalte bei unterschiedlichen Bildschirm
 
 Neben einzelnen Blockstilen hat das Template selbst globale Einstellungen, die das Gesamtlayout beeinflussen.
 
-| Einstellung       | Typ              | Beschreibung                                                                                                                                                                                       |
-| ----------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `width`           | `number`         | Template-Inhaltsbreite in px (typischerweise 600)                                                                                                                                                  |
-| `backgroundColor` | `string`         | Äußere Hintergrundfarbe hinter dem Template                                                                                                                                                        |
-| `textColor`       | `string`         | Standard-Textfarbe, die jeder Textblock (Title, Paragraph, Menu, Table) erbt, sofern der Block keine eigene Farbe oder Inline-Textfarbe setzt. Standard: `#1a1a1a`.                                |
-| `linkColor`       | `string`         | Dokumentweite Linkfarbe für jeden Link (Rich-Text und Menu). Optional – wenn nicht gesetzt, erben Links die umgebende Textfarbe. Eine block- oder elementspezifische Farbe überschreibt weiterhin. |
-| `linkUnderline`   | `boolean`        | Ob Body-Links (Rich-Text) unterstrichen werden. Standard: `true`. Buttons und Menu-Elemente behalten ihre eigene text-decoration.                                                                  |
-| `fontFamily`      | `string`         | Standard-Schriftfamilie für alle Blöcke                                                                                                                                                            |
-| `locale`          | `string`         | BCP-47-Inhaltssprache (`<html lang>`). Bei einem leeren Template Standard `en`                                                                                                                     |
-| `direction`       | `'ltr' \| 'rtl'` | Schreibrichtung. Ungesetzt folgt der Inhaltssprache                                                                                                                                                |
-| `preheaderText`   | `string`         | Vorschauzeile im Posteingang                                                                                                                                                                       |
-| `customHeadCss`   | `string`         | Zusätzliches CSS für den `<head>` der E-Mail. Siehe [Eigener Head](#custom-head)                                                                                                                   |
-| `customHeadTags`  | `string`         | Zusätzliche `<head>`-Tags. Siehe [Eigener Head](#custom-head)                                                                                                                                      |
+| Einstellung       | Typ                  | Beschreibung                                                                                                                                                                                       |
+| ----------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `width`           | `number`             | Template-Inhaltsbreite in px (typischerweise 600)                                                                                                                                                  |
+| `backgroundColor` | `string`             | Äußere Hintergrundfarbe hinter dem Template                                                                                                                                                        |
+| `textColor`       | `string`             | Standard-Textfarbe, die jeder Textblock (Title, Paragraph, Menu, Table) erbt, sofern der Block keine eigene Farbe oder Inline-Textfarbe setzt. Standard: `#1a1a1a`.                                |
+| `linkColor`       | `string`             | Dokumentweite Linkfarbe für jeden Link (Rich-Text und Menu). Optional – wenn nicht gesetzt, erben Links die umgebende Textfarbe. Eine block- oder elementspezifische Farbe überschreibt weiterhin. |
+| `linkUnderline`   | `boolean`            | Ob Body-Links (Rich-Text) unterstrichen werden. Standard: `true`. Buttons und Menu-Elemente behalten ihre eigene text-decoration.                                                                  |
+| `fontFamily`      | `string`             | Standard-Schriftfamilie für alle Blöcke                                                                                                                                                            |
+| `locale`          | `string`             | BCP-47-Inhaltssprache (`<html lang>`). Bei einem leeren Template Standard `en`                                                                                                                     |
+| `direction`       | `'ltr' \| 'rtl'`     | Schreibrichtung. Ungesetzt folgt der Inhaltssprache                                                                                                                                                |
+| `preheaderText`   | `string`             | Vorschauzeile im Posteingang                                                                                                                                                                       |
+| `customHeadCss`   | `string`             | Zusätzliches CSS für den `<head>` der E-Mail. Siehe [Eigener Head](#custom-head)                                                                                                                   |
+| `customHeadTags`  | `string`             | Zusätzliche `<head>`-Tags. Siehe [Eigener Head](#custom-head)                                                                                                                                      |
+| `darkColors`      | `TemplateDarkColors` | Optionale Farben für Empfänger, deren Mail-App im Dunkelmodus ist. Siehe [Dark-Mode-Farben](#dark-mode-farben).                                                                                    |
 
 Diese werden über die `init()`-Konfiguration des Editors oder durch direkte Änderung des Template-JSON konfiguriert:
 
@@ -182,3 +183,55 @@ Ein Wert, der das MJML-Dokument zerstören oder Code ausführen könnte, wird ga
 Die Prüfung liest jedes `<` in den Tags als mögliches Tag, auch in Kommentaren und in `<style>`, sodass Markup, das ein Browser als Text behandeln würde, denselben Regeln unterliegt.
 
 `checkCustomHeadCss` und `checkCustomHeadTags` aus `@templatical/types` liefern das Ergebnis (`empty`, `accepted` mit dem getrimmten Wert oder `refused` mit einem typisierten Grund) für Hosts, die vor dem Speichern prüfen. Wie die Einstellungs-Allowlist läuft die Prüfung im Browser und im Renderer, nicht auf Ihrem Server; prüfen Sie, was Sie speichern. Um Autoren ganz aus dem Head herauszuhalten, lassen Sie beide Felder in [`templateSettings.fields`](/de/api/editor#restricting-the-settings-panel) weg.
+
+## Dark-Mode-Farben
+
+Manche Mail-Apps gestalten eine E-Mail um, wenn der Empfänger den Dunkelmodus nutzt. Setzen Sie `darkColors` am Template, an einer Section, einem Title, einem Paragraph oder einem Button, um die Farben für diesen Fall zu wählen. Ein weggelassenes Feld behält seine helle Farbe. Im Editor liegen die Farben in einer Gruppe **Dunkelmodus** in den Einstellungen dieser Blöcke und in der Darstellungs-Karte der Template-Einstellungen.
+
+| Wo                               | Feld              | Ersetzt im Dunkelmodus                                          |
+| -------------------------------- | ----------------- | --------------------------------------------------------------- |
+| Template (`settings.darkColors`) | `backgroundColor` | Den E-Mail-Hintergrund                                          |
+|                                  | `textColor`       | Den Text jedes Titels und Absatzes                              |
+|                                  | `linkColor`       | Links in Titeln und Absätzen                                    |
+| Section                          | `backgroundColor` | Den Hintergrund der Section (gilt nicht für einen Hero)         |
+| Title, Paragraph                 | `backgroundColor` | Den Hintergrund des Blocks                                      |
+|                                  | `textColor`       | Den Text des Blocks, einschließlich Inline-Textfarben und Links |
+| Button                           | `backgroundColor` | Die Füllung des Buttons                                         |
+|                                  | `textColor`       | Die Beschriftung des Buttons                                    |
+
+Die eigene `textColor` eines Blocks hat Vorrang vor der des Templates, und die `linkColor` des Templates hat für Links Vorrang vor beiden.
+
+Die `textColor` und `linkColor` des Templates erreichen nur Titel und Absätze. Menüs, Tabellen, die Beschriftungen von Social-Icons und Trennlinien behalten ihre hellen Farben, ebenso Countdowns, die als Bild gerendert werden. Eine Section, die als Hero angezeigt wird, erhält keinen dunklen Hintergrund, und die Gruppe **Dunkelmodus** ist für sie ausgeblendet. Dark-Mode-Farben an einem Block, der auf allen Viewports ausgeblendet ist, haben keine Wirkung. Setzt das Template einen dunklen `backgroundColor`, prüfen Sie, ob diese Blöcke darauf lesbar bleiben, etwa indem Sie der Section, die ein Menü enthält, einen hellen Dark-Mode-`backgroundColor` geben, sodass das Menü den Hintergrund behält, für den sein Text gewählt wurde. Ein `*` oder `\` in einer Dark-Mode-Farbe wird entfernt: Keines der beiden kommt in einer Farbe vor, und ein `/*` würde die folgenden Regeln auskommentieren.
+
+```ts
+const content = {
+  settings: {
+    ...settings,
+    darkColors: {
+      backgroundColor: "#121212",
+      textColor: "#e8e8e8",
+      linkColor: "#8ab4f8",
+    },
+  },
+  blocks: [
+    createButtonBlock({
+      text: "Jetzt kaufen",
+      url: "https://example.com",
+      darkColors: { backgroundColor: "#8ab4f8", textColor: "#000000" },
+    }),
+  ],
+};
+```
+
+Der Renderer macht daraus CSS, nie Inline-Styles: Jedes Element erhält eine Klasse nach Rolle und Farbe, etwa `tpl-dark-text-e8e8e8`, und ein `<mj-style>` im Head enthält die Regeln, alle mit `!important`:
+
+- innerhalb von `@media (prefers-color-scheme: dark)`, das Apple Mail und Outlook für Mac anwenden;
+- beschränkt auf `[data-ogsc]` (Text) und `[data-ogsb]` (Hintergründe), die Attribute, die Outlook.com und die Outlook-Apps beim Umfärben einer E-Mail setzen.
+
+Outlook für Windows wendet keines von beiden an.
+
+Ein Template ohne Dark-Mode-Farben wird genau wie bisher gerendert: ohne Klassen und ohne zusätzliches `<mj-style>`.
+
+Der Renderer fügt kein `<meta name="color-scheme">` und keine CSS-Eigenschaft `color-scheme` hinzu: Ob eine Mail-App die E-Mail umfärben darf, entscheiden Sie. Die Gmail-Apps ignorieren diese Regeln und färben selbst um, es sei denn, Ihre E-Mail widerspricht dem mit `<meta name="color-scheme" content="light only">` im Head. Apple Mail dunkelt eine E-Mail nicht mehr selbst ab, sobald sie `color-scheme: light dark` deklariert; eine solche E-Mail sollte daher Dark-Mode-Farben für Hintergründe und Text setzen.
+
+Die Dunkelmodus-Vorschau des Editors zeigt die Dark-Mode-Farben dort, wo sie gesetzt sind, und sonst die hellen Farben. Ein Template ganz ohne Dark-Mode-Farben wird stattdessen mit invertierten Farben gezeigt, so wie manche Mail-Apps eine E-Mail ohne eigenes dunkles Design abdunkeln.

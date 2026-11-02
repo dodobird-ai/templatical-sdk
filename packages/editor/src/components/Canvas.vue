@@ -8,7 +8,7 @@ import type {
   TemplateContent,
   ViewportSize,
 } from "@templatical/types";
-import { resolveContentDirection } from "@templatical/types";
+import { isDarkColorSet, resolveContentDirection } from "@templatical/types";
 import { ImageUp, Sparkles, SquarePlus } from "@lucide/vue";
 import { computed, inject, provide, ref, type Component } from "vue";
 import {
@@ -25,9 +25,11 @@ import {
 } from "../keys";
 import { VueDraggable } from "vue-draggable-plus";
 import {
+  documentDarkColorClasses,
   getDocumentStyle,
   resolveBlockComponent,
 } from "../utils/blockComponentResolver";
+import { resolveDarkPreview } from "../utils/darkPreview";
 import {
   EMAIL_FRAME_WIDTH_TRANSITION,
   EMAIL_GUTTER,
@@ -89,7 +91,11 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const editor = requireInject(EDITOR_KEY, "Canvas");
-const { displayBlock, settings: displaySettings } = useLocalizedDisplay({
+const {
+  content: displayContent,
+  displayBlock,
+  settings: displaySettings,
+} = useLocalizedDisplay({
   content: computed(() => props.content),
   activeLocale: computed(() =>
     props.previewMode ? null : (editor.activeLocale?.value ?? null),
@@ -181,6 +187,28 @@ const stageWidth = computed(() => viewportWidth.value + EMAIL_GUTTER * 2);
 // previews), so a block looks the same wherever it is drawn.
 const canvasStyle = computed(() =>
   getDocumentStyle(displaySettings.value, fontsManager.resolveFontFamily),
+);
+// A template with dark colors previews them instead of the inversion; see
+// `DarkPreview`. The authored rules at the end of this file mirror the CSS
+// the renderer emits for the email. Decided on the content the canvas shows
+// (the active language's), since a language can set or clear dark colors;
+// only read while dark mode is on, so the light canvas never resolves it.
+const darkPreview = computed(() =>
+  props.darkMode ? resolveDarkPreview(true, displayContent.value) : "off",
+);
+const canvasBackgroundColor = computed(() => {
+  const dark = displaySettings.value.darkColors?.backgroundColor;
+  return darkPreview.value === "authored" && isDarkColorSet(dark)
+    ? dark
+    : displaySettings.value.backgroundColor;
+});
+const darkPreviewClasses = computed(() =>
+  darkPreview.value === "authored"
+    ? [
+        "tpl-canvas--dark-authored",
+        ...documentDarkColorClasses(displaySettings.value),
+      ]
+    : [],
 );
 // The email's own language, for the browser's spellchecker and hyphenation.
 // Without it the canvas inherits the HOST page's `lang`, so German copy is
@@ -321,10 +349,13 @@ function handleFetchData(
          the wrapper. The filter has its own transition so the canvas fades
          smoothly between modes. -->
     <div
+      data-testid="canvas-background"
       class="tpl-canvas-bg tpl:absolute tpl:inset-0 tpl:rounded-lg tpl:pointer-events-none"
       :style="{
-        backgroundColor: displaySettings.backgroundColor,
-        ...(darkMode ? { filter: 'invert(1) hue-rotate(180deg)' } : {}),
+        backgroundColor: canvasBackgroundColor,
+        ...(darkPreview === 'inverted'
+          ? { filter: 'invert(1) hue-rotate(180deg)' }
+          : {}),
         transition: 'filter 300ms ease',
       }"
     />
@@ -345,10 +376,14 @@ function handleFetchData(
         class="tpl-canvas tpl:relative tpl:rounded-lg"
         :lang="contentLang"
         :dir="contentDir"
-        :class="{
-          'tpl-canvas--dark-mode': darkMode,
-          'tpl-preview-mode': previewMode,
-        }"
+        :data-dark-preview="darkPreview"
+        :class="[
+          {
+            'tpl-canvas--dark-mode': darkPreview === 'inverted',
+            'tpl-preview-mode': previewMode,
+          },
+          darkPreviewClasses,
+        ]"
         :style="canvasStyle"
         @click="handleCanvasClick"
       >
@@ -579,5 +614,50 @@ function handleFetchData(
   pointer-events: none;
   background: var(--tpl-block-bg-layer, none);
   filter: invert(1) hue-rotate(180deg);
+}
+
+/* Authored dark preview: the template's dark colors, painted the way the
+   renderer's dark-mode CSS paints them in the email (`dark-colors.ts` in
+   `@templatical/renderer`). The colors arrive as variables from
+   `getDocumentStyle` and `getBlockWrapperStyle`, each turned on by a class.
+
+   `:where()` keeps every rule at the same specificity, so the order below is
+   the precedence, as in the email: the template's text color, then a
+   block's, then the template's link color, which adds a type selector and so
+   wins for links. `!important` beats the light colors set inline, the same
+   reason the email needs it. Merge-tag chips keep their own colors: they are
+   editor chrome, and the email has plain text in their place. */
+.tpl-canvas--dark-text
+  :deep(
+    :where(
+      .tpl-text-content,
+      .tpl-text-editable,
+      .tpl-text-content *:not([data-merge-tag], [data-logic-merge-tag]),
+      .tpl-text-editable *:not([data-merge-tag], [data-logic-merge-tag])
+    )
+  ) {
+  color: var(--tpl-doc-dark-text) !important;
+}
+.tpl-canvas--dark-authored :deep(:where(.tpl-has-dark-bg)) {
+  background-color: var(--tpl-dark-bg) !important;
+}
+.tpl-canvas--dark-authored
+  :deep(
+    :where(
+      .tpl-has-dark-text,
+      .tpl-has-dark-text *:not([data-merge-tag], [data-logic-merge-tag])
+    )
+  ) {
+  color: var(--tpl-dark-text) !important;
+}
+.tpl-canvas--dark-authored :deep(:where(.tpl-has-dark-button-bg) a) {
+  background-color: var(--tpl-dark-button-bg) !important;
+}
+.tpl-canvas--dark-authored :deep(:where(.tpl-has-dark-button-text) a) {
+  color: var(--tpl-dark-button-text) !important;
+}
+.tpl-canvas--dark-link
+  :deep(:where(.tpl-text-content, .tpl-text-editable) :where(a, a *)) {
+  color: var(--tpl-doc-dark-link) !important;
 }
 </style>

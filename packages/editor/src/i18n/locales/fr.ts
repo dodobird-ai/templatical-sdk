@@ -163,6 +163,15 @@ const fr: typeof en = {
     enable: "Aperçu en mode sombre",
     disable: "Aperçu en mode clair",
   },
+
+  darkColors: {
+    title: "Mode sombre",
+    hint: "Appliqué lorsque l'application de messagerie du destinataire est en mode sombre. Laissez une couleur vide pour garder la couleur claire.",
+    backgroundColor: "Couleur de fond",
+    textColor: "Couleur du texte",
+    linkColor: "Couleur des liens",
+    buttonColor: "Couleur du bouton",
+  },
   previewMode: {
     enable: "Mode aperçu",
     disable: "Quitter l'aperçu",

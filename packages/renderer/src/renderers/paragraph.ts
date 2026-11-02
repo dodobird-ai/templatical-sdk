@@ -10,6 +10,7 @@ import {
   resolveParagraphGap,
 } from "../rich-text";
 import { isHiddenOnAll, getCssClassAttr } from "../visibility";
+import { darkColorClasses } from "../dark-colors";
 
 /**
  * Render a paragraph block to MJML markup.
@@ -37,6 +38,7 @@ export function renderParagraph(
   const cssClassAttr = getCssClassAttr(block, [
     RICH_TEXT_CSS_CLASS,
     richTextGapClass(resolveParagraphGap(block.paragraphSpacing)),
+    ...darkColorClasses(block),
   ]);
 
   // RTL templates need a start-edge default on the wrapper. Inner

@@ -85,8 +85,10 @@ describe("block chrome structure", () => {
     // Filter lives on this leaf div (no descendants) so it never creates a
     // containing block that would trap block chrome inside the wrapper.
     expect(canvas).toMatch(/class="tpl-canvas-bg/);
+    // Only the inverted preview filters: an authored one paints the
+    // template's own dark colors instead.
     expect(canvas).toMatch(
-      /darkMode\s*\?\s*\{\s*filter:\s*'invert\(1\)\s+hue-rotate\(180deg\)'/,
+      /darkPreview\s*===\s*'inverted'\s*\?\s*\{\s*filter:\s*'invert\(1\)\s+hue-rotate\(180deg\)'/,
     );
   });
 

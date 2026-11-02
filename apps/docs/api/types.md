@@ -44,22 +44,29 @@ interface TemplateContent {
 
 ```ts
 interface TemplateSettings {
-  width: number;                  // Template width in pixels (default: 600)
-  backgroundColor: string;        // Background color
-  textColor: string;              // Default text color; text blocks inherit it (default #1a1a1a)
-  linkColor?: string;             // Link color; links inherit the text color when unset
-  linkUnderline: boolean;         // Underline body links (default true)
-  fontFamily: string;             // Default font family
-  preheaderText?: string;         // Email preheader text
-  locale: string;                 // BCP-47 content language; <html lang> (default 'en')
-  locales?: string[];             // Other language versions; the default is locale
+  width: number; // Template width in pixels (default: 600)
+  backgroundColor: string; // Background color
+  textColor: string; // Default text color; text blocks inherit it (default #1a1a1a)
+  linkColor?: string; // Link color; links inherit the text color when unset
+  linkUnderline: boolean; // Underline body links (default true)
+  fontFamily: string; // Default font family
+  preheaderText?: string; // Email preheader text
+  locale: string; // BCP-47 content language; <html lang> (default 'en')
+  locales?: string[]; // Other language versions; the default is locale
   l10n?: Record<string, SettingsLocaleLayer>; // Per-language settings layers
-  direction?: ContentDirection;   // 'ltr' | 'rtl'; unset follows the content language
-  customHeadCss?: string;         // Custom head CSS, an <mj-style> at the end of <mj-head>
-  customHeadTags?: string;        // Custom head tags (meta, link, Outlook conditionals), an <mj-raw> in <mj-head>
+  direction?: ContentDirection; // 'ltr' | 'rtl'; unset follows the content language
+  customHeadCss?: string; // Custom head CSS, an <mj-style> at the end of <mj-head>
+  customHeadTags?: string; // Custom head tags (meta, link, Outlook conditionals), an <mj-raw> in <mj-head>
+  darkColors?: TemplateDarkColors; // Colors for mail clients in dark mode; see Styling
 }
 
-type ContentDirection = 'ltr' | 'rtl';
+type ContentDirection = "ltr" | "rtl";
+
+interface TemplateDarkColors {
+  backgroundColor?: string; // the email body
+  textColor?: string; // every title and paragraph
+  linkColor?: string; // links in titles and paragraphs
+}
 ```
 
 ### Block
@@ -90,10 +97,22 @@ type Block =
 
 ```ts
 type BlockType =
-  | 'title' | 'paragraph' | 'image' | 'button' | 'section'
-  | 'divider' | 'video' | 'spacer' | 'social'
-  | 'menu' | 'table' | 'html' | 'countdown' | 'custom'
-  | 'slot' | 'wrapper';
+  | "title"
+  | "paragraph"
+  | "image"
+  | "button"
+  | "section"
+  | "divider"
+  | "video"
+  | "spacer"
+  | "social"
+  | "menu"
+  | "table"
+  | "html"
+  | "countdown"
+  | "custom"
+  | "slot"
+  | "wrapper";
 ```
 
 ## Localization {#localization}
@@ -183,8 +202,8 @@ A border described per side, like `SpacingValue`: each side has its own width, s
 
 ```ts
 interface BorderSideValue {
-  width: number;   // px; 0 = side not drawn
-  style: 'solid' | 'dashed' | 'dotted';
+  width: number; // px; 0 = side not drawn
+  style: "solid" | "dashed" | "dotted";
   color: string;
 }
 
@@ -203,7 +222,12 @@ A corner radius in px: one number for all corners, or one per corner. Sections, 
 ```ts
 type BorderRadiusValue =
   | number
-  | { topLeft: number; topRight: number; bottomRight: number; bottomLeft: number };
+  | {
+      topLeft: number;
+      topRight: number;
+      bottomRight: number;
+      bottomLeft: number;
+    };
 ```
 
 ### BlockVisibility
@@ -225,17 +249,23 @@ See [Blocks Guide](/guide/blocks) for detailed descriptions of each block type.
 
 ```ts
 interface TitleBlock extends BaseBlock {
-  type: 'title';
+  type: "title";
   content: string;
   level: HeadingLevel;
   color?: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
   fontFamily?: string;
-  fontSize?: number;   // px; absent = the level's size
+  fontSize?: number; // px; absent = the level's size
   lineHeight?: number; // multiple of fontSize; absent = TITLE_LINE_HEIGHT (1.3)
+  darkColors?: TextDarkColors;
 }
 
 type HeadingLevel = 1 | 2 | 3 | 4;
+
+interface TextDarkColors {
+  backgroundColor?: string;
+  textColor?: string; // inline text colors and links included
+}
 ```
 
 `resolveTitleFontSize(block)` and `resolveTitleLineHeight(block)` return the size and line height a title renders at: its own value when it sets a positive one, else the level's size from `HEADING_LEVEL_FONT_SIZE` and `TITLE_LINE_HEIGHT`. The renderer, the editor canvas and the accessibility rules all read them, so a custom renderer that does the same matches them.
@@ -244,9 +274,10 @@ type HeadingLevel = 1 | 2 | 3 | 4;
 
 ```ts
 interface ParagraphBlock extends BaseBlock {
-  type: 'paragraph';
+  type: "paragraph";
   content: string;
   paragraphSpacing?: number;
+  darkColors?: TextDarkColors;
 }
 ```
 
@@ -254,16 +285,16 @@ interface ParagraphBlock extends BaseBlock {
 
 ```ts
 interface ImageBlock extends BaseBlock {
-  type: 'image';
+  type: "image";
   src: string;
   alt: string;
-  width: number | 'full';
+  width: number | "full";
   /** Absent derives the height from the width, keeping the aspect ratio. */
   height?: number;
   /** The image file's own size, for the aspect-ratio lock. Never rendered. */
   naturalWidth?: number;
   naturalHeight?: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
   /** Corner radius in px. Omitted/0 = square corners. */
   borderRadius?: BorderRadiusValue;
   /** Omitted = no border. */
@@ -279,7 +310,7 @@ interface ImageBlock extends BaseBlock {
 
 ```ts
 interface ButtonBlock extends BaseBlock {
-  type: 'button';
+  type: "button";
   text: string;
   url: string;
   backgroundColor: string;
@@ -291,8 +322,14 @@ interface ButtonBlock extends BaseBlock {
   buttonPadding: SpacingValue;
   fontFamily?: string;
   openInNewTab?: boolean;
-  width?: number | 'full';
-  align: 'left' | 'center' | 'right';
+  width?: number | "full";
+  align: "left" | "center" | "right";
+  darkColors?: ButtonDarkColors;
+}
+
+interface ButtonDarkColors {
+  backgroundColor?: string; // the fill
+  textColor?: string; // the label
 }
 ```
 
@@ -302,7 +339,7 @@ Container for multi-column layouts.
 
 ```ts
 interface SectionBlock extends BaseBlock {
-  type: 'section';
+  type: "section";
   columns: ColumnLayout;
   children: Block[][];
   stackOnMobile?: boolean;
@@ -311,6 +348,7 @@ interface SectionBlock extends BaseBlock {
   backgroundImage?: BackgroundImage;
   hero?: SectionHero;
   wrapper?: SectionWrapper;
+  darkColors?: SectionDarkColors;
 }
 
 interface SectionWrapper {
@@ -320,23 +358,27 @@ interface SectionWrapper {
   backgroundImage?: BackgroundImage;
 }
 
-type ColumnLayout = '1' | '2' | '3' | '2-1' | '1-2';
+type ColumnLayout = "1" | "2" | "3" | "2-1" | "1-2";
 
 interface BackgroundImage {
   url: string;
-  size: 'cover' | 'contain' | 'auto';
+  size: "cover" | "contain" | "auto";
   position: {
-    x: 'left' | 'center' | 'right';
-    y: 'top' | 'center' | 'bottom';
+    x: "left" | "center" | "right";
+    y: "top" | "center" | "bottom";
   };
   repeat: boolean; // false: painted once
-  naturalWidth?: number;   // the image file's own size in px; a hero's 'image' height keeps this shape
+  naturalWidth?: number; // the image file's own size in px; a hero's 'image' height keeps this shape
   naturalHeight?: number;
 }
 
 interface SectionHero {
-  height: 'image' | number; // 'image': as tall as the image across the desktop box; a number: fixed px, padding included
-  verticalAlign: 'top' | 'middle' | 'bottom';
+  height: "image" | number; // 'image': as tall as the image across the desktop box; a number: fixed px, padding included
+  verticalAlign: "top" | "middle" | "bottom";
+}
+
+interface SectionDarkColors {
+  backgroundColor?: string; // not applied to a hero
 }
 ```
 
@@ -347,11 +389,11 @@ interface SectionHero {
 type DividerPercentWidth = `${number}%`;
 
 interface DividerBlock extends BaseBlock {
-  type: 'divider';
-  lineStyle: 'solid' | 'dashed' | 'dotted';
+  type: "divider";
+  lineStyle: "solid" | "dashed" | "dotted";
   color: string;
   thickness: number;
-  width: number | 'full' | DividerPercentWidth;
+  width: number | "full" | DividerPercentWidth;
 }
 ```
 
@@ -361,15 +403,15 @@ Renders as a linked thumbnail image -- email clients do not support embedded pla
 
 ```ts
 interface VideoBlock extends BaseBlock {
-  type: 'video';
+  type: "video";
   url: string;
   openInNewTab?: boolean;
-  thumbnailUrl: string;   // Auto-derived from a YouTube/Vimeo url when empty
+  thumbnailUrl: string; // Auto-derived from a YouTube/Vimeo url when empty
   alt: string;
-  width: number | 'full';
+  width: number | "full";
   /** Absent derives the height from the width, keeping the aspect ratio. */
   height?: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
   placeholderUrl?: string;
 }
 ```
@@ -378,7 +420,7 @@ interface VideoBlock extends BaseBlock {
 
 ```ts
 interface SpacerBlock extends BaseBlock {
-  type: 'spacer';
+  type: "spacer";
   height: number;
 }
 ```
@@ -387,13 +429,13 @@ interface SpacerBlock extends BaseBlock {
 
 ```ts
 interface SocialIconsBlock extends BaseBlock {
-  type: 'social';
+  type: "social";
   icons: SocialIcon[];
   iconStyle: SocialIconStyle;
   iconTone?: SocialIconTone; // absent means 'brand'
   iconSize: SocialIconSize;
   spacing: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
 }
 
 interface SocialIcon {
@@ -403,30 +445,41 @@ interface SocialIcon {
 }
 
 type SocialPlatform =
-  | 'facebook' | 'twitter' | 'instagram' | 'linkedin'
-  | 'youtube' | 'tiktok' | 'pinterest' | 'email'
-  | 'whatsapp' | 'telegram' | 'discord' | 'snapchat'
-  | 'reddit' | 'github' | 'dribbble' | 'behance'
-  | 'website';
-
+  | "facebook"
+  | "twitter"
+  | "instagram"
+  | "linkedin"
+  | "youtube"
+  | "tiktok"
+  | "pinterest"
+  | "email"
+  | "whatsapp"
+  | "telegram"
+  | "discord"
+  | "snapchat"
+  | "reddit"
+  | "github"
+  | "dribbble"
+  | "behance"
+  | "website";
 
 type SocialIconStyle =
-  | 'solid' | 'outlined' | 'rounded' | 'square' | 'circle' | 'plain';
-type SocialIconTone = 'brand' | 'dark' | 'light';
-type SocialIconSize = 'small' | 'medium' | 'large';
+  "solid" | "outlined" | "rounded" | "square" | "circle" | "plain";
+type SocialIconTone = "brand" | "dark" | "light";
+type SocialIconSize = "small" | "medium" | "large";
 ```
 
 ### MenuBlock
 
 ```ts
 interface MenuBlock extends BaseBlock {
-  type: 'menu';
+  type: "menu";
   items: MenuItemData[];
   fontSize: number;
   fontFamily?: string;
   color: string;
   linkColor?: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
   separator: string;
   separatorColor: string;
   spacing: number;
@@ -447,7 +500,7 @@ interface MenuItemData {
 
 ```ts
 interface TableBlock extends BaseBlock {
-  type: 'table';
+  type: "table";
   rows: TableRowData[];
   hasHeaderRow: boolean;
   headerBackgroundColor?: string;
@@ -457,7 +510,7 @@ interface TableBlock extends BaseBlock {
   fontSize: number;
   fontFamily?: string;
   color: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
 }
 
 interface TableRowData {
@@ -475,8 +528,8 @@ interface TableCellData {
 
 ```ts
 interface HtmlBlock extends BaseBlock {
-  type: 'html';
-  content: string;          // Raw HTML
+  type: "html";
+  content: string; // Raw HTML
 }
 ```
 
@@ -486,14 +539,14 @@ Renders as an animated GIF, which requires the Templatical Cloud backend -- `@te
 
 ```ts
 interface CountdownBlock extends BaseBlock {
-  type: 'countdown';
-  targetDate: string;       // Local date/time, 'YYYY-MM-DDTHH:mm'
-  timezone: string;         // IANA name the target is read in, e.g. 'Europe/Berlin'
+  type: "countdown";
+  targetDate: string; // Local date/time, 'YYYY-MM-DDTHH:mm'
+  timezone: string; // IANA name the target is read in, e.g. 'Europe/Berlin'
   showDays: boolean;
   showHours: boolean;
   showMinutes: boolean;
   showSeconds: boolean;
-  separator: ':' | '-' | ' ';
+  separator: ":" | "-" | " ";
   digitFontSize: number;
   digitColor: string;
   labelColor: string;
@@ -505,7 +558,7 @@ interface CountdownBlock extends BaseBlock {
   labelMinutes: string;
   labelSeconds: string;
   expiredMessage: string;
-  expiredImageUrl: string;  // Shown instead of the timer once expired
+  expiredImageUrl: string; // Shown instead of the timer once expired
   hideOnExpiry: boolean;
 }
 ```
@@ -514,7 +567,7 @@ interface CountdownBlock extends BaseBlock {
 
 ```ts
 interface CustomBlock extends BaseBlock {
-  type: 'custom';
+  type: "custom";
   customType: string;
   fieldValues: Record<string, unknown>;
   renderedHtml?: string;
@@ -523,11 +576,11 @@ interface CustomBlock extends BaseBlock {
 }
 
 interface SlotBlock extends BaseBlock {
-  type: 'slot';
+  type: "slot";
 }
 
 interface WrapperBlock extends BaseBlock {
-  type: 'wrapper';
+  type: "wrapper";
   children: Block[];
   borderRadius?: number;
   backgroundImage?: BackgroundImage;
@@ -544,14 +597,14 @@ interface WrapperBlock extends BaseBlock {
 interface MergeTag {
   label: string;
   value: string;
-  group?: string;        // picker-only grouping label
-  description?: string;  // picker-only helper text
-  sample?: string;       // preview-only example value; never written to MJML
+  group?: string; // picker-only grouping label
+  description?: string; // picker-only helper text
+  sample?: string; // preview-only example value; never written to MJML
 }
 
 interface MergeTagRequestContext {
-  reason: 'insert' | 'edit';
-  current?: MergeTag;    // on edit, when the token matches tags
+  reason: "insert" | "edit";
+  current?: MergeTag; // on edit, when the token matches tags
 }
 ```
 
@@ -562,11 +615,11 @@ interface MergeTagsConfig {
   syntax?: SyntaxPresetName | SyntaxPreset;
   tags?: MergeTag[];
   onRequest?: (context?: MergeTagRequestContext) => Promise<MergeTag | null>;
-  showRawValue?: boolean;   // reveal raw token in tooltip (default true)
-  autocomplete?: boolean;   // typing-based autocomplete (default true)
+  showRawValue?: boolean; // reveal raw token in tooltip (default true)
+  autocomplete?: boolean; // typing-based autocomplete (default true)
 }
 
-type SyntaxPresetName = 'liquid' | 'handlebars' | 'mailchimp' | 'ampscript';
+type SyntaxPresetName = "liquid" | "handlebars" | "mailchimp" | "ampscript";
 ```
 
 ### DisplayCondition
@@ -599,10 +652,10 @@ interface CustomBlockDefinition {
   icon?: string;
   description?: string;
   fields: CustomBlockField[];
-  template: string;                       // Liquid template
+  template: string; // Liquid template
   dataSource?: DataSourceConfig;
-  defaultStyles?: Partial<BlockStyles>;   // styles applied to new instances
-  stylesheet?: string;                    // CSS emitted once into mj-head
+  defaultStyles?: Partial<BlockStyles>; // styles applied to new instances
+  stylesheet?: string; // CSS emitted once into mj-head
 }
 ```
 
@@ -634,7 +687,7 @@ interface ThemeOverrides {
   danger?: string;
   dangerLight?: string;
   canvasBg?: string;
-  dark?: Omit<ThemeOverrides, 'dark'>;
+  dark?: Omit<ThemeOverrides, "dark">;
 }
 ```
 
@@ -645,7 +698,7 @@ interface FontsConfig {
   defaultFallback?: string;
   defaultFont?: string;
   customFonts?: CustomFont[];
-  builtIns?: boolean | string[];  // true/omitted: all seven; false: none; string[]: allowlist — see /guide/fonts
+  builtIns?: boolean | string[]; // true/omitted: all seven; false: none; string[]: allowlist — see /guide/fonts
 }
 
 interface CustomFont {
@@ -658,7 +711,7 @@ interface CustomFont {
 ### ViewportSize
 
 ```ts
-type ViewportSize = 'desktop' | 'mobile';
+type ViewportSize = "desktop" | "mobile";
 ```
 
 ## Factory Functions
@@ -672,7 +725,9 @@ export interface CustomBlockLiquidModule {
   Liquid: new (...args: any[]) => any;
 }
 
-export declare function createCustomBlockLiquid<M extends CustomBlockLiquidModule>(module: M): InstanceType<M['Liquid']>;
+export declare function createCustomBlockLiquid<
+  M extends CustomBlockLiquidModule,
+>(module: M): InstanceType<M["Liquid"]>;
 ```
 
 ```ts
@@ -696,7 +751,7 @@ import {
   cloneBlock,
   createDefaultTemplateContent,
   generateId,
-} from '@templatical/types';
+} from "@templatical/types";
 
 // Countdown GIFs need Cloud or a `blockRenderers.countdown` override; the OSS renderer emits a placeholder.
 
@@ -705,16 +760,16 @@ const paragraph = createParagraphBlock();
 
 // Create with overrides
 const heading = createTitleBlock({
-  content: '<h1>Hello</h1>',
+  content: "<h1>Hello</h1>",
   level: 1,
 });
 
 // Create any block by type string
-const block = createBlock('button');
+const block = createBlock("button");
 
 // A section background image from its URL: centered, cover, not tiled
 const section = createSectionBlock({
-  backgroundImage: createBackgroundImage('https://cdn.example.com/hero.jpg'),
+  backgroundImage: createBackgroundImage("https://cdn.example.com/hero.jpg"),
 });
 
 // Deep clone with new IDs, nested rows, items and icons included
@@ -731,10 +786,21 @@ const id = generateId();
 
 ```ts
 import {
-  isTitle, isParagraph, isImage, isButton, isSection,
-  isDivider, isVideo, isSpacer, isSocialIcons,
-  isMenu, isTable, isHtml, isCountdown, isCustomBlock,
-} from '@templatical/types';
+  isTitle,
+  isParagraph,
+  isImage,
+  isButton,
+  isSection,
+  isDivider,
+  isVideo,
+  isSpacer,
+  isSocialIcons,
+  isMenu,
+  isTable,
+  isHtml,
+  isCountdown,
+  isCustomBlock,
+} from "@templatical/types";
 
 if (isTitle(block)) {
   console.log(block.level); // TypeScript knows this is TitleBlock
@@ -746,7 +812,7 @@ if (isTitle(block)) {
 A typed event emitter for subscription patterns.
 
 ```ts
-import { EventEmitter } from '@templatical/types';
+import { EventEmitter } from "@templatical/types";
 
 type Events = {
   change: TemplateContent;
@@ -755,23 +821,23 @@ type Events = {
 
 const emitter = new EventEmitter<Events>();
 
-const unsubscribe = emitter.on('change', (content) => {
-  console.log('Changed:', content);
+const unsubscribe = emitter.on("change", (content) => {
+  console.log("Changed:", content);
 });
 
-emitter.emit('change', templateContent);
+emitter.emit("change", templateContent);
 unsubscribe(); // Remove listener
 ```
 
 ### Methods
 
-| Method | Description |
-|--------|-------------|
-| `on(event, handler)` | Subscribe. Returns unsubscribe function |
-| `off(event, handler)` | Unsubscribe a specific handler |
-| `emit(event, data)` | Emit an event |
+| Method                       | Description                                           |
+| ---------------------------- | ----------------------------------------------------- |
+| `on(event, handler)`         | Subscribe. Returns unsubscribe function               |
+| `off(event, handler)`        | Unsubscribe a specific handler                        |
+| `emit(event, data)`          | Emit an event                                         |
 | `removeAllListeners(event?)` | Remove all listeners, optionally for a specific event |
-| `listenerCount(event)` | Number of listeners for an event |
+| `listenerCount(event)`       | Number of listeners for an event                      |
 
 ## Storage contracts
 

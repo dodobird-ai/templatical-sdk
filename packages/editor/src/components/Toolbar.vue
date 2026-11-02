@@ -38,10 +38,13 @@ import type {
 } from "@templatical/types";
 import { isCustomBlock } from "@templatical/types";
 import { Code, Copy, Trash2 } from "@lucide/vue";
-import { computed, inject } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import { blockTypeIcons } from "../utils/blockTypeIcons";
 import { getBlockTypeLabel } from "../utils/blockTypeLabels";
 import { withCurrentFont } from "../utils/withCurrentFont";
+import { darkColorFieldsFor, setsDarkColor } from "../utils/darkColors";
+import CollapsibleSection from "./toolbar/CollapsibleSection.vue";
+import DarkColorsControl from "./toolbar/DarkColorsControl.vue";
 import {
   FONTS_MANAGER_KEY,
   CUSTOM_BLOCK_DEFINITIONS_KEY,
@@ -95,6 +98,26 @@ const fontFamilies = computed(() =>
     fontsManager.fonts.value,
     "fontFamily" in props.block ? props.block.fontFamily : undefined,
   ),
+);
+
+// Dark colors: one group for every block type that has them, so each type's
+// toolbar does not repeat it. Open whenever the block sets one, so a dark
+// color is never hidden behind a closed group: on selecting a block, and when
+// a color arrives some other way (undo, redo, the AI). Never forced closed
+// while the same block stays selected, so clearing the last picker keeps the
+// group in view.
+const darkColorFields = computed(() => darkColorFieldsFor(props.block));
+const darkColorsOpen = ref(false);
+watch(
+  () => [props.block.id, setsDarkColor(props.block)] as const,
+  ([id, sets], previous) => {
+    if (previous === undefined || id !== previous[0]) {
+      darkColorsOpen.value = sets;
+    } else if (sets) {
+      darkColorsOpen.value = true;
+    }
+  },
+  { immediate: true },
 );
 
 function handleUpdate(updates: Partial<Block>): void {
@@ -241,6 +264,27 @@ function handleUpdate(updates: Partial<Block>): void {
           :font-families="fontFamilies"
           @update="handleUpdate"
         />
+
+        <CollapsibleSection
+          v-if="darkColorFields"
+          :title="t.darkColors.title"
+          :open="darkColorsOpen"
+          header-test-id="dark-colors-toggle"
+          @toggle="darkColorsOpen = !darkColorsOpen"
+        >
+          <DarkColorsControl
+            :colors="'darkColors' in block ? block.darkColors : undefined"
+            :fields="darkColorFields"
+            :labels="
+              blockType === 'button'
+                ? { backgroundColor: t.darkColors.buttonColor }
+                : undefined
+            "
+            test-id="block-dark-colors"
+            path="darkColors"
+            @update="handleUpdate({ darkColors: $event })"
+          />
+        </CollapsibleSection>
 
         <!-- Common block settings -->
         <CommonBlockSettings

@@ -9,7 +9,9 @@ import type {
 } from "@templatical/types";
 import {
   RICH_TEXT_SPACING,
+  canHaveDarkColors,
   encodeCssUrl,
+  isDarkColorSet,
   resolveBackgroundImage,
   resolveHero,
   toBorderDeclarations,
@@ -65,6 +67,15 @@ export function getDocumentStyle(
   if (settings.linkUnderline) {
     style["--tpl-doc-link-underline"] = "underline";
   }
+  // Read only by Canvas.vue's authored dark preview, which turns them on with
+  // a class per variable (`documentDarkColorClasses`).
+  const dark = settings.darkColors;
+  if (isDarkColorSet(dark?.textColor)) {
+    style["--tpl-doc-dark-text"] = dark.textColor;
+  }
+  if (isDarkColorSet(dark?.linkColor)) {
+    style["--tpl-doc-dark-link"] = dark.linkColor;
+  }
   return style;
 }
 
@@ -85,6 +96,71 @@ export function resolveBlockComponent(
   }
 
   return componentMap[block.type] ?? null;
+}
+
+/**
+ * The canvas root classes that turn the template's dark text and link colors
+ * on in the authored dark preview. Bind them next to {@link getDocumentStyle},
+ * whose variables they read, and only while that preview is showing.
+ */
+export function documentDarkColorClasses(settings: TemplateSettings): string[] {
+  const dark = settings.darkColors;
+  return [
+    ...(isDarkColorSet(dark?.textColor) ? ["tpl-canvas--dark-text"] : []),
+    ...(isDarkColorSet(dark?.linkColor) ? ["tpl-canvas--dark-link"] : []),
+  ];
+}
+
+/**
+ * A block's dark colors as canvas variables, each paired with the class that
+ * makes Canvas.vue's authored dark preview paint it. The renderer's
+ * `dark-colors.ts` makes the same choices for the email: which block types
+ * carry which colors, and that a hero section takes none.
+ */
+const DARK_COLOR_HOSTS = [
+  ["--tpl-dark-bg", "tpl-has-dark-bg"],
+  ["--tpl-dark-text", "tpl-has-dark-text"],
+  ["--tpl-dark-button-bg", "tpl-has-dark-button-bg"],
+  ["--tpl-dark-button-text", "tpl-has-dark-button-text"],
+] as const;
+
+type DarkColorVar = (typeof DARK_COLOR_HOSTS)[number][0];
+
+function darkColorVars(block: Block): Partial<Record<DarkColorVar, string>> {
+  const vars: Partial<Record<DarkColorVar, string>> = {};
+  const set = (name: DarkColorVar, color: string | undefined): void => {
+    if (isDarkColorSet(color)) vars[name] = color;
+  };
+  if (!canHaveDarkColors(block)) return vars;
+  switch (block.type) {
+    case "title":
+    case "paragraph":
+      set("--tpl-dark-bg", block.darkColors?.backgroundColor);
+      set("--tpl-dark-text", block.darkColors?.textColor);
+      break;
+    case "button":
+      set("--tpl-dark-button-bg", block.darkColors?.backgroundColor);
+      set("--tpl-dark-button-text", block.darkColors?.textColor);
+      break;
+    case "section":
+      set("--tpl-dark-bg", block.darkColors?.backgroundColor);
+      break;
+  }
+  return vars;
+}
+
+/**
+ * The classes a surface takes for the dark color variables in `style` (from
+ * {@link getBlockWrapperStyle}). Bind them next to that style, on the same
+ * element, as with {@link backgroundImageHostClass}.
+ */
+export function darkColorHostClasses(
+  style: Record<string, string> | null | undefined,
+): string[] {
+  if (!style) return [];
+  return DARK_COLOR_HOSTS.filter(([name]) => name in style).map(
+    ([, hostClass]) => hostClass,
+  );
 }
 
 /** Display-only inputs to the canvas style helpers. */
@@ -210,6 +286,7 @@ export function getBlockWrapperStyle(
   const style: Record<string, string> = {
     padding: `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`,
     backgroundColor: backgroundColor || "transparent",
+    ...darkColorVars(block),
   };
   // Consumed by the `.tpl-text-content p` rules, so only rich-text blocks set
   // it — on an image or a divider the gap would mean nothing. Always set for

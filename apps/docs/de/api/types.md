@@ -44,22 +44,29 @@ interface TemplateContent {
 
 ```ts
 interface TemplateSettings {
-  width: number;                  // Template-Breite in Pixeln (Standard: 600)
-  backgroundColor: string;        // Hintergrundfarbe
-  textColor: string;              // Standard-Textfarbe; Textblöcke erben sie (Standard #1a1a1a)
-  linkColor?: string;             // Linkfarbe; Links erben die Textfarbe, wenn nicht gesetzt
-  linkUnderline: boolean;         // Textlinks unterstreichen (Standard true)
-  fontFamily: string;             // Standard-Schriftfamilie
-  preheaderText?: string;         // E-Mail-Preheader-Text
-  locale: string;                 // BCP-47-Inhaltssprache; <html lang> (Standard 'en')
-  locales?: string[];             // Weitere Sprachversionen; locale ist der Standard
+  width: number; // Template-Breite in Pixeln (Standard: 600)
+  backgroundColor: string; // Hintergrundfarbe
+  textColor: string; // Standard-Textfarbe; Textblöcke erben sie (Standard #1a1a1a)
+  linkColor?: string; // Linkfarbe; Links erben die Textfarbe, wenn nicht gesetzt
+  linkUnderline: boolean; // Textlinks unterstreichen (Standard true)
+  fontFamily: string; // Standard-Schriftfamilie
+  preheaderText?: string; // E-Mail-Preheader-Text
+  locale: string; // BCP-47-Inhaltssprache; <html lang> (Standard 'en')
+  locales?: string[]; // Weitere Sprachversionen; locale ist der Standard
   l10n?: Record<string, SettingsLocaleLayer>; // Sprachebenen der Einstellungen
-  direction?: ContentDirection;   // 'ltr' | 'rtl'; ungesetzt folgt der Inhaltssprache
-  customHeadCss?: string;         // Eigenes Head-CSS, ein <mj-style> am Ende von <mj-head>
-  customHeadTags?: string;        // Eigene Head-Tags (meta, link, Outlook-Kommentare), ein <mj-raw> in <mj-head>
+  direction?: ContentDirection; // 'ltr' | 'rtl'; ungesetzt folgt der Inhaltssprache
+  customHeadCss?: string; // Eigenes Head-CSS, ein <mj-style> am Ende von <mj-head>
+  customHeadTags?: string; // Eigene Head-Tags (meta, link, Outlook-Kommentare), ein <mj-raw> in <mj-head>
+  darkColors?: TemplateDarkColors; // Farben für Mail-Clients im Dunkelmodus; siehe Styling
 }
 
-type ContentDirection = 'ltr' | 'rtl';
+type ContentDirection = "ltr" | "rtl";
+
+interface TemplateDarkColors {
+  backgroundColor?: string; // der E-Mail-Hintergrund
+  textColor?: string; // jeder Titel und jeder Absatz
+  linkColor?: string; // Links in Titeln und Absätzen
+}
 ```
 
 ### Block
@@ -90,10 +97,22 @@ type Block =
 
 ```ts
 type BlockType =
-  | 'title' | 'paragraph' | 'image' | 'button' | 'section'
-  | 'divider' | 'video' | 'spacer' | 'social'
-  | 'menu' | 'table' | 'html' | 'countdown' | 'custom'
-  | 'slot' | 'wrapper';
+  | "title"
+  | "paragraph"
+  | "image"
+  | "button"
+  | "section"
+  | "divider"
+  | "video"
+  | "spacer"
+  | "social"
+  | "menu"
+  | "table"
+  | "html"
+  | "countdown"
+  | "custom"
+  | "slot"
+  | "wrapper";
 ```
 
 ## Lokalisierung {#localization}
@@ -183,8 +202,8 @@ Ein Rahmen pro Seite, wie `SpacingValue`: Jede Seite hat eigene Breite, eigenen 
 
 ```ts
 interface BorderSideValue {
-  width: number;   // px; 0 = Seite nicht gezeichnet
-  style: 'solid' | 'dashed' | 'dotted';
+  width: number; // px; 0 = Seite nicht gezeichnet
+  style: "solid" | "dashed" | "dotted";
   color: string;
 }
 
@@ -203,7 +222,12 @@ Ein Eckenradius in px: eine Zahl für alle Ecken oder einer pro Ecke. Sektionen,
 ```ts
 type BorderRadiusValue =
   | number
-  | { topLeft: number; topRight: number; bottomRight: number; bottomLeft: number };
+  | {
+      topLeft: number;
+      topRight: number;
+      bottomRight: number;
+      bottomLeft: number;
+    };
 ```
 
 ### BlockVisibility
@@ -225,17 +249,23 @@ Detaillierte Beschreibungen der einzelnen Blocktypen finden Sie im [Blocks-Leitf
 
 ```ts
 interface TitleBlock extends BaseBlock {
-  type: 'title';
+  type: "title";
   content: string;
   level: HeadingLevel;
   color?: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
   fontFamily?: string;
-  fontSize?: number;   // px; ohne Angabe gilt die Größe der Ebene
+  fontSize?: number; // px; ohne Angabe gilt die Größe der Ebene
   lineHeight?: number; // Vielfaches von fontSize; ohne Angabe TITLE_LINE_HEIGHT (1.3)
+  darkColors?: TextDarkColors;
 }
 
 type HeadingLevel = 1 | 2 | 3 | 4;
+
+interface TextDarkColors {
+  backgroundColor?: string;
+  textColor?: string; // einschließlich Inline-Textfarben und Links
+}
 ```
 
 `resolveTitleFontSize(block)` und `resolveTitleLineHeight(block)` liefern die Schriftgröße und Zeilenhöhe, mit der ein Titel dargestellt wird: seinen eigenen Wert, wenn er einen positiven setzt, sonst die Größe seiner Ebene aus `HEADING_LEVEL_FONT_SIZE` und `TITLE_LINE_HEIGHT`. Renderer, Editor-Arbeitsfläche und Barrierefreiheitsregeln lesen beide, ein eigener Renderer, der es ebenso macht, stimmt also mit ihnen überein.
@@ -244,9 +274,10 @@ type HeadingLevel = 1 | 2 | 3 | 4;
 
 ```ts
 interface ParagraphBlock extends BaseBlock {
-  type: 'paragraph';
+  type: "paragraph";
   content: string;
   paragraphSpacing?: number;
+  darkColors?: TextDarkColors;
 }
 ```
 
@@ -254,16 +285,16 @@ interface ParagraphBlock extends BaseBlock {
 
 ```ts
 interface ImageBlock extends BaseBlock {
-  type: 'image';
+  type: "image";
   src: string;
   alt: string;
-  width: number | 'full';
+  width: number | "full";
   /** Ohne Angabe wird die Höhe aus der Breite abgeleitet, das Seitenverhältnis bleibt erhalten. */
   height?: number;
   /** Die eigene Größe der Bilddatei, für die Seitenverhältnis-Sperre. Wird nie gerendert. */
   naturalWidth?: number;
   naturalHeight?: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
   /** Eckenradius in px. Ohne Angabe oder 0 bleiben die Ecken eckig. */
   borderRadius?: BorderRadiusValue;
   /** Ohne Angabe = kein Rahmen. */
@@ -279,7 +310,7 @@ interface ImageBlock extends BaseBlock {
 
 ```ts
 interface ButtonBlock extends BaseBlock {
-  type: 'button';
+  type: "button";
   text: string;
   url: string;
   backgroundColor: string;
@@ -291,8 +322,14 @@ interface ButtonBlock extends BaseBlock {
   buttonPadding: SpacingValue;
   fontFamily?: string;
   openInNewTab?: boolean;
-  width?: number | 'full';
-  align: 'left' | 'center' | 'right';
+  width?: number | "full";
+  align: "left" | "center" | "right";
+  darkColors?: ButtonDarkColors;
+}
+
+interface ButtonDarkColors {
+  backgroundColor?: string; // die Füllung
+  textColor?: string; // die Beschriftung
 }
 ```
 
@@ -302,7 +339,7 @@ Container für mehrspaltige Layouts.
 
 ```ts
 interface SectionBlock extends BaseBlock {
-  type: 'section';
+  type: "section";
   columns: ColumnLayout;
   children: Block[][];
   stackOnMobile?: boolean;
@@ -311,6 +348,7 @@ interface SectionBlock extends BaseBlock {
   backgroundImage?: BackgroundImage;
   hero?: SectionHero;
   wrapper?: SectionWrapper;
+  darkColors?: SectionDarkColors;
 }
 
 interface SectionWrapper {
@@ -320,23 +358,27 @@ interface SectionWrapper {
   backgroundImage?: BackgroundImage;
 }
 
-type ColumnLayout = '1' | '2' | '3' | '2-1' | '1-2';
+type ColumnLayout = "1" | "2" | "3" | "2-1" | "1-2";
 
 interface BackgroundImage {
   url: string;
-  size: 'cover' | 'contain' | 'auto';
+  size: "cover" | "contain" | "auto";
   position: {
-    x: 'left' | 'center' | 'right';
-    y: 'top' | 'center' | 'bottom';
+    x: "left" | "center" | "right";
+    y: "top" | "center" | "bottom";
   };
   repeat: boolean; // false: painted once
-  naturalWidth?: number;   // the image file's own size in px; a hero's 'image' height keeps this shape
+  naturalWidth?: number; // the image file's own size in px; a hero's 'image' height keeps this shape
   naturalHeight?: number;
 }
 
 interface SectionHero {
-  height: 'image' | number; // 'image': as tall as the image across the desktop box; a number: fixed px, padding included
-  verticalAlign: 'top' | 'middle' | 'bottom';
+  height: "image" | number; // 'image': as tall as the image across the desktop box; a number: fixed px, padding included
+  verticalAlign: "top" | "middle" | "bottom";
+}
+
+interface SectionDarkColors {
+  backgroundColor?: string; // gilt nicht für einen Hero
 }
 ```
 
@@ -347,11 +389,11 @@ interface SectionHero {
 type DividerPercentWidth = `${number}%`;
 
 interface DividerBlock extends BaseBlock {
-  type: 'divider';
-  lineStyle: 'solid' | 'dashed' | 'dotted';
+  type: "divider";
+  lineStyle: "solid" | "dashed" | "dotted";
   color: string;
   thickness: number;
-  width: number | 'full' | DividerPercentWidth;
+  width: number | "full" | DividerPercentWidth;
 }
 ```
 
@@ -361,15 +403,15 @@ Wird als verlinktes Thumbnail-Bild gerendert -- E-Mail-Clients unterstützen kei
 
 ```ts
 interface VideoBlock extends BaseBlock {
-  type: 'video';
+  type: "video";
   url: string;
   openInNewTab?: boolean;
-  thumbnailUrl: string;   // Wird aus einer YouTube-/Vimeo-URL abgeleitet, wenn leer
+  thumbnailUrl: string; // Wird aus einer YouTube-/Vimeo-URL abgeleitet, wenn leer
   alt: string;
-  width: number | 'full';
+  width: number | "full";
   /** Ohne Angabe wird die Höhe aus der Breite abgeleitet, das Seitenverhältnis bleibt erhalten. */
   height?: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
   placeholderUrl?: string;
 }
 ```
@@ -378,7 +420,7 @@ interface VideoBlock extends BaseBlock {
 
 ```ts
 interface SpacerBlock extends BaseBlock {
-  type: 'spacer';
+  type: "spacer";
   height: number;
 }
 ```
@@ -387,13 +429,13 @@ interface SpacerBlock extends BaseBlock {
 
 ```ts
 interface SocialIconsBlock extends BaseBlock {
-  type: 'social';
+  type: "social";
   icons: SocialIcon[];
   iconStyle: SocialIconStyle;
   iconTone?: SocialIconTone; // ohne Angabe: 'brand'
   iconSize: SocialIconSize;
   spacing: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
 }
 
 interface SocialIcon {
@@ -403,30 +445,41 @@ interface SocialIcon {
 }
 
 type SocialPlatform =
-  | 'facebook' | 'twitter' | 'instagram' | 'linkedin'
-  | 'youtube' | 'tiktok' | 'pinterest' | 'email'
-  | 'whatsapp' | 'telegram' | 'discord' | 'snapchat'
-  | 'reddit' | 'github' | 'dribbble' | 'behance'
-  | 'website';
-
+  | "facebook"
+  | "twitter"
+  | "instagram"
+  | "linkedin"
+  | "youtube"
+  | "tiktok"
+  | "pinterest"
+  | "email"
+  | "whatsapp"
+  | "telegram"
+  | "discord"
+  | "snapchat"
+  | "reddit"
+  | "github"
+  | "dribbble"
+  | "behance"
+  | "website";
 
 type SocialIconStyle =
-  | 'solid' | 'outlined' | 'rounded' | 'square' | 'circle' | 'plain';
-type SocialIconTone = 'brand' | 'dark' | 'light';
-type SocialIconSize = 'small' | 'medium' | 'large';
+  "solid" | "outlined" | "rounded" | "square" | "circle" | "plain";
+type SocialIconTone = "brand" | "dark" | "light";
+type SocialIconSize = "small" | "medium" | "large";
 ```
 
 ### MenuBlock
 
 ```ts
 interface MenuBlock extends BaseBlock {
-  type: 'menu';
+  type: "menu";
   items: MenuItemData[];
   fontSize: number;
   fontFamily?: string;
   color: string;
   linkColor?: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
   separator: string;
   separatorColor: string;
   spacing: number;
@@ -447,7 +500,7 @@ interface MenuItemData {
 
 ```ts
 interface TableBlock extends BaseBlock {
-  type: 'table';
+  type: "table";
   rows: TableRowData[];
   hasHeaderRow: boolean;
   headerBackgroundColor?: string;
@@ -457,7 +510,7 @@ interface TableBlock extends BaseBlock {
   fontSize: number;
   fontFamily?: string;
   color: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
 }
 
 interface TableRowData {
@@ -475,8 +528,8 @@ interface TableCellData {
 
 ```ts
 interface HtmlBlock extends BaseBlock {
-  type: 'html';
-  content: string;          // Rohes HTML
+  type: "html";
+  content: string; // Rohes HTML
 }
 ```
 
@@ -486,14 +539,14 @@ Wird als animiertes GIF gerendert, was das Templatical-Cloud-Backend erfordert -
 
 ```ts
 interface CountdownBlock extends BaseBlock {
-  type: 'countdown';
-  targetDate: string;       // Lokales Datum/Uhrzeit, 'YYYY-MM-DDTHH:mm'
-  timezone: string;         // IANA-Name, in dem das Ziel gelesen wird, z. B. 'Europe/Berlin'
+  type: "countdown";
+  targetDate: string; // Lokales Datum/Uhrzeit, 'YYYY-MM-DDTHH:mm'
+  timezone: string; // IANA-Name, in dem das Ziel gelesen wird, z. B. 'Europe/Berlin'
   showDays: boolean;
   showHours: boolean;
   showMinutes: boolean;
   showSeconds: boolean;
-  separator: ':' | '-' | ' ';
+  separator: ":" | "-" | " ";
   digitFontSize: number;
   digitColor: string;
   labelColor: string;
@@ -505,7 +558,7 @@ interface CountdownBlock extends BaseBlock {
   labelMinutes: string;
   labelSeconds: string;
   expiredMessage: string;
-  expiredImageUrl: string;  // Wird nach Ablauf statt des Timers angezeigt
+  expiredImageUrl: string; // Wird nach Ablauf statt des Timers angezeigt
   hideOnExpiry: boolean;
 }
 ```
@@ -514,7 +567,7 @@ interface CountdownBlock extends BaseBlock {
 
 ```ts
 interface CustomBlock extends BaseBlock {
-  type: 'custom';
+  type: "custom";
   customType: string;
   fieldValues: Record<string, unknown>;
   renderedHtml?: string;
@@ -523,11 +576,11 @@ interface CustomBlock extends BaseBlock {
 }
 
 interface SlotBlock extends BaseBlock {
-  type: 'slot';
+  type: "slot";
 }
 
 interface WrapperBlock extends BaseBlock {
-  type: 'wrapper';
+  type: "wrapper";
   children: Block[];
   borderRadius?: number;
   backgroundImage?: BackgroundImage;
@@ -544,14 +597,14 @@ interface WrapperBlock extends BaseBlock {
 interface MergeTag {
   label: string;
   value: string;
-  group?: string;        // nur Picker: Gruppierungslabel
-  description?: string;  // nur Picker: Hilfetext
-  sample?: string;       // nur Vorschau: Beispielwert; nie im MJML
+  group?: string; // nur Picker: Gruppierungslabel
+  description?: string; // nur Picker: Hilfetext
+  sample?: string; // nur Vorschau: Beispielwert; nie im MJML
 }
 
 interface MergeTagRequestContext {
-  reason: 'insert' | 'edit';
-  current?: MergeTag;    // beim Bearbeiten, wenn das Token zu tags passt
+  reason: "insert" | "edit";
+  current?: MergeTag; // beim Bearbeiten, wenn das Token zu tags passt
 }
 ```
 
@@ -562,11 +615,11 @@ interface MergeTagsConfig {
   syntax?: SyntaxPresetName | SyntaxPreset;
   tags?: MergeTag[];
   onRequest?: (context?: MergeTagRequestContext) => Promise<MergeTag | null>;
-  showRawValue?: boolean;   // Roh-Token im Tooltip anzeigen (Standard true)
-  autocomplete?: boolean;   // tippbasiertes Autocomplete (Standard true)
+  showRawValue?: boolean; // Roh-Token im Tooltip anzeigen (Standard true)
+  autocomplete?: boolean; // tippbasiertes Autocomplete (Standard true)
 }
 
-type SyntaxPresetName = 'liquid' | 'handlebars' | 'mailchimp' | 'ampscript';
+type SyntaxPresetName = "liquid" | "handlebars" | "mailchimp" | "ampscript";
 ```
 
 ### DisplayCondition
@@ -599,10 +652,10 @@ interface CustomBlockDefinition {
   icon?: string;
   description?: string;
   fields: CustomBlockField[];
-  template: string;                       // Liquid-Template
+  template: string; // Liquid-Template
   dataSource?: DataSourceConfig;
-  defaultStyles?: Partial<BlockStyles>;   // Stile für neue Instanzen
-  stylesheet?: string;                    // CSS, einmal in mj-head emittiert
+  defaultStyles?: Partial<BlockStyles>; // Stile für neue Instanzen
+  stylesheet?: string; // CSS, einmal in mj-head emittiert
 }
 ```
 
@@ -634,7 +687,7 @@ interface ThemeOverrides {
   danger?: string;
   dangerLight?: string;
   canvasBg?: string;
-  dark?: Omit<ThemeOverrides, 'dark'>;
+  dark?: Omit<ThemeOverrides, "dark">;
 }
 ```
 
@@ -645,7 +698,7 @@ interface FontsConfig {
   defaultFallback?: string;
   defaultFont?: string;
   customFonts?: CustomFont[];
-  builtIns?: boolean | string[];  // true/weggelassen: alle sieben; false: keine; string[]: Allowlist — siehe /de/guide/fonts
+  builtIns?: boolean | string[]; // true/weggelassen: alle sieben; false: keine; string[]: Allowlist — siehe /de/guide/fonts
 }
 
 interface CustomFont {
@@ -658,7 +711,7 @@ interface CustomFont {
 ### ViewportSize
 
 ```ts
-type ViewportSize = 'desktop' | 'mobile';
+type ViewportSize = "desktop" | "mobile";
 ```
 
 ## Factory-Funktionen
@@ -672,7 +725,9 @@ export interface CustomBlockLiquidModule {
   Liquid: new (...args: any[]) => any;
 }
 
-export declare function createCustomBlockLiquid<M extends CustomBlockLiquidModule>(module: M): InstanceType<M['Liquid']>;
+export declare function createCustomBlockLiquid<
+  M extends CustomBlockLiquidModule,
+>(module: M): InstanceType<M["Liquid"]>;
 ```
 
 ```ts
@@ -696,7 +751,7 @@ import {
   cloneBlock,
   createDefaultTemplateContent,
   generateId,
-} from '@templatical/types';
+} from "@templatical/types";
 
 // Countdown-GIFs brauchen Cloud oder ein `blockRenderers.countdown`-Override; der OSS-Renderer gibt einen Platzhalter aus.
 
@@ -705,16 +760,16 @@ const paragraph = createParagraphBlock();
 
 // Mit Überschreibungen erstellen
 const heading = createTitleBlock({
-  content: '<h1>Hello</h1>',
+  content: "<h1>Hello</h1>",
   level: 1,
 });
 
 // Beliebigen Block per Typ-String erstellen
-const block = createBlock('button');
+const block = createBlock("button");
 
 // Ein Hintergrundbild einer Sektion aus seiner URL: zentriert, cover, nicht gekachelt
 const section = createSectionBlock({
-  backgroundImage: createBackgroundImage('https://cdn.example.com/hero.jpg'),
+  backgroundImage: createBackgroundImage("https://cdn.example.com/hero.jpg"),
 });
 
 // Deep Clone mit neuen IDs, auch für verschachtelte Zeilen, Einträge und Icons
@@ -731,10 +786,21 @@ const id = generateId();
 
 ```ts
 import {
-  isTitle, isParagraph, isImage, isButton, isSection,
-  isDivider, isVideo, isSpacer, isSocialIcons,
-  isMenu, isTable, isHtml, isCountdown, isCustomBlock,
-} from '@templatical/types';
+  isTitle,
+  isParagraph,
+  isImage,
+  isButton,
+  isSection,
+  isDivider,
+  isVideo,
+  isSpacer,
+  isSocialIcons,
+  isMenu,
+  isTable,
+  isHtml,
+  isCountdown,
+  isCustomBlock,
+} from "@templatical/types";
 
 if (isTitle(block)) {
   console.log(block.level); // TypeScript weiß, dass dies ein TitleBlock ist
@@ -746,7 +812,7 @@ if (isTitle(block)) {
 Ein typisierter Event-Emitter für Subscription-Muster.
 
 ```ts
-import { EventEmitter } from '@templatical/types';
+import { EventEmitter } from "@templatical/types";
 
 type Events = {
   change: TemplateContent;
@@ -755,23 +821,23 @@ type Events = {
 
 const emitter = new EventEmitter<Events>();
 
-const unsubscribe = emitter.on('change', (content) => {
-  console.log('Changed:', content);
+const unsubscribe = emitter.on("change", (content) => {
+  console.log("Changed:", content);
 });
 
-emitter.emit('change', templateContent);
+emitter.emit("change", templateContent);
 unsubscribe(); // Listener entfernen
 ```
 
 ### Methoden
 
-| Methode | Beschreibung |
-|--------|-------------|
-| `on(event, handler)` | Abonnieren. Gibt eine Unsubscribe-Funktion zurück |
-| `off(event, handler)` | Einen bestimmten Handler abbestellen |
-| `emit(event, data)` | Ein Ereignis auslösen |
+| Methode                      | Beschreibung                                                  |
+| ---------------------------- | ------------------------------------------------------------- |
+| `on(event, handler)`         | Abonnieren. Gibt eine Unsubscribe-Funktion zurück             |
+| `off(event, handler)`        | Einen bestimmten Handler abbestellen                          |
+| `emit(event, data)`          | Ein Ereignis auslösen                                         |
 | `removeAllListeners(event?)` | Alle Listener entfernen, optional für ein bestimmtes Ereignis |
-| `listenerCount(event)` | Anzahl der Listener für ein Ereignis |
+| `listenerCount(event)`       | Anzahl der Listener für ein Ereignis                          |
 
 ## Speicherverträge
 

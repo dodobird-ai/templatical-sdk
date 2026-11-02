@@ -2486,22 +2486,29 @@ interface TemplateContent {
 
 ```ts
 interface TemplateSettings {
-  width: number;                  // Template width in pixels (default: 600)
-  backgroundColor: string;        // Background color
-  textColor: string;              // Default text color; text blocks inherit it (default #1a1a1a)
-  linkColor?: string;             // Link color; links inherit the text color when unset
-  linkUnderline: boolean;         // Underline body links (default true)
-  fontFamily: string;             // Default font family
-  preheaderText?: string;         // Email preheader text
-  locale: string;                 // BCP-47 content language; <html lang> (default 'en')
-  locales?: string[];             // Other language versions; the default is locale
+  width: number; // Template width in pixels (default: 600)
+  backgroundColor: string; // Background color
+  textColor: string; // Default text color; text blocks inherit it (default #1a1a1a)
+  linkColor?: string; // Link color; links inherit the text color when unset
+  linkUnderline: boolean; // Underline body links (default true)
+  fontFamily: string; // Default font family
+  preheaderText?: string; // Email preheader text
+  locale: string; // BCP-47 content language; <html lang> (default 'en')
+  locales?: string[]; // Other language versions; the default is locale
   l10n?: Record<string, SettingsLocaleLayer>; // Per-language settings layers
-  direction?: ContentDirection;   // 'ltr' | 'rtl'; unset follows the content language
-  customHeadCss?: string;         // Custom head CSS, an <mj-style> at the end of <mj-head>
-  customHeadTags?: string;        // Custom head tags (meta, link, Outlook conditionals), an <mj-raw> in <mj-head>
+  direction?: ContentDirection; // 'ltr' | 'rtl'; unset follows the content language
+  customHeadCss?: string; // Custom head CSS, an <mj-style> at the end of <mj-head>
+  customHeadTags?: string; // Custom head tags (meta, link, Outlook conditionals), an <mj-raw> in <mj-head>
+  darkColors?: TemplateDarkColors; // Colors for mail clients in dark mode; see Styling
 }
 
-type ContentDirection = 'ltr' | 'rtl';
+type ContentDirection = "ltr" | "rtl";
+
+interface TemplateDarkColors {
+  backgroundColor?: string; // the email body
+  textColor?: string; // every title and paragraph
+  linkColor?: string; // links in titles and paragraphs
+}
 ```
 
 ### Block
@@ -2532,10 +2539,22 @@ type Block =
 
 ```ts
 type BlockType =
-  | 'title' | 'paragraph' | 'image' | 'button' | 'section'
-  | 'divider' | 'video' | 'spacer' | 'social'
-  | 'menu' | 'table' | 'html' | 'countdown' | 'custom'
-  | 'slot' | 'wrapper';
+  | "title"
+  | "paragraph"
+  | "image"
+  | "button"
+  | "section"
+  | "divider"
+  | "video"
+  | "spacer"
+  | "social"
+  | "menu"
+  | "table"
+  | "html"
+  | "countdown"
+  | "custom"
+  | "slot"
+  | "wrapper";
 ```
 
 ## Localization {#localization}
@@ -2869,8 +2888,8 @@ A border described per side, like `SpacingValue`: each side has its own width, s
 
 ```ts
 interface BorderSideValue {
-  width: number;   // px; 0 = side not drawn
-  style: 'solid' | 'dashed' | 'dotted';
+  width: number; // px; 0 = side not drawn
+  style: "solid" | "dashed" | "dotted";
   color: string;
 }
 
@@ -2889,7 +2908,12 @@ A corner radius in px: one number for all corners, or one per corner. Sections, 
 ```ts
 type BorderRadiusValue =
   | number
-  | { topLeft: number; topRight: number; bottomRight: number; bottomLeft: number };
+  | {
+      topLeft: number;
+      topRight: number;
+      bottomRight: number;
+      bottomLeft: number;
+    };
 ```
 
 ### BlockVisibility
@@ -2911,17 +2935,23 @@ See [Blocks Guide](/guide/blocks) for detailed descriptions of each block type.
 
 ```ts
 interface TitleBlock extends BaseBlock {
-  type: 'title';
+  type: "title";
   content: string;
   level: HeadingLevel;
   color?: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
   fontFamily?: string;
-  fontSize?: number;   // px; absent = the level's size
+  fontSize?: number; // px; absent = the level's size
   lineHeight?: number; // multiple of fontSize; absent = TITLE_LINE_HEIGHT (1.3)
+  darkColors?: TextDarkColors;
 }
 
 type HeadingLevel = 1 | 2 | 3 | 4;
+
+interface TextDarkColors {
+  backgroundColor?: string;
+  textColor?: string; // inline text colors and links included
+}
 ```
 
 `resolveTitleFontSize(block)` and `resolveTitleLineHeight(block)` return the size and line height a title renders at: its own value when it sets a positive one, else the level's size from `HEADING_LEVEL_FONT_SIZE` and `TITLE_LINE_HEIGHT`. The renderer, the editor canvas and the accessibility rules all read them, so a custom renderer that does the same matches them.
@@ -2930,9 +2960,10 @@ type HeadingLevel = 1 | 2 | 3 | 4;
 
 ```ts
 interface ParagraphBlock extends BaseBlock {
-  type: 'paragraph';
+  type: "paragraph";
   content: string;
   paragraphSpacing?: number;
+  darkColors?: TextDarkColors;
 }
 ```
 
@@ -2940,16 +2971,16 @@ interface ParagraphBlock extends BaseBlock {
 
 ```ts
 interface ImageBlock extends BaseBlock {
-  type: 'image';
+  type: "image";
   src: string;
   alt: string;
-  width: number | 'full';
+  width: number | "full";
   /** Absent derives the height from the width, keeping the aspect ratio. */
   height?: number;
   /** The image file's own size, for the aspect-ratio lock. Never rendered. */
   naturalWidth?: number;
   naturalHeight?: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
   /** Corner radius in px. Omitted/0 = square corners. */
   borderRadius?: BorderRadiusValue;
   /** Omitted = no border. */
@@ -2965,7 +2996,7 @@ interface ImageBlock extends BaseBlock {
 
 ```ts
 interface ButtonBlock extends BaseBlock {
-  type: 'button';
+  type: "button";
   text: string;
   url: string;
   backgroundColor: string;
@@ -2977,8 +3008,14 @@ interface ButtonBlock extends BaseBlock {
   buttonPadding: SpacingValue;
   fontFamily?: string;
   openInNewTab?: boolean;
-  width?: number | 'full';
-  align: 'left' | 'center' | 'right';
+  width?: number | "full";
+  align: "left" | "center" | "right";
+  darkColors?: ButtonDarkColors;
+}
+
+interface ButtonDarkColors {
+  backgroundColor?: string; // the fill
+  textColor?: string; // the label
 }
 ```
 
@@ -2988,7 +3025,7 @@ Container for multi-column layouts.
 
 ```ts
 interface SectionBlock extends BaseBlock {
-  type: 'section';
+  type: "section";
   columns: ColumnLayout;
   children: Block[][];
   stackOnMobile?: boolean;
@@ -2997,6 +3034,7 @@ interface SectionBlock extends BaseBlock {
   backgroundImage?: BackgroundImage;
   hero?: SectionHero;
   wrapper?: SectionWrapper;
+  darkColors?: SectionDarkColors;
 }
 
 interface SectionWrapper {
@@ -3006,23 +3044,27 @@ interface SectionWrapper {
   backgroundImage?: BackgroundImage;
 }
 
-type ColumnLayout = '1' | '2' | '3' | '2-1' | '1-2';
+type ColumnLayout = "1" | "2" | "3" | "2-1" | "1-2";
 
 interface BackgroundImage {
   url: string;
-  size: 'cover' | 'contain' | 'auto';
+  size: "cover" | "contain" | "auto";
   position: {
-    x: 'left' | 'center' | 'right';
-    y: 'top' | 'center' | 'bottom';
+    x: "left" | "center" | "right";
+    y: "top" | "center" | "bottom";
   };
   repeat: boolean; // false: painted once
-  naturalWidth?: number;   // the image file's own size in px; a hero's 'image' height keeps this shape
+  naturalWidth?: number; // the image file's own size in px; a hero's 'image' height keeps this shape
   naturalHeight?: number;
 }
 
 interface SectionHero {
-  height: 'image' | number; // 'image': as tall as the image across the desktop box; a number: fixed px, padding included
-  verticalAlign: 'top' | 'middle' | 'bottom';
+  height: "image" | number; // 'image': as tall as the image across the desktop box; a number: fixed px, padding included
+  verticalAlign: "top" | "middle" | "bottom";
+}
+
+interface SectionDarkColors {
+  backgroundColor?: string; // not applied to a hero
 }
 ```
 
@@ -3033,11 +3075,11 @@ interface SectionHero {
 type DividerPercentWidth = `${number}%`;
 
 interface DividerBlock extends BaseBlock {
-  type: 'divider';
-  lineStyle: 'solid' | 'dashed' | 'dotted';
+  type: "divider";
+  lineStyle: "solid" | "dashed" | "dotted";
   color: string;
   thickness: number;
-  width: number | 'full' | DividerPercentWidth;
+  width: number | "full" | DividerPercentWidth;
 }
 ```
 
@@ -3047,15 +3089,15 @@ Renders as a linked thumbnail image -- email clients do not support embedded pla
 
 ```ts
 interface VideoBlock extends BaseBlock {
-  type: 'video';
+  type: "video";
   url: string;
   openInNewTab?: boolean;
-  thumbnailUrl: string;   // Auto-derived from a YouTube/Vimeo url when empty
+  thumbnailUrl: string; // Auto-derived from a YouTube/Vimeo url when empty
   alt: string;
-  width: number | 'full';
+  width: number | "full";
   /** Absent derives the height from the width, keeping the aspect ratio. */
   height?: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
   placeholderUrl?: string;
 }
 ```
@@ -3064,7 +3106,7 @@ interface VideoBlock extends BaseBlock {
 
 ```ts
 interface SpacerBlock extends BaseBlock {
-  type: 'spacer';
+  type: "spacer";
   height: number;
 }
 ```
@@ -3073,13 +3115,13 @@ interface SpacerBlock extends BaseBlock {
 
 ```ts
 interface SocialIconsBlock extends BaseBlock {
-  type: 'social';
+  type: "social";
   icons: SocialIcon[];
   iconStyle: SocialIconStyle;
   iconTone?: SocialIconTone; // absent means 'brand'
   iconSize: SocialIconSize;
   spacing: number;
-  align: 'left' | 'center' | 'right';
+  align: "left" | "center" | "right";
 }
 
 interface SocialIcon {
@@ -3089,30 +3131,41 @@ interface SocialIcon {
 }
 
 type SocialPlatform =
-  | 'facebook' | 'twitter' | 'instagram' | 'linkedin'
-  | 'youtube' | 'tiktok' | 'pinterest' | 'email'
-  | 'whatsapp' | 'telegram' | 'discord' | 'snapchat'
-  | 'reddit' | 'github' | 'dribbble' | 'behance'
-  | 'website';
-
+  | "facebook"
+  | "twitter"
+  | "instagram"
+  | "linkedin"
+  | "youtube"
+  | "tiktok"
+  | "pinterest"
+  | "email"
+  | "whatsapp"
+  | "telegram"
+  | "discord"
+  | "snapchat"
+  | "reddit"
+  | "github"
+  | "dribbble"
+  | "behance"
+  | "website";
 
 type SocialIconStyle =
-  | 'solid' | 'outlined' | 'rounded' | 'square' | 'circle' | 'plain';
-type SocialIconTone = 'brand' | 'dark' | 'light';
-type SocialIconSize = 'small' | 'medium' | 'large';
+  "solid" | "outlined" | "rounded" | "square" | "circle" | "plain";
+type SocialIconTone = "brand" | "dark" | "light";
+type SocialIconSize = "small" | "medium" | "large";
 ```
 
 ### MenuBlock
 
 ```ts
 interface MenuBlock extends BaseBlock {
-  type: 'menu';
+  type: "menu";
   items: MenuItemData[];
   fontSize: number;
   fontFamily?: string;
   color: string;
   linkColor?: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
   separator: string;
   separatorColor: string;
   spacing: number;
@@ -3133,7 +3186,7 @@ interface MenuItemData {
 
 ```ts
 interface TableBlock extends BaseBlock {
-  type: 'table';
+  type: "table";
   rows: TableRowData[];
   hasHeaderRow: boolean;
   headerBackgroundColor?: string;
@@ -3143,7 +3196,7 @@ interface TableBlock extends BaseBlock {
   fontSize: number;
   fontFamily?: string;
   color: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
 }
 
 interface TableRowData {
@@ -3161,8 +3214,8 @@ interface TableCellData {
 
 ```ts
 interface HtmlBlock extends BaseBlock {
-  type: 'html';
-  content: string;          // Raw HTML
+  type: "html";
+  content: string; // Raw HTML
 }
 ```
 
@@ -3172,14 +3225,14 @@ Renders as an animated GIF, which requires the Templatical Cloud backend -- `@te
 
 ```ts
 interface CountdownBlock extends BaseBlock {
-  type: 'countdown';
-  targetDate: string;       // Local date/time, 'YYYY-MM-DDTHH:mm'
-  timezone: string;         // IANA name the target is read in, e.g. 'Europe/Berlin'
+  type: "countdown";
+  targetDate: string; // Local date/time, 'YYYY-MM-DDTHH:mm'
+  timezone: string; // IANA name the target is read in, e.g. 'Europe/Berlin'
   showDays: boolean;
   showHours: boolean;
   showMinutes: boolean;
   showSeconds: boolean;
-  separator: ':' | '-' | ' ';
+  separator: ":" | "-" | " ";
   digitFontSize: number;
   digitColor: string;
   labelColor: string;
@@ -3191,7 +3244,7 @@ interface CountdownBlock extends BaseBlock {
   labelMinutes: string;
   labelSeconds: string;
   expiredMessage: string;
-  expiredImageUrl: string;  // Shown instead of the timer once expired
+  expiredImageUrl: string; // Shown instead of the timer once expired
   hideOnExpiry: boolean;
 }
 ```
@@ -3200,7 +3253,7 @@ interface CountdownBlock extends BaseBlock {
 
 ```ts
 interface CustomBlock extends BaseBlock {
-  type: 'custom';
+  type: "custom";
   customType: string;
   fieldValues: Record<string, unknown>;
   renderedHtml?: string;
@@ -3209,11 +3262,11 @@ interface CustomBlock extends BaseBlock {
 }
 
 interface SlotBlock extends BaseBlock {
-  type: 'slot';
+  type: "slot";
 }
 
 interface WrapperBlock extends BaseBlock {
-  type: 'wrapper';
+  type: "wrapper";
   children: Block[];
   borderRadius?: number;
   backgroundImage?: BackgroundImage;
@@ -3230,14 +3283,14 @@ interface WrapperBlock extends BaseBlock {
 interface MergeTag {
   label: string;
   value: string;
-  group?: string;        // picker-only grouping label
-  description?: string;  // picker-only helper text
-  sample?: string;       // preview-only example value; never written to MJML
+  group?: string; // picker-only grouping label
+  description?: string; // picker-only helper text
+  sample?: string; // preview-only example value; never written to MJML
 }
 
 interface MergeTagRequestContext {
-  reason: 'insert' | 'edit';
-  current?: MergeTag;    // on edit, when the token matches tags
+  reason: "insert" | "edit";
+  current?: MergeTag; // on edit, when the token matches tags
 }
 ```
 
@@ -3248,11 +3301,11 @@ interface MergeTagsConfig {
   syntax?: SyntaxPresetName | SyntaxPreset;
   tags?: MergeTag[];
   onRequest?: (context?: MergeTagRequestContext) => Promise<MergeTag | null>;
-  showRawValue?: boolean;   // reveal raw token in tooltip (default true)
-  autocomplete?: boolean;   // typing-based autocomplete (default true)
+  showRawValue?: boolean; // reveal raw token in tooltip (default true)
+  autocomplete?: boolean; // typing-based autocomplete (default true)
 }
 
-type SyntaxPresetName = 'liquid' | 'handlebars' | 'mailchimp' | 'ampscript';
+type SyntaxPresetName = "liquid" | "handlebars" | "mailchimp" | "ampscript";
 ```
 
 ### DisplayCondition
@@ -3285,10 +3338,10 @@ interface CustomBlockDefinition {
   icon?: string;
   description?: string;
   fields: CustomBlockField[];
-  template: string;                       // Liquid template
+  template: string; // Liquid template
   dataSource?: DataSourceConfig;
-  defaultStyles?: Partial<BlockStyles>;   // styles applied to new instances
-  stylesheet?: string;                    // CSS emitted once into mj-head
+  defaultStyles?: Partial<BlockStyles>; // styles applied to new instances
+  stylesheet?: string; // CSS emitted once into mj-head
 }
 ```
 
@@ -3320,7 +3373,7 @@ interface ThemeOverrides {
   danger?: string;
   dangerLight?: string;
   canvasBg?: string;
-  dark?: Omit<ThemeOverrides, 'dark'>;
+  dark?: Omit<ThemeOverrides, "dark">;
 }
 ```
 
@@ -3331,7 +3384,7 @@ interface FontsConfig {
   defaultFallback?: string;
   defaultFont?: string;
   customFonts?: CustomFont[];
-  builtIns?: boolean | string[];  // true/omitted: all seven; false: none; string[]: allowlist — see /guide/fonts
+  builtIns?: boolean | string[]; // true/omitted: all seven; false: none; string[]: allowlist — see /guide/fonts
 }
 
 interface CustomFont {
@@ -3344,7 +3397,7 @@ interface CustomFont {
 ### ViewportSize
 
 ```ts
-type ViewportSize = 'desktop' | 'mobile';
+type ViewportSize = "desktop" | "mobile";
 ```
 
 ## Factory Functions
@@ -3358,7 +3411,9 @@ export interface CustomBlockLiquidModule {
   Liquid: new (...args: any[]) => any;
 }
 
-export declare function createCustomBlockLiquid<M extends CustomBlockLiquidModule>(module: M): InstanceType<M['Liquid']>;
+export declare function createCustomBlockLiquid<
+  M extends CustomBlockLiquidModule,
+>(module: M): InstanceType<M["Liquid"]>;
 ```
 
 ```ts
@@ -3382,7 +3437,7 @@ import {
   cloneBlock,
   createDefaultTemplateContent,
   generateId,
-} from '@templatical/types';
+} from "@templatical/types";
 
 // Countdown GIFs need Cloud or a `blockRenderers.countdown` override; the OSS renderer emits a placeholder.
 
@@ -3391,16 +3446,16 @@ const paragraph = createParagraphBlock();
 
 // Create with overrides
 const heading = createTitleBlock({
-  content: '<h1>Hello</h1>',
+  content: "<h1>Hello</h1>",
   level: 1,
 });
 
 // Create any block by type string
-const block = createBlock('button');
+const block = createBlock("button");
 
 // A section background image from its URL: centered, cover, not tiled
 const section = createSectionBlock({
-  backgroundImage: createBackgroundImage('https://cdn.example.com/hero.jpg'),
+  backgroundImage: createBackgroundImage("https://cdn.example.com/hero.jpg"),
 });
 
 // Deep clone with new IDs, nested rows, items and icons included
@@ -3417,10 +3472,21 @@ const id = generateId();
 
 ```ts
 import {
-  isTitle, isParagraph, isImage, isButton, isSection,
-  isDivider, isVideo, isSpacer, isSocialIcons,
-  isMenu, isTable, isHtml, isCountdown, isCustomBlock,
-} from '@templatical/types';
+  isTitle,
+  isParagraph,
+  isImage,
+  isButton,
+  isSection,
+  isDivider,
+  isVideo,
+  isSpacer,
+  isSocialIcons,
+  isMenu,
+  isTable,
+  isHtml,
+  isCountdown,
+  isCustomBlock,
+} from "@templatical/types";
 
 if (isTitle(block)) {
   console.log(block.level); // TypeScript knows this is TitleBlock
@@ -3432,7 +3498,7 @@ if (isTitle(block)) {
 A typed event emitter for subscription patterns.
 
 ```ts
-import { EventEmitter } from '@templatical/types';
+import { EventEmitter } from "@templatical/types";
 
 type Events = {
   change: TemplateContent;
@@ -3441,23 +3507,23 @@ type Events = {
 
 const emitter = new EventEmitter<Events>();
 
-const unsubscribe = emitter.on('change', (content) => {
-  console.log('Changed:', content);
+const unsubscribe = emitter.on("change", (content) => {
+  console.log("Changed:", content);
 });
 
-emitter.emit('change', templateContent);
+emitter.emit("change", templateContent);
 unsubscribe(); // Remove listener
 ```
 
 ### Methods
 
-| Method | Description |
-|--------|-------------|
-| `on(event, handler)` | Subscribe. Returns unsubscribe function |
-| `off(event, handler)` | Unsubscribe a specific handler |
-| `emit(event, data)` | Emit an event |
+| Method                       | Description                                           |
+| ---------------------------- | ----------------------------------------------------- |
+| `on(event, handler)`         | Subscribe. Returns unsubscribe function               |
+| `off(event, handler)`        | Unsubscribe a specific handler                        |
+| `emit(event, data)`          | Emit an event                                         |
 | `removeAllListeners(event?)` | Remove all listeners, optionally for a specific event |
-| `listenerCount(event)` | Number of listeners for an event |
+| `listenerCount(event)`       | Number of listeners for an event                      |
 
 ## Storage contracts
 
@@ -15936,19 +16002,20 @@ This is useful for showing different content at different screen sizes -- for ex
 
 Beyond individual block styles, the template itself has global settings that affect the overall layout.
 
-| Setting           | Type             | Description                                                                                                                                                                           |
-| ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `width`           | `number`         | Template content width in px (typically 600)                                                                                                                                          |
-| `backgroundColor` | `string`         | Outer background color behind the template                                                                                                                                            |
-| `textColor`       | `string`         | Default text color, inherited by every text block (Title, Paragraph, Menu, Table) unless the block sets its own color or an inline text-color mark. Defaults to `#1a1a1a`.            |
-| `linkColor`       | `string`         | Document-level link color applied to every link (rich-text and menu). Optional — when unset, links inherit the surrounding text color. A per-block or per-item color still overrides. |
-| `linkUnderline`   | `boolean`        | Whether body (rich-text) links are underlined. Defaults to `true`. Buttons and menu items keep their own text-decoration.                                                             |
-| `fontFamily`      | `string`         | Default font family for all blocks                                                                                                                                                    |
-| `locale`          | `string`         | BCP-47 content language (`<html lang>`). Defaults to `en` on a blank template                                                                                                         |
-| `direction`       | `'ltr' \| 'rtl'` | Writing direction. Unset follows the content language                                                                                                                                 |
-| `preheaderText`   | `string`         | Inbox preview line                                                                                                                                                                    |
-| `customHeadCss`   | `string`         | Extra CSS for the email's `<head>`. See [Custom head](#custom-head)                                                                                                                   |
-| `customHeadTags`  | `string`         | Extra `<head>` tags. See [Custom head](#custom-head)                                                                                                                                  |
+| Setting           | Type                 | Description                                                                                                                                                                           |
+| ----------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `width`           | `number`             | Template content width in px (typically 600)                                                                                                                                          |
+| `backgroundColor` | `string`             | Outer background color behind the template                                                                                                                                            |
+| `textColor`       | `string`             | Default text color, inherited by every text block (Title, Paragraph, Menu, Table) unless the block sets its own color or an inline text-color mark. Defaults to `#1a1a1a`.            |
+| `linkColor`       | `string`             | Document-level link color applied to every link (rich-text and menu). Optional — when unset, links inherit the surrounding text color. A per-block or per-item color still overrides. |
+| `linkUnderline`   | `boolean`            | Whether body (rich-text) links are underlined. Defaults to `true`. Buttons and menu items keep their own text-decoration.                                                             |
+| `fontFamily`      | `string`             | Default font family for all blocks                                                                                                                                                    |
+| `locale`          | `string`             | BCP-47 content language (`<html lang>`). Defaults to `en` on a blank template                                                                                                         |
+| `direction`       | `'ltr' \| 'rtl'`     | Writing direction. Unset follows the content language                                                                                                                                 |
+| `preheaderText`   | `string`             | Inbox preview line                                                                                                                                                                    |
+| `customHeadCss`   | `string`             | Extra CSS for the email's `<head>`. See [Custom head](#custom-head)                                                                                                                   |
+| `customHeadTags`  | `string`             | Extra `<head>` tags. See [Custom head](#custom-head)                                                                                                                                  |
+| `darkColors`      | `TemplateDarkColors` | Optional colors for readers whose mail app is in dark mode. See [Dark mode colors](#dark-mode-colors).                                                                                |
 
 These are configured through the editor's `init()` config or by modifying the template JSON directly:
 
@@ -16024,6 +16091,58 @@ A value that could break the MJML document or run code is left out of the render
 The check reads every `<` in the tags as a possible tag, inside comments and `<style>` too, so markup a browser would treat as text is held to the same rules.
 
 `checkCustomHeadCss` and `checkCustomHeadTags` from `@templatical/types` return the verdict (`empty`, `accepted` with the trimmed value, or `refused` with a typed reason) for hosts that validate before saving. Like the settings allowlist, the check runs in the browser and in the renderer, not on your server; validate what you persist. To keep authors out of the head entirely, leave both fields out of [`templateSettings.fields`](/api/editor#restricting-the-settings-panel).
+
+## Dark mode colors
+
+Some mail apps restyle an email when the reader uses dark mode. Set `darkColors` on the template, a section, a title, a paragraph or a button to choose the colors used then. A field you leave out keeps its light color. In the editor, the colors sit in a **Dark Mode** group in each of those blocks' settings and in the template settings' Appearance card.
+
+| Where                            | Field             | Replaces in dark mode                                   |
+| -------------------------------- | ----------------- | ------------------------------------------------------- |
+| Template (`settings.darkColors`) | `backgroundColor` | The email background                                    |
+|                                  | `textColor`       | The text of every title and paragraph                   |
+|                                  | `linkColor`       | Links in titles and paragraphs                          |
+| Section                          | `backgroundColor` | The section's background (not applied to a hero)        |
+| Title, Paragraph                 | `backgroundColor` | The block's background                                  |
+|                                  | `textColor`       | The block's text, inline text colors and links included |
+| Button                           | `backgroundColor` | The button's fill                                       |
+|                                  | `textColor`       | The button's label                                      |
+
+A block's own `textColor` wins over the template's, and the template's `linkColor` wins over both for links.
+
+The template's `textColor` and `linkColor` reach titles and paragraphs only. Menus, tables, social icon labels and dividers keep their light colors, and so do countdowns, which render as an image. A section shown as a hero takes no dark background, and the Dark Mode group is hidden for it. Dark colors on a block hidden on every viewport have no effect. When the template sets a dark `backgroundColor`, check that these blocks stay readable on it, for example by giving the section that holds a menu a light dark-mode `backgroundColor`, so the menu keeps the background its text was chosen for. A `*` or `\` in a dark color is removed: neither occurs in a color, and a `/*` would comment out the rules after it.
+
+```ts
+const content = {
+  settings: {
+    ...settings,
+    darkColors: {
+      backgroundColor: "#121212",
+      textColor: "#e8e8e8",
+      linkColor: "#8ab4f8",
+    },
+  },
+  blocks: [
+    createButtonBlock({
+      text: "Shop now",
+      url: "https://example.com",
+      darkColors: { backgroundColor: "#8ab4f8", textColor: "#000000" },
+    }),
+  ],
+};
+```
+
+The renderer turns them into CSS, never into inline styles: each element gets a class named after its role and color, such as `tpl-dark-text-e8e8e8`, and one `<mj-style>` in the head holds the rules, all `!important`:
+
+- inside `@media (prefers-color-scheme: dark)`, which Apple Mail and Outlook for Mac apply;
+- scoped to `[data-ogsc]` (text) and `[data-ogsb]` (backgrounds), the attributes Outlook.com and the Outlook apps add while they recolor an email.
+
+Outlook for Windows applies neither.
+
+A template without dark colors renders exactly as before: no classes and no extra `<mj-style>`.
+
+The renderer adds no `<meta name="color-scheme">` and no `color-scheme` CSS property: whether a mail app may recolor the email is your decision. Gmail's apps ignore these rules and apply their own recoloring, unless your email opts out with `<meta name="color-scheme" content="light only">` in the head. Apple Mail stops darkening an email by itself once it declares `color-scheme: light dark`, so an email that declares it should set dark colors for its backgrounds and text.
+
+The editor's dark mode preview shows the dark colors where they are set and the light colors elsewhere. A template without any dark colors is previewed by inverting its colors instead, as some mail apps darken an email that has no dark theme.
 
 ---
 

@@ -1,6 +1,7 @@
 import type { Block } from "./blocks";
 import { DEFAULT_TEMPLATE_DEFAULTS } from "./defaults";
 import type { TemplateDefaults } from "./defaults";
+import type { TemplateDarkColors } from "./dark-colors";
 import type { ContentDirection } from "./direction";
 import type { SettingsLocaleLayer } from "./localization";
 
@@ -71,6 +72,11 @@ export interface TemplateSettings {
    * `checkCustomHeadTags`).
    */
   customHeadTags?: string;
+  /**
+   * Colors used when the reader's mail client is in dark mode. Absent means
+   * the rendered email carries no dark-mode CSS.
+   */
+  darkColors?: TemplateDarkColors;
 }
 
 export interface TemplateContent {

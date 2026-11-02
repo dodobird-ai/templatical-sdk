@@ -148,6 +148,15 @@ const translations: typeof en = {
     enable: "ダークモードでプレビュー",
     disable: "ライトモードでプレビュー",
   },
+
+  darkColors: {
+    title: "ダークモード",
+    hint: "受信者のメールアプリがダークモードのときに使われます。空欄の色はライトモードの色のままです。",
+    backgroundColor: "背景色",
+    textColor: "文字色",
+    linkColor: "リンクの色",
+    buttonColor: "ボタンの色",
+  },
   previewMode: {
     enable: "プレビューモード",
     disable: "プレビューを終了",

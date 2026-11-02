@@ -169,6 +169,15 @@ const ptBR: typeof en = {
     disable: "Visualizar Modo Claro",
   },
 
+  darkColors: {
+    title: "Modo Escuro",
+    hint: "Usado quando o app de e-mail do destinatário está no modo escuro. Deixe uma cor vazia para manter a clara.",
+    backgroundColor: "Cor de Fundo",
+    textColor: "Cor do Texto",
+    linkColor: "Cor do Link",
+    buttonColor: "Cor do Botão",
+  },
+
   // Preview mode
   previewMode: {
     enable: "Modo de Visualização",

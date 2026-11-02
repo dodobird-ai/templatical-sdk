@@ -170,6 +170,15 @@ const es: typeof en = {
     disable: "Vista previa en modo claro",
   },
 
+  darkColors: {
+    title: "Modo oscuro",
+    hint: "Se aplica cuando la aplicación de correo del destinatario está en modo oscuro. Deja un color vacío para mantener el claro.",
+    backgroundColor: "Color de fondo",
+    textColor: "Color del texto",
+    linkColor: "Color del enlace",
+    buttonColor: "Color del botón",
+  },
+
   // Preview mode
   previewMode: {
     enable: "Modo vista previa",

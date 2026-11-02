@@ -58,7 +58,7 @@ Container that arranges blocks into columns.
 
 <!-- BEGIN GENERATED FIELDS: section -->
 **Required** — `columns` (ColumnLayout), `children` (Block[][]).
-**Optional** — `l10n` (object), `stackOnMobile` (bool), `borderRadius` (BorderRadiusValue), `border` (BorderValue), `backgroundImage` (BackgroundImage), `hero` (SectionHero), `wrapper` (SectionWrapper).
+**Optional** — `l10n` (object), `stackOnMobile` (bool), `borderRadius` (BorderRadiusValue), `border` (BorderValue), `backgroundImage` (BackgroundImage), `hero` (SectionHero), `wrapper` (SectionWrapper), `darkColors` (SectionDarkColors).
 <!-- END GENERATED FIELDS: section -->
 
 - `columns` is one of `"1"`, `"2"`, `"3"`, `"2-1"`, `"1-2"`.
@@ -124,16 +124,11 @@ pixel width does not shrink on a phone.
 
 <!-- BEGIN GENERATED FIELDS: title -->
 **Required** — `content` (string), `level` (HeadingLevel), `textAlign` ("left" | "center" | "right").
-**Optional** — `l10n` (object), `color` (string), `fontFamily` (string), `fontSize` (int), `lineHeight` (int).
+**Optional** — `l10n` (object), `color` (string), `fontFamily` (string), `fontSize` (int), `lineHeight` (int), `darkColors` (TextDarkColors).
 <!-- END GENERATED FIELDS: title -->
 
 - `content` is the heading text; inline HTML is allowed.
 - `level` is one of `1`, `2`, `3`, `4` — `1` is the largest.
-- `fontSize` is the title's own size in px; omit it to take the level's size
-  (`36`, `28`, `22`, `18` for levels 1 to 4). The level still sets the heading
-  element, so keep it meaningful when you set a size.
-- `lineHeight` is a multiple of the font size, such as `1.15`; omit it for the
-  default `1.3`.
 - `color` inherits `settings.textColor` when unset.
 - A title is always bold (weight 700), so don't wrap the whole `content` in
   `<strong>`: in web-safe fonts it changes nothing.
@@ -142,7 +137,7 @@ pixel width does not shrink on a phone.
 
 <!-- BEGIN GENERATED FIELDS: paragraph -->
 **Required** — `content` (string).
-**Optional** — `l10n` (object), `paragraphSpacing` (int).
+**Optional** — `l10n` (object), `paragraphSpacing` (int), `darkColors` (TextDarkColors).
 <!-- END GENERATED FIELDS: paragraph -->
 
 - `content` supports `<b>`, `<i>`, `<a href>`, `<br>`, `<ul>`, `<ol>`.
@@ -217,7 +212,7 @@ underline: bool, color?: hex }`.
 
 <!-- BEGIN GENERATED FIELDS: button -->
 **Required** — `text` (string), `url` (string), `backgroundColor` (string), `textColor` (string), `borderRadius` (BorderRadiusValue), `fontSize` (int), `buttonPadding` (SpacingValue), `align` ("left" | "center" | "right").
-**Optional** — `l10n` (object), `openInNewTab` (bool), `border` (BorderValue), `fontFamily` (string), `width` (int | "full").
+**Optional** — `l10n` (object), `openInNewTab` (bool), `border` (BorderValue), `fontFamily` (string), `width` (int | "full"), `darkColors` (ButtonDarkColors).
 <!-- END GENERATED FIELDS: button -->
 
 - `buttonPadding` is `{ top, right, bottom, left }`.

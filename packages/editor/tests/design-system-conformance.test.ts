@@ -174,6 +174,13 @@ describe("design system conformance", () => {
       "--tpl-doc-link-underline": "utils/blockComponentResolver.ts",
       "--tpl-doc-paragraph-spacing": "utils/blockComponentResolver.ts",
       "--tpl-block-bg-layer": "utils/blockComponentResolver.ts",
+      // Dark colors: read only under the class that says the variable is set.
+      "--tpl-doc-dark-text": "utils/blockComponentResolver.ts",
+      "--tpl-doc-dark-link": "utils/blockComponentResolver.ts",
+      "--tpl-dark-bg": "utils/blockComponentResolver.ts",
+      "--tpl-dark-text": "utils/blockComponentResolver.ts",
+      "--tpl-dark-button-bg": "utils/blockComponentResolver.ts",
+      "--tpl-dark-button-text": "utils/blockComponentResolver.ts",
     };
 
     /** Every `--tpl-*` property `css` declares or registers, comments aside. */

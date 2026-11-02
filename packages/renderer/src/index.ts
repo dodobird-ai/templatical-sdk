@@ -43,6 +43,7 @@ import {
 import { richTextStylesheet, collectParagraphGaps } from "./rich-text";
 import { BUTTON_FULL_WIDTH_CSS_CLASS } from "./renderers/button";
 import { toPaddingString } from "./padding";
+import { darkBodyClassAttr, renderDarkColorStyle } from "./dark-colors";
 
 export interface RenderOptions {
   /** Template language to render. Defaults to `content.settings.locale`. */
@@ -270,9 +271,9 @@ export async function renderToMjml(
       @media only screen and (min-width: 481px) {
         .tpl-hide-desktop { display: none !important; mso-hide: all !important; }
       }
-    </mj-style>${renderCustomBlockStylesheets(customBlockStylesheets)}${renderCustomHead(toRender.settings)}
+    </mj-style>${renderDarkColorStyle(toRender.settings.darkColors, blocks)}${renderCustomBlockStylesheets(customBlockStylesheets)}${renderCustomHead(toRender.settings)}
   </mj-head>
-  <mj-body width="${renderContext.containerWidth}px" background-color="${backgroundColor}">
+  <mj-body width="${renderContext.containerWidth}px" background-color="${backgroundColor}"${darkBodyClassAttr(toRender.settings.darkColors)}>
 ${bodyContent}
   </mj-body>
 </mjml>`;

@@ -161,6 +161,15 @@ const nl: typeof en = {
     enable: "Voorbeeld in donkere modus",
     disable: "Voorbeeld in lichte modus",
   },
+
+  darkColors: {
+    title: "Donkere modus",
+    hint: "Gebruikt wanneer de e-mailapp van de ontvanger in donkere modus staat. Laat een kleur leeg om de lichte te houden.",
+    backgroundColor: "Achtergrondkleur",
+    textColor: "Tekstkleur",
+    linkColor: "Linkkleur",
+    buttonColor: "Knopkleur",
+  },
   previewMode: {
     enable: "Voorbeeldmodus",
     disable: "Voorbeeld sluiten",
