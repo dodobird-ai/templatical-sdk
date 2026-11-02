@@ -1,0 +1,90 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderToMjml without dark colors > renders exactly what it rendered before dark colors existed 1`] = `
+"<mjml lang="en" dir="ltr">
+  <mj-head>
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+      <mj-text font-size="14px" color="#1a1a1a" />
+      <mj-section padding="0" />
+      <mj-column padding="0" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .tpl-rich-text-8 p { margin: 0 0 8px; }
+      .tpl-rich-text-8 p:last-child { margin-bottom: 0; }
+      .tpl-rich-text ul, .tpl-rich-text ol { margin: 8px 0; padding-left: 24px; }
+      .tpl-rich-text li { margin: 4px 0; }
+      .tpl-button-full a { display: block !important; }
+    </mj-style>
+    <mj-style>
+      a { color: #0066cc; text-decoration: underline; }
+      @media only screen and (max-width: 480px) {
+        .tpl-hide-mobile { display: none !important; mso-hide: all !important; }
+      }
+      @media only screen and (min-width: 481px) {
+        .tpl-hide-desktop { display: none !important; mso-hide: all !important; }
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body width="600px" background-color="#ffffff">
+<mj-section background-color="#f4f4f4" padding="8px 8px 8px 8px">
+<mj-column width="50%">
+<mj-text
+  font-size="28px"
+  color="#222222"
+  align="left"
+  line-height="1.3"
+  padding="10px 10px 10px 10px" css-class="tpl-rich-text tpl-rich-text-8"
+><h2 style="margin:0;font-size:inherit;color:inherit;line-height:inherit;font-weight:700">Hello</h2></mj-text>
+<mj-text
+  line-height="1.5"
+  padding="10px 10px 10px 10px" css-class="tpl-rich-text tpl-rich-text-8"
+><p>Body with <span style="color: #555555">a mark</span> and <a href="https://example.com">a link</a></p></mj-text>
+</mj-column>
+<mj-column width="50%">
+<mj-button href="https://example.com"
+  background-color="#333333"
+  color="#ffffff"
+  font-size="15px"
+  font-weight="bold"
+  border-radius="6px"
+  inner-padding="12px 24px 12px 24px"
+  align="center"
+  padding="10px 10px 10px 10px"
+>Go</mj-button>
+<mj-image
+  src="https://example.com/a.png"
+  alt="A"
+  width="300px" fluid-on-mobile="true"
+  align="center"
+  padding="10px 10px 10px 10px"
+/>
+</mj-column>
+</mj-section>
+<mj-section>
+  <mj-column>
+<mj-text
+  font-size="28px"
+  align="left"
+  line-height="1.3"
+  padding="10px 10px 10px 10px" css-class="tpl-rich-text tpl-rich-text-8"
+><h2 style="margin:0;font-size:inherit;color:inherit;line-height:inherit;font-weight:700">Top-level title</h2></mj-text>
+  </mj-column>
+</mj-section>
+<mj-section>
+  <mj-column>
+<mj-button
+  background-color="#333333"
+  color="#ffffff"
+  font-size="15px"
+  font-weight="bold"
+  border-radius="6px"
+  inner-padding="12px 24px 12px 24px"
+  align="center"
+  padding="10px 10px 10px 10px"
+>No link</mj-button>
+  </mj-column>
+</mj-section>
+  </mj-body>
+</mjml>"
+`;

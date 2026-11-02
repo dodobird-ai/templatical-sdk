@@ -19,6 +19,7 @@ import {
   resolveParagraphGap,
 } from "../rich-text";
 import { isHiddenOnAll, getCssClassAttr } from "../visibility";
+import { darkColorClasses } from "../dark-colors";
 
 /**
  * Render a title block to MJML markup.
@@ -50,6 +51,7 @@ export function renderTitle(block: TitleBlock, context: RenderContext): string {
   const cssClassAttr = getCssClassAttr(block, [
     RICH_TEXT_CSS_CLASS,
     richTextGapClass(resolveParagraphGap(undefined)),
+    ...darkColorClasses(block),
   ]);
   // Same clamp logic as fontSize so that an out-of-range level still
   // produces a valid heading element.

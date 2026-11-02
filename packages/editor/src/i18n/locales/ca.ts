@@ -170,6 +170,15 @@ const ca: typeof en = {
     disable: "Vista prèvia del mode clar",
   },
 
+  darkColors: {
+    title: "Mode fosc",
+    hint: "S'aplica quan l'aplicació de correu del destinatari és en mode fosc. Deixa un color buit per mantenir el clar.",
+    backgroundColor: "Color de fons",
+    textColor: "Color del text",
+    linkColor: "Color de l'enllaç",
+    buttonColor: "Color del botó",
+  },
+
   // Preview mode
   previewMode: {
     enable: "Mode de vista prèvia",

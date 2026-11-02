@@ -55,9 +55,16 @@ interface TemplateSettings {
   locales?: string[];             // Weitere Sprachversionen; locale ist der Standard
   l10n?: Record<string, SettingsLocaleLayer>; // Sprachebenen der Einstellungen
   direction?: ContentDirection;   // 'ltr' | 'rtl'; ungesetzt folgt der Inhaltssprache
+  darkColors?: TemplateDarkColors; // Farben für Mail-Clients im Dunkelmodus; siehe Styling
 }
 
 type ContentDirection = 'ltr' | 'rtl';
+
+interface TemplateDarkColors {
+  backgroundColor?: string; // der E-Mail-Hintergrund
+  textColor?: string;       // jeder Titel und jeder Absatz
+  linkColor?: string;       // Links in Titeln und Absätzen
+}
 ```
 
 ### Block
@@ -229,9 +236,15 @@ interface TitleBlock extends BaseBlock {
   color?: string;
   textAlign: 'left' | 'center' | 'right';
   fontFamily?: string;
+  darkColors?: TextDarkColors;
 }
 
 type HeadingLevel = 1 | 2 | 3 | 4;
+
+interface TextDarkColors {
+  backgroundColor?: string;
+  textColor?: string; // einschließlich Inline-Textfarben und Links
+}
 ```
 
 ### ParagraphBlock
@@ -241,6 +254,7 @@ interface ParagraphBlock extends BaseBlock {
   type: 'paragraph';
   content: string;
   paragraphSpacing?: number;
+  darkColors?: TextDarkColors;
 }
 ```
 
@@ -287,6 +301,12 @@ interface ButtonBlock extends BaseBlock {
   openInNewTab?: boolean;
   width?: number | 'full';
   align: 'left' | 'center' | 'right';
+  darkColors?: ButtonDarkColors;
+}
+
+interface ButtonDarkColors {
+  backgroundColor?: string; // die Füllung
+  textColor?: string;       // die Beschriftung
 }
 ```
 
@@ -305,6 +325,7 @@ interface SectionBlock extends BaseBlock {
   backgroundImage?: BackgroundImage;
   hero?: SectionHero;
   wrapper?: SectionWrapper;
+  darkColors?: SectionDarkColors;
 }
 
 interface SectionWrapper {
@@ -331,6 +352,10 @@ interface BackgroundImage {
 interface SectionHero {
   height: 'image' | number; // 'image': as tall as the image across the desktop box; a number: fixed px, padding included
   verticalAlign: 'top' | 'middle' | 'bottom';
+}
+
+interface SectionDarkColors {
+  backgroundColor?: string; // gilt nicht für einen Hero
 }
 ```
 

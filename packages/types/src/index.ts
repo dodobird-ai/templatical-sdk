@@ -55,6 +55,17 @@ export {
   uniformBorder,
 } from "./blocks";
 
+// Dark colours (author-chosen colours for mail clients in dark mode)
+export type {
+  ButtonDarkColors,
+  DarkColorField,
+  DarkColorsBlock,
+  SectionDarkColors,
+  TemplateDarkColors,
+  TextDarkColors,
+} from "./dark-colors";
+export { hasDarkColors, isDarkColorSet } from "./dark-colors";
+
 // Background images (sections and wrapper bands)
 export type {
   BackgroundImage,

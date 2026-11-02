@@ -32,6 +32,7 @@ export const TEMPLATE_SETTINGS_FIELD_CARDS: Record<
   linkColor: "appearance",
   linkUnderline: "appearance",
   fontFamily: "appearance",
+  darkColors: "appearance",
   locale: "language",
   direction: "language",
   preheaderText: "preheader",

@@ -158,6 +158,10 @@
         "wrapper": {
           "$ref": "#/definitions/SectionWrapper",
           "description": "Optional outer frame (rendered as an `mj-wrapper` around the section)."
+        },
+        "darkColors": {
+          "$ref": "#/definitions/SectionDarkColors",
+          "description": "Colors used when the reader's mail client is in dark mode."
         }
       },
       "required": [
@@ -495,6 +499,17 @@
       "additionalProperties": false,
       "description": "Optional outer frame for a section. When present, the section is rendered inside an `mj-wrapper` — a band (its own background + padding) that frames the section, e.g. a white card sitting on a colored band. The band is as wide as the email body (`settings.width`), not the recipient's viewport."
     },
+    "SectionDarkColors": {
+      "type": "object",
+      "properties": {
+        "backgroundColor": {
+          "type": "string",
+          "description": "Replaces `styles.backgroundColor` behind the section's columns. A background image still paints over it. Not applied to a hero."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Colors a section uses when the reader's mail client is in dark mode."
+    },
     "TitleBlock": {
       "type": "object",
       "properties": {
@@ -564,6 +579,10 @@
         },
         "fontFamily": {
           "type": "string"
+        },
+        "darkColors": {
+          "$ref": "#/definitions/TextDarkColors",
+          "description": "Colors used when the reader's mail client is in dark mode."
         }
       },
       "required": [
@@ -584,6 +603,21 @@
         3,
         4
       ]
+    },
+    "TextDarkColors": {
+      "type": "object",
+      "properties": {
+        "backgroundColor": {
+          "type": "string",
+          "description": "Replaces `styles.backgroundColor`."
+        },
+        "textColor": {
+          "type": "string",
+          "description": "Replaces the block's text color, inline text colors included. Links take it too, unless the template sets a dark `linkColor`."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Colors a text block (title, paragraph) uses when the reader's mail client is in dark mode. Each field overrides its light counterpart only in dark mode; an absent or empty field leaves the light color in place."
     },
     "ParagraphBlock": {
       "type": "object",
@@ -640,6 +674,10 @@
         "paragraphSpacing": {
           "type": "number",
           "description": "Gap in px between this block's paragraphs — the space below every `<p>` except the last. Absent means `RICH_TEXT_SPACING.paragraphGap`.\n\nOnly affects a block holding more than one paragraph; a single `<p>` has no internal gap, and the space around the block is `styles.padding`.\n\n`0` is a valid choice (paragraphs butted together) and is distinct from the field being absent, so readers must test for `undefined` rather than falsiness."
+        },
+        "darkColors": {
+          "$ref": "#/definitions/TextDarkColors",
+          "description": "Colors used when the reader's mail client is in dark mode."
         }
       },
       "required": [
@@ -867,6 +905,10 @@
             "right"
           ],
           "description": "Placement of the button within its column. No visible effect when `width` is `\"full\"`, since the button then spans the column."
+        },
+        "darkColors": {
+          "$ref": "#/definitions/ButtonDarkColors",
+          "description": "Colors used when the reader's mail client is in dark mode."
         }
       },
       "required": [
@@ -883,6 +925,21 @@
         "url"
       ],
       "additionalProperties": false
+    },
+    "ButtonDarkColors": {
+      "type": "object",
+      "properties": {
+        "backgroundColor": {
+          "type": "string",
+          "description": "Replaces the button's fill, `ButtonBlock.backgroundColor`."
+        },
+        "textColor": {
+          "type": "string",
+          "description": "Replaces the button's label color, `ButtonBlock.textColor`."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Colors a button uses when the reader's mail client is in dark mode."
     },
     "DividerBlock": {
       "type": "object",
@@ -2028,6 +2085,10 @@
         "direction": {
           "$ref": "#/definitions/ContentDirection",
           "description": "Writing direction of the delivered email: the canvas `dir` and the rendered `<mjml dir>`. Independent of the editor chrome (`init({ locale })`). Optional: when unset, `resolveContentDirection` falls through to the content language (`ar` / `he` / `fa` / … → `\"rtl\"`, otherwise `\"ltr\"`). An explicit `\"ltr\"` on an Arabic template is a stated decision, not a missing value."
+        },
+        "darkColors": {
+          "$ref": "#/definitions/TemplateDarkColors",
+          "description": "Colors used when the reader's mail client is in dark mode. Absent means the rendered email carries no dark-mode CSS."
         }
       },
       "required": [
@@ -2064,6 +2125,25 @@
         "rtl"
       ],
       "description": "Writing direction of the delivered email — the canvas `dir` and the rendered `<mjml dir>`. Independent of the editor chrome language (`init({ locale })`)."
+    },
+    "TemplateDarkColors": {
+      "type": "object",
+      "properties": {
+        "backgroundColor": {
+          "type": "string",
+          "description": "Replaces `settings.backgroundColor`, the email body."
+        },
+        "textColor": {
+          "type": "string",
+          "description": "Replaces the text color of every title and paragraph, inline text colors included. A block's own dark `textColor` wins over it."
+        },
+        "linkColor": {
+          "type": "string",
+          "description": "Replaces the color of links in titles and paragraphs."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Colors the whole template uses when the reader's mail client is in dark mode."
     }
   }
 }

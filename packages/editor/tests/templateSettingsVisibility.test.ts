@@ -109,6 +109,7 @@ describe("TEMPLATE_SETTINGS_FIELD_CARDS", () => {
     // is ever loosened, which would let a field ship with no way to hide it.
     expect(Object.keys(TEMPLATE_SETTINGS_FIELD_CARDS).sort()).toEqual([
       "backgroundColor",
+      "darkColors",
       "direction",
       "fontFamily",
       "linkColor",
@@ -128,6 +129,7 @@ describe("TEMPLATE_SETTINGS_FIELD_CARDS", () => {
       linkColor: "appearance",
       linkUnderline: "appearance",
       fontFamily: "appearance",
+      darkColors: "appearance",
       locale: "language",
       direction: "language",
       preheaderText: "preheader",

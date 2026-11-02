@@ -26,6 +26,7 @@ import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { useResolvedBackgroundUrl } from "../../composables/useImageUrlResolver";
 import {
   backgroundImageHostClass,
+  darkColorHostClasses,
   getBlockWrapperStyle,
   getSectionWrapperStyle,
 } from "../../utils/blockComponentResolver";
@@ -588,7 +589,10 @@ function handleConditionToggle(): void {
       <div
         class="tpl-block-content tpl-email-surface"
         :style="contentStyle"
-        :class="backgroundImageHostClass(contentStyle)"
+        :class="[
+          backgroundImageHostClass(contentStyle),
+          ...darkColorHostClasses(contentStyle),
+        ]"
       >
         <slot />
       </div>
@@ -597,7 +601,10 @@ function handleConditionToggle(): void {
       v-else
       class="tpl-block-content tpl-email-surface"
       :style="contentStyle"
-      :class="backgroundImageHostClass(contentStyle)"
+      :class="[
+        backgroundImageHostClass(contentStyle),
+        ...darkColorHostClasses(contentStyle),
+      ]"
     >
       <slot />
     </div>

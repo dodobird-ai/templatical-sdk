@@ -3,6 +3,7 @@ import FieldRow from "./toolbar/FieldRow.vue";
 import ColorPicker from "./ColorPicker.vue";
 import MergeTagTextarea from "./MergeTagTextarea.vue";
 import ToggleSwitch from "./ToggleSwitch.vue";
+import DarkColorsControl from "./toolbar/DarkColorsControl.vue";
 import { useI18n } from "../composables/useI18n";
 import {
   resolveContentDirection,
@@ -19,6 +20,7 @@ import {
 import { Circle, Eye, Globe, Info, Square } from "@lucide/vue";
 import { computed, inject } from "vue";
 import { fontSelectValue, withCurrentFont } from "../utils/withCurrentFont";
+import { TEMPLATE_DARK_COLOR_FIELDS } from "../utils/darkColors";
 import {
   FONTS_MANAGER_KEY,
   TEMPLATE_SETTINGS_FIELDS_KEY,
@@ -292,6 +294,25 @@ const cardStackClass = `${cardClass} tpl:flex tpl:flex-col tpl:gap-3.5`;
               {{ font.label }}
             </option>
           </select>
+        </div>
+
+        <div
+          v-if="shows('darkColors')"
+          data-testid="template-settings-dark-colors"
+          class="tpl:flex tpl:flex-col tpl:gap-3.5 tpl:border-t tpl:border-[var(--tpl-border)] tpl:pt-3.5"
+        >
+          <span
+            class="tpl:text-sm tpl:font-medium tpl:text-[var(--tpl-text)]"
+            >{{ t.darkColors.title }}</span
+          >
+          <DarkColorsControl
+            :colors="settings.darkColors"
+            :fields="TEMPLATE_DARK_COLOR_FIELDS"
+            test-id="template-dark-colors"
+            path="darkColors"
+            settings
+            @update="emit('update', { darkColors: $event })"
+          />
         </div>
       </div>
 

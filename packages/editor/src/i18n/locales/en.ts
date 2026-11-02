@@ -162,6 +162,15 @@ export default {
     disable: "Light Mode Preview",
   },
 
+  darkColors: {
+    title: "Dark Mode",
+    hint: "Used when the reader's email app is in dark mode. Leave a color empty to keep the light one.",
+    backgroundColor: "Background Color",
+    textColor: "Text Color",
+    linkColor: "Link Color",
+    buttonColor: "Button Color",
+  },
+
   // Preview mode
   previewMode: {
     enable: "Preview Mode",

@@ -105,6 +105,7 @@ Beyond individual block styles, the template itself has global settings that aff
 | `locale` | `string` | BCP-47 content language (`<html lang>`). Defaults to `en` on a blank template |
 | `direction` | `'ltr' \| 'rtl'` | Writing direction. Unset follows the content language |
 | `preheaderText` | `string` | Inbox preview line |
+| `darkColors` | `TemplateDarkColors` | Optional colors for readers whose mail app is in dark mode. See [Dark mode colors](#dark-mode-colors). |
 
 These are configured through the editor's `init()` config or by modifying the template JSON directly:
 
@@ -132,3 +133,49 @@ Individual blocks can override the template-level `fontFamily` by setting their 
 Text color works the same way: text blocks (Title, Paragraph, Menu, Table) inherit `textColor` from the template settings, and any block that sets its own color overrides it. Customize the document default through `init({ templateDefaults: { textColor } })`.
 
 Links follow the same cascade: set a document `linkColor` to apply one color to every link (rich-text and menu), or leave it unset so links inherit the surrounding text color. `linkUnderline` (on by default) underlines body links — buttons and menu items keep their own text-decoration. A per-block or per-item color (e.g. a Menu item's color) still overrides the document link color. Individual rich-text links can also be given their own color in the link dialog, which overrides the document link color — and because the color sits on the link itself, its underline matches.
+
+## Dark mode colors
+
+Some mail apps restyle an email when the reader uses dark mode. Set `darkColors` on the template, a section, a title, a paragraph or a button to choose the colors used then. A field you leave out keeps its light color. In the editor, the colors sit in a **Dark Mode** group in each of those blocks' settings and in the template settings' Appearance card.
+
+| Where | Field | Replaces in dark mode |
+|-------|-------|-----------------------|
+| Template (`settings.darkColors`) | `backgroundColor` | The email background |
+| | `textColor` | The text of every title and paragraph |
+| | `linkColor` | Links in titles and paragraphs |
+| Section | `backgroundColor` | The section's background (not applied to a hero) |
+| Title, Paragraph | `backgroundColor` | The block's background |
+| | `textColor` | The block's text, inline text colors and links included |
+| Button | `backgroundColor` | The button's fill |
+| | `textColor` | The button's label |
+
+A block's own `textColor` wins over the template's, and the template's `linkColor` wins over both for links.
+
+```ts
+const content = {
+  settings: {
+    ...settings,
+    darkColors: { backgroundColor: '#121212', textColor: '#e8e8e8', linkColor: '#8ab4f8' },
+  },
+  blocks: [
+    createButtonBlock({
+      text: 'Shop now',
+      url: 'https://example.com',
+      darkColors: { backgroundColor: '#8ab4f8', textColor: '#000000' },
+    }),
+  ],
+};
+```
+
+The renderer turns them into CSS, never into inline styles: each element gets a class named after its role and color, such as `tpl-dark-text-e8e8e8`, and one `<mj-style>` in the head holds the rules, all `!important`:
+
+- inside `@media (prefers-color-scheme: dark)`, which Apple Mail and Outlook for Mac apply;
+- scoped to `[data-ogsc]` (text) and `[data-ogsb]` (backgrounds), the attributes Outlook.com and the Outlook apps add while they recolor an email.
+
+Outlook for Windows applies neither.
+
+A template without dark colors renders exactly as before: no classes and no extra `<mj-style>`.
+
+The renderer adds no `<meta name="color-scheme">` and no `color-scheme` CSS property: whether a mail app may recolor the email is your decision. Gmail's apps ignore these rules and apply their own recoloring, unless your email opts out with `<meta name="color-scheme" content="light only">` in the head. Apple Mail stops darkening an email by itself once it declares `color-scheme: light dark`, so an email that declares it should set dark colors for its backgrounds and text.
+
+The editor's dark mode preview shows the dark colors where they are set and the light colors elsewhere. A template without any dark colors is previewed by inverting its colors instead, as some mail apps darken an email that has no dark theme.

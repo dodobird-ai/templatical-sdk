@@ -58,7 +58,7 @@ Container that arranges blocks into columns.
 
 <!-- BEGIN GENERATED FIELDS: section -->
 **Required** — `columns` (ColumnLayout), `children` (Block[][]).
-**Optional** — `l10n` (object), `stackOnMobile` (bool), `borderRadius` (BorderRadiusValue), `border` (BorderValue), `backgroundImage` (BackgroundImage), `hero` (SectionHero), `wrapper` (SectionWrapper).
+**Optional** — `l10n` (object), `stackOnMobile` (bool), `borderRadius` (BorderRadiusValue), `border` (BorderValue), `backgroundImage` (BackgroundImage), `hero` (SectionHero), `wrapper` (SectionWrapper), `darkColors` (SectionDarkColors).
 <!-- END GENERATED FIELDS: section -->
 
 - `columns` is one of `"1"`, `"2"`, `"3"`, `"2-1"`, `"1-2"`.
@@ -124,7 +124,7 @@ pixel width does not shrink on a phone.
 
 <!-- BEGIN GENERATED FIELDS: title -->
 **Required** — `content` (string), `level` (HeadingLevel), `textAlign` ("left" | "center" | "right").
-**Optional** — `l10n` (object), `color` (string), `fontFamily` (string).
+**Optional** — `l10n` (object), `color` (string), `fontFamily` (string), `darkColors` (TextDarkColors).
 <!-- END GENERATED FIELDS: title -->
 
 - `content` is the heading text; inline HTML is allowed.
@@ -137,7 +137,7 @@ pixel width does not shrink on a phone.
 
 <!-- BEGIN GENERATED FIELDS: paragraph -->
 **Required** — `content` (string).
-**Optional** — `l10n` (object), `paragraphSpacing` (int).
+**Optional** — `l10n` (object), `paragraphSpacing` (int), `darkColors` (TextDarkColors).
 <!-- END GENERATED FIELDS: paragraph -->
 
 - `content` supports `<b>`, `<i>`, `<a href>`, `<br>`, `<ul>`, `<ol>`.
@@ -212,7 +212,7 @@ underline: bool, color?: hex }`.
 
 <!-- BEGIN GENERATED FIELDS: button -->
 **Required** — `text` (string), `url` (string), `backgroundColor` (string), `textColor` (string), `borderRadius` (BorderRadiusValue), `fontSize` (int), `buttonPadding` (SpacingValue), `align` ("left" | "center" | "right").
-**Optional** — `l10n` (object), `openInNewTab` (bool), `border` (BorderValue), `fontFamily` (string), `width` (int | "full").
+**Optional** — `l10n` (object), `openInNewTab` (bool), `border` (BorderValue), `fontFamily` (string), `width` (int | "full"), `darkColors` (ButtonDarkColors).
 <!-- END GENERATED FIELDS: button -->
 
 - `buttonPadding` is `{ top, right, bottom, left }`.

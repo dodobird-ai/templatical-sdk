@@ -167,6 +167,15 @@ const de: typeof en = {
     disable: "Hellmodus-Vorschau",
   },
 
+  darkColors: {
+    title: "Dunkelmodus",
+    hint: "Gilt, wenn die E-Mail-App der Empfänger im Dunkelmodus ist. Eine leere Farbe behält die helle.",
+    backgroundColor: "Hintergrundfarbe",
+    textColor: "Textfarbe",
+    linkColor: "Linkfarbe",
+    buttonColor: "Button-Farbe",
+  },
+
   // Preview mode
   previewMode: {
     enable: "Vorschaumodus",

@@ -13,6 +13,7 @@ import {
   horizontalInset,
 } from "../utils";
 import { isHiddenOnAll, getCssClassAttr } from "../visibility";
+import { darkColorClasses } from "../dark-colors";
 import { wrapWithDisplayCondition } from "../display-condition";
 
 // `BlockRenderer` is defined in `../render-context`, next to the `blockRenderers`
@@ -54,7 +55,7 @@ export function renderSection(
   const padding = toPaddingString(block.styles.padding);
   const bgColor = bgAttr(block.styles.backgroundColor, "native");
   const bgImage = backgroundImageAttrs(block.backgroundImage);
-  const visibilityAttr = getCssClassAttr(block);
+  const visibilityAttr = getCssClassAttr(block, darkColorClasses(block));
   const borderRadiusAttrStr = borderRadiusAttr(block.borderRadius);
   const borderAttrStr = borderAttr(block.border);
   // MJML's `mj-section`, `mj-group` and `mj-column` each default to

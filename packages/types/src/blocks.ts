@@ -1,6 +1,11 @@
 import type { BackgroundImage } from "./background-image";
 import type { SectionHero } from "./hero";
 import type { BlockLocaleLayer } from "./localization";
+import type {
+  ButtonDarkColors,
+  SectionDarkColors,
+  TextDarkColors,
+} from "./dark-colors";
 
 export interface SpacingValue {
   top: number;
@@ -237,6 +242,8 @@ export interface SectionBlock extends BaseBlock {
   hero?: SectionHero;
   /** Optional outer frame (rendered as an `mj-wrapper` around the section). */
   wrapper?: SectionWrapper;
+  /** Colors used when the reader's mail client is in dark mode. */
+  darkColors?: SectionDarkColors;
 }
 
 export type HeadingLevel = 1 | 2 | 3 | 4;
@@ -301,6 +308,8 @@ export interface TitleBlock extends BaseBlock {
   color?: string;
   textAlign: "left" | "center" | "right";
   fontFamily?: string;
+  /** Colors used when the reader's mail client is in dark mode. */
+  darkColors?: TextDarkColors;
 }
 
 export interface ParagraphBlock extends BaseBlock {
@@ -318,6 +327,8 @@ export interface ParagraphBlock extends BaseBlock {
    * falsiness.
    */
   paragraphSpacing?: number;
+  /** Colors used when the reader's mail client is in dark mode. */
+  darkColors?: TextDarkColors;
 }
 
 export interface ImageBlock extends BaseBlock {
@@ -385,6 +396,8 @@ export interface ButtonBlock extends BaseBlock {
    * is `"full"`, since the button then spans the column.
    */
   align: "left" | "center" | "right";
+  /** Colors used when the reader's mail client is in dark mode. */
+  darkColors?: ButtonDarkColors;
 }
 
 /**

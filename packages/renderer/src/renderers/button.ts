@@ -6,6 +6,7 @@ import type { BorderRadiusValue } from "@templatical/types";
 import { toBorderRadiusCss } from "@templatical/types";
 import { bgAttr, borderAttr } from "../utils";
 import { isHiddenOnAll, getCssClassAttr } from "../visibility";
+import { darkColorClasses } from "../dark-colors";
 
 /**
  * Marks the `mj-button` of a full-width button. MJML gives the button's `<a>`
@@ -45,10 +46,10 @@ export function renderButton(
     : "";
   const fontFamilyAttr = renderFontFamilyAttr(block.fontFamily, context);
   const widthAttr = renderWidthAttr(block.width);
-  const cssClassAttr = getCssClassAttr(
-    block,
-    block.width === "full" ? [BUTTON_FULL_WIDTH_CSS_CLASS] : [],
-  );
+  const cssClassAttr = getCssClassAttr(block, [
+    ...(block.width === "full" ? [BUTTON_FULL_WIDTH_CSS_CLASS] : []),
+    ...darkColorClasses(block),
+  ]);
   const borderAttrStr = borderAttr(block.border);
   // Templates stored before `align` existed have no value for it. Fall back to
   // MJML's own default so they keep rendering exactly as they did.

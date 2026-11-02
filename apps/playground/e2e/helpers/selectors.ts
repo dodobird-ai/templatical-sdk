@@ -214,6 +214,11 @@ export const SELECTORS = {
   viewportDesktop: '[role="radio"][aria-label="Desktop"]',
   viewportMobile: '[role="radio"][aria-label="Mobile"]',
   darkModeToggle: ".tpl-dark-mode-toggle",
+  // Dark colors: the canvas background layer, the block toolbar's Dark Mode
+  // group header and the template settings group.
+  canvasBackground: '[data-testid="canvas-background"]',
+  darkColorsToggle: '[data-testid="dark-colors-toggle"]',
+  templateSettingsDarkColors: '[data-testid="template-settings-dark-colors"]',
   previewToggle: ".tpl-preview-toggle",
   // The header itself. Its centre track must hold a constant width, so nothing
   // conditional may render there — see `header-layout-stability.spec.ts`.
@@ -348,6 +353,14 @@ export const SELECTORS = {
 /** Dynamic selector for block by type */
 export function themeOption(theme: "auto" | "light" | "dark") {
   return `[data-testid="theme-option-${theme}"]`;
+}
+
+/** The hex field of one dark color, in the block toolbar or the template settings. */
+export function darkColorInput(
+  scope: "block" | "template",
+  field: "backgroundColor" | "textColor" | "linkColor",
+) {
+  return `[data-testid="${scope}-dark-colors-${field}"] input[type="text"]`;
 }
 
 export function blockByType(type: string) {
