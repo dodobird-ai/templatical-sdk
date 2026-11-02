@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  CUSTOM_HEAD_ALLOWED_HTTP_EQUIV,
   CUSTOM_HEAD_FORBIDDEN_ELEMENTS,
   checkCustomHeadCss,
   checkCustomHeadTags,
 } from "../src";
-import { getTagAttrNames } from "../src/html-scan";
 
 const OUTLOOK_DPI = `<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->`;
 
@@ -119,6 +119,10 @@ describe("checkCustomHeadTags", () => {
     ['<link rel="stylesheet" href="javascript:alert(1)">', "href"],
     ['<link rel="icon" href=" JavaScript:alert(1)">', "href"],
     ['<link rel="stylesheet" href="data:text/css,a{}">', "href"],
+    ['<link rel="icon" href="&#106;avascript:alert(1)">', "href"],
+    ['<link rel="icon" href="&#x6A;avascript:alert(1)">', "href"],
+    ["<link rel=icon href=&#106;avascript:alert(1)>", "href"],
+    ['<link rel="icon" href="java&#x09;script:alert(1)">', "href"],
   ])("refuses %s as unsafe-url %s", (tags, attribute) => {
     expect(checkCustomHeadTags(tags)).toEqual({
       status: "refused",
@@ -162,6 +166,9 @@ describe("checkCustomHeadTags", () => {
       "object",
       "embed",
       "applet",
+      "svg",
+      "math",
+      "plaintext",
       "base",
       "form",
       "html",
@@ -178,18 +185,132 @@ describe("checkCustomHeadTags", () => {
   });
 });
 
-describe("getTagAttrNames", () => {
-  it("lists names in order, lower-cased, skipping values", () => {
+describe("checkCustomHeadTags: readers that disagree", () => {
+  // Each of these was accepted by a scanner that let a quote anywhere in a tag
+  // open a quoted value, or that read `<style>` content as tags only up to a
+  // quote; MJML compiled every one with the `<script>` live in the head.
+  it.each([
+    // A quote in the middle of an unquoted value is a literal character to
+    // HTML and to htmlparser2, so the meta tag ends at its first `>`.
+    '<meta a=b"><script>alert(1)</script><!-- " -->',
+    "<meta a=b'><script>alert(1)</script><!-- ' -->",
+    // A fake tag inside <style> text opens a quote that runs past </style>.
+    '<style>.a{} <x "</style></mj-raw><mj-raw><script>window.pwn=1</script></mj-raw><mj-raw><style>" >{}</style>',
+    '<style><x "</style><script>alert(1)</script><style>" ></style>',
+    '<title><x "</title><script>alert(1)</script><title>" ></title>',
+  ])("refuses %s", (tags) => {
+    expect(checkCustomHeadTags(tags).status).toBe("refused");
+  });
+
+  it("refuses the quote-in-value meta before it reaches the script", () => {
     expect(
-      getTagAttrNames(` name="a b" Content='x onload=1' hidden data-x=y /`),
-    ).toEqual(["name", "content", "hidden", "data-x"]);
+      checkCustomHeadTags('<meta a=b"><script>alert(1)</script><!-- " -->'),
+    ).toEqual({ status: "refused", refusal: { reason: "malformed-tag" } });
   });
 
-  it("stops at an unterminated quoted value", () => {
-    expect(getTagAttrNames(` rel="x onload=1`)).toEqual(["rel"]);
+  it.each([
+    ['<style>.a{} <x "</style>" >{}</style>', "a quote in an attribute name"],
+    ['<meta "a>', "a quote opening an attribute name"],
+    ["<meta a<b>", "a < in an attribute name"],
+    ['<meta a=b"c>', "a double quote in an unquoted value"],
+    ["<meta a=b'c>", "a single quote in an unquoted value"],
+    ["<meta a=b=c>", "an equals sign in an unquoted value"],
+    ["<meta a=`b`>", "a backtick in an unquoted value"],
+    ["<meta a=>", "an empty unquoted value"],
+    ['<meta content="a<b">', "a < in a quoted value"],
+    ['<meta content="a>b">', "a > in a quoted value"],
+    ["<meta a=b<c>", "a < in an unquoted value"],
+    ['<meta name="a"content="b">', "no space between attributes"],
+    ['<meta ="a">', "a value with no attribute name"],
+    ["<meta a/b>", "a stray slash"],
+    ['<meta"x">', "a quote in the tag name"],
+    ["<meta\u000bname=a>", "an unusual character in the tag name"],
+    ["</title x>", "an attribute on a closing tag"],
+    ['<meta name="a"><![CDATA[x]]>', "a CDATA section"],
+    ["<style/>", "a self-closing style"],
+    ["<title />", "a self-closing title"],
+  ])("refuses %s as malformed-tag (%s)", (tags) => {
+    expect(checkCustomHeadTags(tags)).toEqual({
+      status: "refused",
+      refusal: { reason: "malformed-tag" },
+    });
   });
 
-  it("returns no names for an empty attribute string", () => {
-    expect(getTagAttrNames("")).toEqual([]);
+  it.each([
+    ["<style>td{}", "style"],
+    ["<title>Sale", "title"],
+    ["<STYLE>td{}</STYLEX>", "style"],
+    ["<noscript><link rel=stylesheet href=https://x.test/a.css>", "noscript"],
+    ["<textarea>", "textarea"],
+  ])("refuses %s as unclosed-element %s", (tags, element) => {
+    expect(checkCustomHeadTags(tags)).toEqual({
+      status: "refused",
+      refusal: { reason: "unclosed-element", element },
+    });
+  });
+
+  it.each(['<meta name="a"><!doctype x', "<?xml x", "<meta name=a></ x"])(
+    "refuses a declaration with no `>` after it as unclosed-tag: %s",
+    (tags) => {
+      expect(checkCustomHeadTags(tags)).toEqual({
+        status: "refused",
+        refusal: { reason: "unclosed-tag" },
+      });
+    },
+  );
+
+  it("accepts a text-content element closed in another case", () => {
+    expect(checkCustomHeadTags("<STYLE>td{}</style >")).toEqual({
+      status: "accepted",
+      value: "<STYLE>td{}</style >",
+    });
+  });
+
+  it.each([
+    [
+      '<meta http-equiv="refresh" content="0;url=javascript:alert(1)">',
+      "refresh",
+    ],
+    ['<meta http-equiv="Refresh" content="0;url=https://x.test">', "refresh"],
+    ['<meta http-equiv=set-cookie content="a=b">', "set-cookie"],
+    [
+      '<meta http-equiv="&#114;efresh" content="0;url=https://x.test">',
+      "refresh",
+    ],
+    [
+      '<meta http-equiv="Content-Security-Policy" content="default-src *">',
+      "content-security-policy",
+    ],
+  ])("refuses %s as forbidden-http-equiv %s", (tags, value) => {
+    expect(checkCustomHeadTags(tags)).toEqual({
+      status: "refused",
+      refusal: { reason: "forbidden-http-equiv", value },
+    });
+  });
+
+  it("accepts the http-equiv values it lists", () => {
+    expect([...CUSTOM_HEAD_ALLOWED_HTTP_EQUIV]).toEqual([
+      "content-type",
+      "x-ua-compatible",
+    ]);
+    const tags = `<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">\n<meta http-equiv="X-UA-Compatible" content="IE=edge">`;
+    expect(checkCustomHeadTags(tags)).toEqual({
+      status: "accepted",
+      value: tags,
+    });
+  });
+
+  it("accepts common head snippets", () => {
+    const tags = [
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      '<meta name="format-detection" content="telephone=no">',
+      '<link href="https://fonts.googleapis.com/css2?family=Inter&amp;display=swap" rel="stylesheet" />',
+      "<style>.a > b { font-family: 'Segoe UI', \"Helvetica\"; }</style>",
+      OUTLOOK_DPI,
+    ].join("\n");
+    expect(checkCustomHeadTags(tags)).toEqual({
+      status: "accepted",
+      value: tags,
+    });
   });
 });

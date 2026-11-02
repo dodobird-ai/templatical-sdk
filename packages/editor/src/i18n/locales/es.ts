@@ -678,6 +678,12 @@ const es: typeof en = {
         "Un comentario abierto con <!-- nunca se cierra con -->. Estas etiquetas quedan fuera del correo hasta que se cierre.",
       unclosedTag:
         "Una etiqueta nunca se cierra con >. Estas etiquetas quedan fuera del correo hasta que se cierre.",
+      unclosedElement:
+        "<{element}> nunca se cierra con </{element}>. Estas etiquetas quedan fuera del correo hasta que se cierre.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" no está permitido; solo content-type y x-ua-compatible. Estas etiquetas quedan fuera del correo hasta que se elimine.',
+      malformedTag:
+        "Una etiqueta se puede leer de más de una manera: un < o > dentro, una comilla o = en un valor sin comillas, o atributos sin espacios entre ellos. Estas etiquetas quedan fuera del correo hasta que se corrija.",
     },
     tips: "Consejos",
     tip1: "600px es el ancho estándar para las plantillas de correo electrónico",

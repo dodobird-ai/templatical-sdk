@@ -618,6 +618,12 @@ const fr: typeof en = {
         "Un commentaire ouvert par <!-- n'est jamais fermé par -->. Ces balises sont exclues de l'e-mail jusqu'à sa fermeture.",
       unclosedTag:
         "Une balise n'est jamais fermée par >. Ces balises sont exclues de l'e-mail jusqu'à sa fermeture.",
+      unclosedElement:
+        "<{element}> n'est jamais fermé par </{element}>. Ces balises sont exclues de l'e-mail jusqu'à sa fermeture.",
+      forbiddenHttpEquiv:
+        "http-equiv=\"{value}\" n'est pas autorisé ; seuls content-type et x-ua-compatible le sont. Ces balises sont exclues de l'e-mail jusqu'à sa suppression.",
+      malformedTag:
+        "Une balise peut ici se lire de plusieurs façons : un < ou > à l'intérieur, un guillemet ou = dans une valeur sans guillemets, ou des attributs sans espace entre eux. Ces balises sont exclues de l'e-mail jusqu'à sa correction.",
     },
     tips: "Conseils",
     tip1: "600px est la largeur standard des modèles d'e-mail",

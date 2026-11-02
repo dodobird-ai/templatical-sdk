@@ -617,6 +617,12 @@ const nl: typeof en = {
         "Een met <!-- geopende opmerking wordt nooit met --> gesloten. Deze tags ontbreken in de e-mail tot ze is gesloten.",
       unclosedTag:
         "Een tag wordt nooit met > gesloten. Deze tags ontbreken in de e-mail tot hij is gesloten.",
+      unclosedElement:
+        "<{element}> wordt nooit met </{element}> gesloten. Deze tags ontbreken in de e-mail tot het is gesloten.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" is niet toegestaan, alleen content-type en x-ua-compatible. Deze tags ontbreken in de e-mail tot het is verwijderd.',
+      malformedTag:
+        "Een tag is hier op meer dan één manier te lezen: een < of > erin, een aanhalingsteken of = in een waarde zonder aanhalingstekens, of attributen zonder spatie ertussen. Deze tags ontbreken in de e-mail tot hij is verbeterd.",
     },
     tips: "Tips",
     tip1: "600px is de standaardbreedte voor e-mailsjablonen",

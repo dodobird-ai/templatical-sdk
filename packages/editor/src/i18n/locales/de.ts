@@ -677,6 +677,12 @@ const de: typeof en = {
         "Ein mit <!-- geöffneter Kommentar wird nie mit --> geschlossen. Diese Tags fehlen in der E-Mail, bis er geschlossen ist.",
       unclosedTag:
         "Ein Tag wird nie mit > geschlossen. Diese Tags fehlen in der E-Mail, bis es geschlossen ist.",
+      unclosedElement:
+        "<{element}> wird nie mit </{element}> geschlossen. Diese Tags fehlen in der E-Mail, bis es geschlossen ist.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" ist nicht erlaubt, nur content-type und x-ua-compatible. Diese Tags fehlen in der E-Mail, bis es entfernt ist.',
+      malformedTag:
+        "Ein Tag lässt sich hier auf mehr als eine Art lesen: ein < oder > darin, ein Anführungszeichen oder = in einem Wert ohne Anführungszeichen oder Attribute ohne Leerzeichen dazwischen. Diese Tags fehlen in der E-Mail, bis es korrigiert ist.",
     },
     tips: "Tipps",
     tip1: "600px ist die Standardbreite für E-Mail-Vorlagen",

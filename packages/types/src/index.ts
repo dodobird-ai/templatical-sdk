@@ -386,11 +386,15 @@ export {
 export {
   decodeHtmlEntities,
   findOpenTagEnd,
-  getTagAttrNames,
   getTagAttrValue,
 } from "./html-scan";
-export type { CustomHeadCheck, CustomHeadRefusal } from "./custom-head";
+export type {
+  CustomHeadCheck,
+  CustomHeadForbiddenElement,
+  CustomHeadRefusal,
+} from "./custom-head";
 export {
+  CUSTOM_HEAD_ALLOWED_HTTP_EQUIV,
   CUSTOM_HEAD_FORBIDDEN_ELEMENTS,
   checkCustomHeadCss,
   checkCustomHeadTags,

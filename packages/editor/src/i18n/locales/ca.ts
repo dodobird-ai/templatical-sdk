@@ -679,6 +679,12 @@ const ca: typeof en = {
         "Un comentari obert amb <!-- no es tanca mai amb -->. Aquestes etiquetes queden fora del correu fins que es tanqui.",
       unclosedTag:
         "Una etiqueta no es tanca mai amb >. Aquestes etiquetes queden fora del correu fins que es tanqui.",
+      unclosedElement:
+        "<{element}> no es tanca mai amb </{element}>. Aquestes etiquetes queden fora del correu fins que es tanqui.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" no està permès; només content-type i x-ua-compatible. Aquestes etiquetes queden fora del correu fins que se suprimeixi.',
+      malformedTag:
+        "Una etiqueta es pot llegir de més d'una manera: un < o > a dins, una cometa o = en un valor sense cometes, o atributs sense espais entre ells. Aquestes etiquetes queden fora del correu fins que es corregeixi.",
     },
     tips: "Consells",
     tip1: "600px és l'amplada estàndard per a les plantilles de correu electrònic",

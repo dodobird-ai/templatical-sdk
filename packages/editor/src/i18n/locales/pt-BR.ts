@@ -677,6 +677,12 @@ const ptBR: typeof en = {
         "Um comentário aberto com <!-- nunca é fechado com -->. Estas tags ficam fora do e-mail até ele ser fechado.",
       unclosedTag:
         "Uma tag nunca é fechada com >. Estas tags ficam fora do e-mail até ser fechada.",
+      unclosedElement:
+        "<{element}> nunca é fechado com </{element}>. Estas tags ficam fora do e-mail até ele ser fechado.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" não é permitido; só content-type e x-ua-compatible. Estas tags ficam fora do e-mail até ele ser removido.',
+      malformedTag:
+        "Uma tag aqui pode ser lida de mais de uma forma: um < ou > dentro dela, uma aspa ou = num valor sem aspas, ou atributos sem espaço entre eles. Estas tags ficam fora do e-mail até ser corrigida.",
     },
     tips: "Dicas",
     tip1: "600px é a largura padrão para templates de e-mail",

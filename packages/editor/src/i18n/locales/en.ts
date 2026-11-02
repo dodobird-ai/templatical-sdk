@@ -671,6 +671,12 @@ export default {
         "A comment opened with <!-- is never closed with -->. These tags are left out of the email until it's closed.",
       unclosedTag:
         "A tag is never closed with >. These tags are left out of the email until it's closed.",
+      unclosedElement:
+        "<{element}> is never closed with </{element}>. These tags are left out of the email until it's closed.",
+      forbiddenHttpEquiv:
+        "http-equiv=\"{value}\" isn't allowed; only content-type and x-ua-compatible are. These tags are left out of the email until it's removed.",
+      malformedTag:
+        "A tag here can be read in more than one way: a < or > inside it, a quote or = in an unquoted value, or attributes without spaces between them. These tags are left out of the email until it's fixed.",
     },
     tips: "Tips",
     tip1: "600px is the standard width for email templates",

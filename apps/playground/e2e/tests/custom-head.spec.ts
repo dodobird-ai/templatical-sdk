@@ -29,6 +29,31 @@ async function getMjml(page: Page): Promise<string> {
   );
 }
 
+/**
+ * Export the MJML once the stored setting is refused. The renderer warns each
+ * time it leaves a refused value out, so the warning is the evidence that the
+ * blur wrote the setting: without it, a negative assertion on the MJML would
+ * also pass on a write that never happened.
+ */
+async function getMjmlOnceRefused(
+  page: Page,
+  field: "customHeadCss" | "customHeadTags",
+): Promise<string> {
+  const warning = `[Templatical] settings.${field} was left out of the render`;
+  const warnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().startsWith(warning)) warnings.push(message.text());
+  });
+  let mjml = "";
+  await expect
+    .poll(async () => {
+      mjml = await getMjml(page);
+      return warnings.length;
+    })
+    .toBeGreaterThan(0);
+  return mjml;
+}
+
 function headField(page: Page, name: "css" | "tags") {
   return page.locator(
     `[data-testid="template-settings-custom-head-${name}"] textarea`,
@@ -68,6 +93,19 @@ test.describe("custom head", () => {
         `<mj-raw>\n${META}\n${OUTLOOK}\n    </mj-raw>\n    <mj-style>\n${CSS}\n    </mj-style>\n  </mj-head>`,
       );
 
+    // The editor itself never applies the author's head: no probe meta and no
+    // probe rule anywhere in the page, shadow roots included (Playwright's CSS
+    // locators pierce open shadow roots; they do not enter iframes).
+    await expect(page.locator('meta[name="x-custom-head-probe"]')).toHaveCount(
+      0,
+    );
+    const editorStyles = await page
+      .locator("style")
+      .evaluateAll((els) => els.map((el) => el.textContent ?? ""));
+    expect(
+      editorStyles.filter((text) => text.includes(".custom-head-probe")),
+    ).toEqual([]);
+
     await editorPage.openExport();
     const frame = page.frameLocator(SELECTORS.exportPreviewFrame);
     await expect(
@@ -81,22 +119,33 @@ test.describe("custom head", () => {
     );
   });
 
-  test("a script is refused in the panel and never exported", async ({
-    page,
-  }) => {
-    await headField(page, "tags").fill(`${META}<script>window.__x=1</script>`);
-    const refusal = page.locator(
-      '[data-testid="template-settings-custom-head-tags"] [data-testid="template-settings-custom-head-refusal"]',
-    );
-    await expect(refusal).toHaveText(
+  for (const [label, tags, message] of [
+    [
+      "a script",
+      `${META}<script>window.__x=1</script>`,
       "<script> isn't allowed here. These tags are left out of the email until it's removed.",
-    );
-    await headField(page, "tags").blur();
+    ],
+    [
+      "a script hidden behind a quote in an unquoted value",
+      `${META}<meta a=b"><script>window.__x=1</script><!-- " -->`,
+      "A tag here can be read in more than one way: a < or > inside it, a quote or = in an unquoted value, or attributes without spaces between them. These tags are left out of the email until it's fixed.",
+    ],
+  ] as const) {
+    test(`${label} is refused in the panel and never exported`, async ({
+      page,
+    }) => {
+      await headField(page, "tags").fill(tags);
+      const refusal = page.locator(
+        '[data-testid="template-settings-custom-head-tags"] [data-testid="template-settings-custom-head-refusal"]',
+      );
+      await expect(refusal).toHaveText(message);
+      await headField(page, "tags").blur();
 
-    const mjml = await getMjml(page);
-    expect(mjml).not.toContain("<script");
-    expect(mjml).not.toContain("x-custom-head-probe");
-  });
+      const mjml = await getMjmlOnceRefused(page, "customHeadTags");
+      expect(mjml).not.toContain("<script");
+      expect(mjml).not.toContain("x-custom-head-probe");
+    });
+  }
 
   test("a CSS value that would close its style tag is refused", async ({
     page,
@@ -110,7 +159,9 @@ test.describe("custom head", () => {
       "CSS can't contain “<”. This CSS is left out of the email until it's fixed.",
     );
     await headField(page, "css").blur();
-    expect(await getMjml(page)).not.toContain("custom-head-probe");
+    expect(await getMjmlOnceRefused(page, "customHeadCss")).not.toContain(
+      "custom-head-probe",
+    );
   });
 
   test("one edit is one undo step", async ({ page }) => {

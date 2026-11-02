@@ -19,15 +19,15 @@ interface BlockStyles {
 ```
 
 ```ts
-import { createParagraphBlock } from '@templatical/types';
+import { createParagraphBlock } from "@templatical/types";
 
 const block = createParagraphBlock({
-  content: '<p>Styled text</p>',
+  content: "<p>Styled text</p>",
 });
 
 block.styles = {
   padding: { top: 16, right: 24, bottom: 16, left: 24 },
-  backgroundColor: '#f0f9ff',
+  backgroundColor: "#f0f9ff",
 };
 ```
 
@@ -58,12 +58,12 @@ Ein Paragraph-Block mit mehr als einem `<p>` setzt die Abstände dazwischen übe
 
 ```ts
 const block = createParagraphBlock({
-  content: '<p>First.</p><p>Second.</p>',
+  content: "<p>First.</p><p>Second.</p>",
   paragraphSpacing: 16,
 });
 ```
 
-Die Arbeitsfläche und die exportierte E-Mail wenden diesen Wert identisch an – der Abstand, den Sie im Editor sehen, ist der Abstand, der versendet wird. Betroffen ist nur der Raum *zwischen* Absätzen innerhalb eines Blocks; der Raum um den Block herum ist `styles.padding`, und ein Block mit einem einzelnen Absatz hat gar keinen inneren Abstand.
+Die Arbeitsfläche und die exportierte E-Mail wenden diesen Wert identisch an – der Abstand, den Sie im Editor sehen, ist der Abstand, der versendet wird. Betroffen ist nur der Raum _zwischen_ Absätzen innerhalb eines Blocks; der Raum um den Block herum ist `styles.padding`, und ein Block mit einem einzelnen Absatz hat gar keinen inneren Abstand.
 
 Listenabstände sind nicht konfigurierbar: MJML setzt für `ul`/`ol`/`li` nichts zurück, daher dienen diese Werte dazu, die Standardwerte der E-Mail-Clients festzunageln, und nicht dazu, gestaltet zu werden.
 
@@ -94,35 +94,35 @@ Dies ist nützlich, um unterschiedliche Inhalte bei unterschiedlichen Bildschirm
 
 Neben einzelnen Blockstilen hat das Template selbst globale Einstellungen, die das Gesamtlayout beeinflussen.
 
-| Einstellung | Typ | Beschreibung |
-|---------|------|-------------|
-| `width` | `number` | Template-Inhaltsbreite in px (typischerweise 600) |
-| `backgroundColor` | `string` | Äußere Hintergrundfarbe hinter dem Template |
-| `textColor` | `string` | Standard-Textfarbe, die jeder Textblock (Title, Paragraph, Menu, Table) erbt, sofern der Block keine eigene Farbe oder Inline-Textfarbe setzt. Standard: `#1a1a1a`. |
-| `linkColor` | `string` | Dokumentweite Linkfarbe für jeden Link (Rich-Text und Menu). Optional – wenn nicht gesetzt, erben Links die umgebende Textfarbe. Eine block- oder elementspezifische Farbe überschreibt weiterhin. |
-| `linkUnderline` | `boolean` | Ob Body-Links (Rich-Text) unterstrichen werden. Standard: `true`. Buttons und Menu-Elemente behalten ihre eigene text-decoration. |
-| `fontFamily` | `string` | Standard-Schriftfamilie für alle Blöcke |
-| `locale` | `string` | BCP-47-Inhaltssprache (`<html lang>`). Bei einem leeren Template Standard `en` |
-| `direction` | `'ltr' \| 'rtl'` | Schreibrichtung. Ungesetzt folgt der Inhaltssprache |
-| `preheaderText` | `string` | Vorschauzeile im Posteingang |
-| `customHeadCss` | `string` | Zusätzliches CSS für den `<head>` der E-Mail. Siehe [Eigener Head](#custom-head) |
-| `customHeadTags` | `string` | Zusätzliche `<head>`-Tags. Siehe [Eigener Head](#custom-head) |
+| Einstellung       | Typ              | Beschreibung                                                                                                                                                                                       |
+| ----------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `width`           | `number`         | Template-Inhaltsbreite in px (typischerweise 600)                                                                                                                                                  |
+| `backgroundColor` | `string`         | Äußere Hintergrundfarbe hinter dem Template                                                                                                                                                        |
+| `textColor`       | `string`         | Standard-Textfarbe, die jeder Textblock (Title, Paragraph, Menu, Table) erbt, sofern der Block keine eigene Farbe oder Inline-Textfarbe setzt. Standard: `#1a1a1a`.                                |
+| `linkColor`       | `string`         | Dokumentweite Linkfarbe für jeden Link (Rich-Text und Menu). Optional – wenn nicht gesetzt, erben Links die umgebende Textfarbe. Eine block- oder elementspezifische Farbe überschreibt weiterhin. |
+| `linkUnderline`   | `boolean`        | Ob Body-Links (Rich-Text) unterstrichen werden. Standard: `true`. Buttons und Menu-Elemente behalten ihre eigene text-decoration.                                                                  |
+| `fontFamily`      | `string`         | Standard-Schriftfamilie für alle Blöcke                                                                                                                                                            |
+| `locale`          | `string`         | BCP-47-Inhaltssprache (`<html lang>`). Bei einem leeren Template Standard `en`                                                                                                                     |
+| `direction`       | `'ltr' \| 'rtl'` | Schreibrichtung. Ungesetzt folgt der Inhaltssprache                                                                                                                                                |
+| `preheaderText`   | `string`         | Vorschauzeile im Posteingang                                                                                                                                                                       |
+| `customHeadCss`   | `string`         | Zusätzliches CSS für den `<head>` der E-Mail. Siehe [Eigener Head](#custom-head)                                                                                                                   |
+| `customHeadTags`  | `string`         | Zusätzliche `<head>`-Tags. Siehe [Eigener Head](#custom-head)                                                                                                                                      |
 
 Diese werden über die `init()`-Konfiguration des Editors oder durch direkte Änderung des Template-JSON konfiguriert:
 
 ```ts
-import { init } from '@templatical/editor';
+import { init } from "@templatical/editor";
 
 const editor = await init({
-  container: '#editor',
+  container: "#editor",
   content: {
     settings: {
       width: 640,
-      backgroundColor: '#f8fafc',
-      textColor: '#1a1a1a',
+      backgroundColor: "#f8fafc",
+      textColor: "#1a1a1a",
       linkUnderline: true,
-      locale: 'en',
-      fontFamily: 'Inter, system-ui, sans-serif',
+      locale: "en",
+      fontFamily: "Inter, system-ui, sans-serif",
     },
     blocks: [],
   },
@@ -140,11 +140,11 @@ Links folgen derselben Kaskade: Setzen Sie eine Dokument-`linkColor`, um allen L
 Ein Template kann eigene `<head>`-Inhalte mitbringen: CSS, das die eingebauten Styles nicht abdecken, und Tags wie `<meta>` oder bedingte Kommentare für Outlook. Autoren bearbeiten beides in der Karte **Eigener Head** im Einstellungs-Tab; im Inhalt sind es zwei Einstellungen:
 
 ```ts
-content.settings.customHeadCss = '.footer a { color: #666666 !important; }';
+content.settings.customHeadCss = ".footer a { color: #666666 !important; }";
 content.settings.customHeadTags = [
   '<meta name="x-apple-disable-message-reformatting">',
   "<!--[if mso]><style>td { font-family: 'Segoe UI', Arial, sans-serif; }</style><![endif]-->",
-].join('\n');
+].join("\n");
 ```
 
 Der Renderer fügt sie am Ende von `<mj-head>` ein, nach allen eingebauten und Custom-Block-Regeln:
@@ -169,12 +169,16 @@ Der Renderer fügt sie am Ende von `<mj-head>` ein, nach allen eingebauten und C
 
 Ein Wert, der das MJML-Dokument zerstören oder Code ausführen könnte, wird ganz aus dem Rendering weggelassen, nie teilweise, und der Renderer meldet den Grund per `console.warn`. Das Panel zeigt denselben Grund schon beim Tippen unter dem Feld; der Wert bleibt so gespeichert, wie er eingegeben wurde, damit er korrigiert werden kann.
 
-| Feld | Abgelehnt | Warum |
-| --- | --- | --- |
-| `customHeadCss` | jedes `<` | Es könnte das `<mj-style>` oder das kompilierte `<style>` schließen. In einem CSS-String `\3C` schreiben. |
-| `customHeadTags` | `<script>`, `<iframe>`, `<frame>`, `<frameset>`, `<object>`, `<embed>`, `<applet>`, `<base>`, `<form>`, `<html>`, `<head>`, `<body>`, `<mjml>` und jedes `<mj-*>`-Tag, öffnend oder schließend | Aktive Inhalte, Dokumentstruktur oder das Ende von `<mj-raw>` |
-| `customHeadTags` | ein `on*`-Attribut | Event-Handler laufen in Browsern, die das HTML anzeigen |
-| `customHeadTags` | ein URL-Attribut (`href`, `src`, …) außerhalb der Link-Schemata des Editors | `javascript:`, `data:` und ähnliche |
-| `customHeadTags` | ein `<!--` ohne `-->`, ein Tag ohne `>` | Beides würde den Rest des Heads verschlucken |
+| Feld             | Abgelehnt                                                                                                                                                                                                                                                                                                                                                            | Warum                                                                                                                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customHeadCss`  | jedes `<`                                                                                                                                                                                                                                                                                                                                                            | Es könnte das `<mj-style>` oder das kompilierte `<style>` schließen. In einem CSS-String `\3C` schreiben.                                                                           |
+| `customHeadTags` | `<script>`, `<iframe>`, `<frame>`, `<frameset>`, `<object>`, `<embed>`, `<applet>`, `<svg>`, `<math>`, `<plaintext>`, `<base>`, `<form>`, `<html>`, `<head>`, `<body>`, `<mjml>` und jedes `<mj-*>`-Tag, öffnend oder schließend                                                                                                                                     | Aktive Inhalte, Dokumentstruktur oder das Ende von `<mj-raw>`                                                                                                                       |
+| `customHeadTags` | ein `on*`-Attribut                                                                                                                                                                                                                                                                                                                                                   | Event-Handler laufen in Browsern, die das HTML anzeigen                                                                                                                             |
+| `customHeadTags` | ein URL-Attribut (`href`, `src`, …) außerhalb der Link-Schemata des Editors                                                                                                                                                                                                                                                                                          | `javascript:`, `data:` und ähnliche                                                                                                                                                 |
+| `customHeadTags` | ein `<!--` ohne `-->`, ein Tag ohne `>`, ein `<style>`, `<title>`, `<noscript>`, `<textarea>`, `<xmp>`, `<noembed>` oder `<noframes>` ohne schließendes Tag                                                                                                                                                                                                          | Jedes davon würde den Rest des Heads verschlucken                                                                                                                                   |
+| `customHeadTags` | `http-equiv` außer `content-type` oder `x-ua-compatible`                                                                                                                                                                                                                                                                                                             | `refresh`, `set-cookie` und ähnliche wirken auf die Seite, die die E-Mail anzeigt, etwa die Vorschau eines Hosts                                                                    |
+| `customHeadTags` | ein fehlerhaftes Tag: `<` oder `>` in einem Tag (auch in einem Wert in Anführungszeichen: `&lt;` / `&gt;` schreiben), ein Anführungszeichen, `=` oder Backtick in einem Attributnamen oder einem Wert ohne Anführungszeichen, Attribute ohne Leerzeichen dazwischen, etwas nach dem Namen eines schließenden Tags, ein selbstschließendes `<style/>` oder `<title/>` | Browser, MJML und Mail-Clients gehen unterschiedlich damit um, sodass ein Tag, das die Prüfung auf eine Art liest, dort, wo die E-Mail angezeigt wird, anders gelesen werden könnte |
+
+Die Prüfung liest jedes `<` in den Tags als mögliches Tag, auch in Kommentaren und in `<style>`, sodass Markup, das ein Browser als Text behandeln würde, denselben Regeln unterliegt.
 
 `checkCustomHeadCss` und `checkCustomHeadTags` aus `@templatical/types` liefern das Ergebnis (`empty`, `accepted` mit dem getrimmten Wert oder `refused` mit einem typisierten Grund) für Hosts, die vor dem Speichern prüfen. Wie die Einstellungs-Allowlist läuft die Prüfung im Browser und im Renderer, nicht auf Ihrem Server; prüfen Sie, was Sie speichern. Um Autoren ganz aus dem Head herauszuhalten, lassen Sie beide Felder in [`templateSettings.fields`](/de/api/editor#restricting-the-settings-panel) weg.

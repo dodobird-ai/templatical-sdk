@@ -629,13 +629,17 @@ function warnCustomHeadRefused(
 function refusalDetail(refusal: CustomHeadRefusal): string {
   switch (refusal.reason) {
     case "forbidden-element":
+    case "unclosed-element":
       return ` (<${refusal.element}>)`;
     case "event-handler":
     case "unsafe-url":
       return ` (${refusal.attribute})`;
+    case "forbidden-http-equiv":
+      return ` (${refusal.value})`;
     case "markup-in-css":
     case "unclosed-comment":
     case "unclosed-tag":
+    case "malformed-tag":
       return "";
   }
 }

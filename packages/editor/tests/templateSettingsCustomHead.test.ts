@@ -203,6 +203,21 @@ describe("TemplateSettings custom head card", () => {
       '<meta name="a"',
       "A tag is never closed with >. These tags are left out of the email until it's closed.",
     ],
+    [
+      "tags",
+      "<title>Sale",
+      "<title> is never closed with </title>. These tags are left out of the email until it's closed.",
+    ],
+    [
+      "tags",
+      '<meta http-equiv="refresh" content="0;url=https://x.test">',
+      "http-equiv=\"refresh\" isn't allowed; only content-type and x-ua-compatible are. These tags are left out of the email until it's removed.",
+    ],
+    [
+      "tags",
+      '<meta a=b"><script>alert(1)</script><!-- " -->',
+      "A tag here can be read in more than one way: a < or > inside it, a quote or = in an unquoted value, or attributes without spaces between them. These tags are left out of the email until it's fixed.",
+    ],
   ] as const)(
     "explains a refused %s value %s",
     async (name, value, message) => {

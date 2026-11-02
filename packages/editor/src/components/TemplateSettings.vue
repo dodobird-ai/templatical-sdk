@@ -135,6 +135,12 @@ function customHeadRefusalMessage(field: CustomHeadField): string | null {
       return messages.unclosedComment;
     case "unclosed-tag":
       return messages.unclosedTag;
+    case "unclosed-element":
+      return format(messages.unclosedElement, { element: refusal.element });
+    case "forbidden-http-equiv":
+      return format(messages.forbiddenHttpEquiv, { value: refusal.value });
+    case "malformed-tag":
+      return messages.malformedTag;
   }
 }
 
@@ -159,16 +165,24 @@ const customHeadFields = computed(() =>
   ].filter((entry) => shows(entry.field)),
 );
 
+// Both handlers are bound only to the custom head textareas; narrowing rather
+// than casting keeps a stray event from writing `undefined` into the draft.
+function textareaValue(event: Event): string | null {
+  return event.target instanceof HTMLTextAreaElement
+    ? event.target.value
+    : null;
+}
+
 function draftCustomHead(field: CustomHeadField, event: Event): void {
-  customHeadDraft.value = {
-    ...customHeadDraft.value,
-    [field]: (event.target as HTMLTextAreaElement).value,
-  };
+  const value = textareaValue(event);
+  if (value === null) return;
+  customHeadDraft.value = { ...customHeadDraft.value, [field]: value };
 }
 
 // Stored as typed, refused or not, so the author can fix it; blank is unset.
 function commitCustomHead(field: CustomHeadField, event: Event): void {
-  const value = (event.target as HTMLTextAreaElement).value;
+  const value = textareaValue(event);
+  if (value === null) return;
   emit("update", { [field]: value.trim() === "" ? undefined : value });
 }
 
