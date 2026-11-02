@@ -611,6 +611,7 @@ const translations: typeof en = {
     clear: "色の指定を解除",
     transparent: "透明",
     presetColors: "プリセットの色",
+    pickFromScreen: "画面から色を取得",
   },
   mergeTag: {
     editAsText: "テキストとして編集",

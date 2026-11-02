@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, inject, ref, watch } from "vue";
+import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
 import { onClickOutside } from "@vueuse/core";
-import { X } from "@lucide/vue";
+import { Pipette, X } from "@lucide/vue";
 import { useI18n } from "../composables/useI18n";
 import { useLocaleEditable } from "../composables/useLocaleEditable";
 import { usePopoverRoot } from "../composables/usePopoverRoot";
@@ -14,6 +14,8 @@ import {
 } from "../utils/color";
 import { COLORS_KEY, THEME_STYLES_KEY, UI_THEME_KEY } from "../keys";
 import { DEFAULT_RESOLVED_COLORS } from "../utils/resolveColorsConfig";
+import { pickWithEyeDropper, resolveEyeDropper } from "../utils/eyeDropper";
+import { logger } from "../utils/logger";
 import "vanilla-colorful";
 
 const props = withDefaults(
@@ -100,6 +102,9 @@ const pickerTouched = ref(false);
 onClickOutside(
   popoverRef,
   () => {
+    // While the eyedropper is open, the click that picks a pixel lands
+    // outside the popover; closing here would abort the very pick it makes.
+    if (eyeDropperActive.value) return;
     open.value = false;
   },
   { ignore: [swatchRef] },
@@ -250,6 +255,70 @@ function onPickerPointerUp(): void {
   // A deliberate pick equal to the seed fires no `color-changed`; commit it.
   if (!pickerTouched.value && isUnset.value) {
     emit("update:modelValue", seed.value);
+  }
+}
+
+// Eyedropper: picks a color from anywhere on screen via the browser EyeDropper
+// API (Chromium only). Resolved per instance, at setup, so the button is simply
+// absent where the API is missing. It is a free-form control, so it follows the
+// wheel: a locked palette (`showFreeform` false) gets no eyedropper.
+const eyeDropper = resolveEyeDropper(
+  typeof window === "undefined" ? undefined : window,
+);
+const showEyeDropper = computed(
+  () => eyeDropper !== null && showFreeform.value,
+);
+const eyeDropperActive = ref(false);
+let eyeDropperSession: AbortController | null = null;
+
+function stopEyeDropper(): void {
+  eyeDropperSession?.abort();
+  eyeDropperSession = null;
+  eyeDropperActive.value = false;
+}
+
+// Closing the popover or unmounting the picker ends a pending session, so a
+// late pick never lands on a field the author has moved away from. Sync, so
+// the abort happens in the same tick as the close: disabling the field closes
+// the popover synchronously too (see the `isDisabled` watcher), which makes a
+// pick arriving after the field became read-only already aborted.
+watch(
+  open,
+  (isOpen) => {
+    if (!isOpen) stopEyeDropper();
+  },
+  { flush: "sync" },
+);
+onBeforeUnmount(stopEyeDropper);
+
+async function pickFromScreen(): Promise<void> {
+  if (isDisabled.value || eyeDropper === null || eyeDropperSession) return;
+  const session = new AbortController();
+  eyeDropperSession = session;
+  eyeDropperActive.value = true;
+  const outcome = await pickWithEyeDropper(eyeDropper, session.signal);
+  if (session.signal.aborted) return;
+  eyeDropperSession = null;
+  eyeDropperActive.value = false;
+  switch (outcome.kind) {
+    case "picked":
+      // Emitted like a wheel pick. A field disabled mid-session (e.g. a
+      // locale switch) never gets here: it closed the popover, which aborted
+      // the session above.
+      emit("update:modelValue", outcome.hex);
+      return;
+    case "cancelled":
+      // Escape: the author changed their mind; nothing to report.
+      return;
+    case "failed":
+      // The picker has no error state of its own; report like other
+      // non-fatal editor problems and leave the value untouched.
+      logger.warn("Eyedropper could not pick a color:", outcome.error);
+      return;
+    default: {
+      const unreachable: never = outcome;
+      return unreachable;
+    }
   }
 }
 
@@ -464,6 +533,21 @@ function toggleOpen(): void {
             @pointerup="onPickerPointerUp"
             @keydown.escape="open = false"
           />
+          <button
+            v-if="showEyeDropper"
+            type="button"
+            data-testid="color-picker-eyedropper"
+            :disabled="isDisabled"
+            :aria-disabled="eyeDropperActive"
+            :aria-busy="eyeDropperActive"
+            :title="t.colorPicker.pickFromScreen"
+            class="tpl:mt-2 tpl:flex tpl:w-full tpl:cursor-pointer tpl:items-center tpl:gap-2 tpl:rounded-[var(--tpl-radius-sm)] tpl:border tpl:border-[var(--tpl-border)] tpl:bg-[var(--tpl-bg)] tpl:px-2 tpl:py-1 tpl:text-left tpl:text-xs tpl:text-[var(--tpl-text)] tpl:outline-none tpl:transition-all tpl:duration-[120ms] tpl:ease-[cubic-bezier(0.16,1,0.3,1)] tpl:hover:border-[var(--tpl-text-dim)] tpl:focus-visible:ring-2 tpl:focus-visible:ring-[var(--tpl-primary)] tpl:disabled:cursor-not-allowed tpl:disabled:opacity-60 tpl:aria-disabled:cursor-wait tpl:aria-disabled:opacity-60"
+            @click="pickFromScreen"
+            @keydown.escape="open = false"
+          >
+            <Pipette :size="14" :stroke-width="1.5" aria-hidden="true" />
+            {{ t.colorPicker.pickFromScreen }}
+          </button>
           <!-- Swatch-only mode has no inline field beside the swatch, so the
                popover carries the manual hex field (+ inline × clear) — the same
                control as the full-mode sidebar field. It commits on change/Enter,

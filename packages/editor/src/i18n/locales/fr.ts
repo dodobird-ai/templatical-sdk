@@ -628,6 +628,7 @@ const fr: typeof en = {
     clear: "Effacer la couleur",
     transparent: "Transparent",
     presetColors: "Couleurs prédéfinies",
+    pickFromScreen: "Prélever à l'écran",
   },
   mergeTag: {
     editAsText: "Modifier comme texte",

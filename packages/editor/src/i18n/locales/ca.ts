@@ -693,6 +693,7 @@ const ca: typeof en = {
     clear: "Neteja el color",
     transparent: "Transparent",
     presetColors: "Colors predefinits",
+    pickFromScreen: "Agafa de la pantalla",
   },
 
   // Merge Tag
