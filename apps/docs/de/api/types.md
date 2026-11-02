@@ -229,10 +229,14 @@ interface TitleBlock extends BaseBlock {
   color?: string;
   textAlign: 'left' | 'center' | 'right';
   fontFamily?: string;
+  fontSize?: number;   // px; ohne Angabe gilt die Größe der Ebene
+  lineHeight?: number; // Vielfaches von fontSize; ohne Angabe TITLE_LINE_HEIGHT (1.3)
 }
 
 type HeadingLevel = 1 | 2 | 3 | 4;
 ```
+
+`resolveTitleFontSize(block)` und `resolveTitleLineHeight(block)` liefern die Schriftgröße und Zeilenhöhe, mit der ein Titel dargestellt wird: seinen eigenen Wert, wenn er einen positiven setzt, sonst die Größe seiner Ebene aus `HEADING_LEVEL_FONT_SIZE` und `TITLE_LINE_HEIGHT`. Renderer, Editor-Arbeitsfläche und Barrierefreiheitsregeln lesen beide, ein eigener Renderer, der es ebenso macht, stimmt also mit ihnen überein.
 
 ### ParagraphBlock
 

@@ -3,8 +3,14 @@ import FieldRow from "./FieldRow.vue";
 import ColorPicker from "../ColorPicker.vue";
 import SlidingPillSelect from "../SlidingPillSelect.vue";
 import { useI18n } from "../../composables/useI18n";
-import { inputClass } from "../../constants/styleConstants";
+import OptionalNumberField from "./OptionalNumberField.vue";
+import {
+  TITLE_FONT_SIZE_FIELD,
+  TITLE_LINE_HEIGHT_FIELD,
+  inputClass,
+} from "../../constants/styleConstants";
 import type { TitleBlock } from "@templatical/types";
+import { TITLE_LINE_HEIGHT, resolveTitleFontSize } from "@templatical/types";
 import { AlignCenter, AlignLeft, AlignRight } from "@lucide/vue";
 import { fontSelectValue } from "../../utils/withCurrentFont";
 
@@ -38,6 +44,30 @@ function updateField(field: string, value: unknown): void {
       <option :value="3">{{ t.title.heading3 }}</option>
       <option :value="4">{{ t.title.heading4 }}</option>
     </select>
+  </FieldRow>
+  <!--
+    Title size and title line height are optional: an empty field leaves them
+    to the heading level and TITLE_LINE_HEIGHT, whose values show as the
+    placeholder. Emptying the field is how a title goes back to them.
+  -->
+  <FieldRow :label="t.title.fontSize" class="tpl:mb-3.5" path="fontSize">
+    <OptionalNumberField
+      v-bind="TITLE_FONT_SIZE_FIELD"
+      testid="title-font-size"
+      suffix="px"
+      :model-value="block.fontSize"
+      :placeholder="String(resolveTitleFontSize({ level: block.level }))"
+      @update:model-value="(fontSize) => emit('update', { fontSize })"
+    />
+  </FieldRow>
+  <FieldRow :label="t.title.lineHeight" class="tpl:mb-3.5" path="lineHeight">
+    <OptionalNumberField
+      v-bind="TITLE_LINE_HEIGHT_FIELD"
+      testid="title-line-height"
+      :model-value="block.lineHeight"
+      :placeholder="String(TITLE_LINE_HEIGHT)"
+      @update:model-value="(lineHeight) => emit('update', { lineHeight })"
+    />
   </FieldRow>
   <FieldRow :label="t.title.fontFamily" class="tpl:mb-3.5" path="fontFamily">
     <select

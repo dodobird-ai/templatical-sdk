@@ -1,4 +1,9 @@
-import { isMenu, isTable } from "@templatical/types";
+import {
+  isMenu,
+  isTable,
+  isTitle,
+  resolveTitleFontSize,
+} from "@templatical/types";
 import type { Block } from "@templatical/types";
 import type { Rule, RuleMeta } from "../../types";
 
@@ -11,6 +16,9 @@ export const meta: RuleMeta = {
 
 function getFontSize(block: Block): number | null {
   if (isMenu(block) || isTable(block)) return block.fontSize;
+  // A title's level sizes are all large; only a title size of its own can be
+  // small, but the check reads the size in effect either way.
+  if (isTitle(block)) return resolveTitleFontSize(block);
   return null;
 }
 

@@ -268,6 +268,8 @@ const translations: typeof en = {
     heading2: "見出し 2 (28px)",
     heading3: "見出し 3 (22px)",
     heading4: "見出し 4 (18px)",
+    fontSize: "文字サイズ",
+    lineHeight: "行間",
     fontFamily: "フォント",
     inheritFont: "テンプレートのフォントを使用",
     color: "色",

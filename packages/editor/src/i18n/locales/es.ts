@@ -313,6 +313,8 @@ const es: typeof en = {
     heading2: "Encabezado 2 (28px)",
     heading3: "Encabezado 3 (22px)",
     heading4: "Encabezado 4 (18px)",
+    fontSize: "Tamaño de fuente",
+    lineHeight: "Interlineado",
     fontFamily: "Familia tipográfica",
     inheritFont: "Usar fuente de la plantilla",
     color: "Color",

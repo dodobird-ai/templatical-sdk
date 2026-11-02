@@ -2914,10 +2914,14 @@ interface TitleBlock extends BaseBlock {
   color?: string;
   textAlign: 'left' | 'center' | 'right';
   fontFamily?: string;
+  fontSize?: number;   // px; absent = the level's size
+  lineHeight?: number; // multiple of fontSize; absent = TITLE_LINE_HEIGHT (1.3)
 }
 
 type HeadingLevel = 1 | 2 | 3 | 4;
 ```
+
+`resolveTitleFontSize(block)` and `resolveTitleLineHeight(block)` return the size and line height a title renders at: its own value when it sets a positive one, else the level's size from `HEADING_LEVEL_FONT_SIZE` and `TITLE_LINE_HEIGHT`. The renderer, the editor canvas and the accessibility rules all read them, so a custom renderer that does the same matches them.
 
 ### ParagraphBlock
 
@@ -9445,7 +9449,7 @@ To create blocks programmatically, see [Programmatic Templates](/guide/programma
 
 | Need | Block | Notes |
 |------|-------|-------|
-| Headings, titles | [Title](#title) | Fixed-size headings (H1-H4) with block-level formatting |
+| Headings, titles | [Title](#title) | Headings (H1-H4) with block-level formatting and an optional size of their own |
 | Body text, paragraphs | [Paragraph](#paragraph) | Rich text with inline formatting via TipTap |
 | Photos, banners, logos | [Image](#image) | Optional link wrapping, responsive width |
 | Call-to-action | [Button](#button) | Bulletproof buttons rendered through `mj-button` as HTML tables |
@@ -9462,7 +9466,9 @@ To create blocks programmatically, see [Programmatic Templates](/guide/programma
 
 ## Title
 
-A heading block with fixed size levels. Use titles for headings, section headers, and other prominent text.
+A heading block. Use titles for headings, section headers, and other prominent text.
+
+The heading level (H1-H4) sets the heading element and a default size. A title can also take a size of its own in px, and a line height, in the title settings. Leave either field empty to keep the default: the empty field shows the value in effect. The level still decides the element, so an H1 set to 20px is still the email's main heading.
 
 Titles are bold (weight 700) on the canvas, while you edit them, and in the email. Inline bold inside a title asks for a heavier weight, which web-safe fonts such as Arial don't have, so it shows only in a font that does.
 
@@ -9473,6 +9479,8 @@ Titles are bold (weight 700) on the canvas, while you edit them, and in the emai
 | `color` | `string` | Text color |
 | `textAlign` | `'left' \| 'center' \| 'right'` | Horizontal alignment |
 | `fontFamily` | `string` | Font family override |
+| `fontSize` | `number` | Font size in px, overriding the level's. Omit it for the level's size |
+| `lineHeight` | `number` | Line height as a multiple of the font size, such as `1.15`. Omit it for `1.3` |
 
 ## Paragraph
 
@@ -14188,7 +14196,7 @@ Run a diff between the original and Templatical-generated MJML to spot structura
 | `mj-section` (containing `mj-column`s) | `SectionBlock` with `columns` | Multi-column layouts work the same way; column widths come from MJML's `width` attribute or are equally distributed. `border-radius` and `border` too (see [Borders and corners](#borders-and-corners)). `background-url` with its size, position and repeat becomes `backgroundImage` (see [Background images](#background-images)). |
 | `mj-column` | Section column | A column holds a list of nested blocks. |
 | `mj-group` | `SectionBlock.stackOnMobile: false` | Not a block at all — marks the section's columns to stay side by side on mobile instead of stacking. |
-| `mj-text` | `TitleBlock` / `TableBlock` / `MenuBlock` / `ParagraphBlock` | Resolved structurally: a single heading root becomes `TitleBlock`, a single `<table>` becomes `TableBlock`, span-separated top-level anchors with no paragraph wrapper and no non-whitespace text-node siblings become `MenuBlock`, a sentence of copy plus a trailing `<a>` becomes `ParagraphBlock`, anything else becomes `ParagraphBlock`. A paragraph's `align`, `color` and `font-size` go into its markup: `text-align` on each `<p>`, color and size on one `<span>` inside it (`ParagraphBlock` has no field for them). Alignment to the start edge (`left`, or `right` in an RTL template) and a 14px size are left out. |
+| `mj-text` | `TitleBlock` / `TableBlock` / `MenuBlock` / `ParagraphBlock` | Resolved structurally: a single heading root becomes `TitleBlock`, a single `<table>` becomes `TableBlock`, span-separated top-level anchors with no paragraph wrapper and no non-whitespace text-node siblings become `MenuBlock`, a sentence of copy plus a trailing `<a>` becomes `ParagraphBlock`, anything else becomes `ParagraphBlock`. A paragraph's `align`, `color` and `font-size` go into its markup: `text-align` on each `<p>`, color and size on one `<span>` inside it (`ParagraphBlock` has no field for them). Alignment to the start edge (`left`, or `right` in an RTL template) and a 14px size are left out. A title's `font-size` and unitless `line-height` become its `fontSize` and `lineHeight` when the `mj-text` sets them itself (inline or through an `mj-class`, not as an `<mj-attributes>` default), the heading inherits them (`font-size:inherit`, `line-height:inherit`, as Templatical writes it), and they differ from its heading level's size and from `1.3`. |
 | `mj-image` | `ImageBlock` | `src`, `alt`, `href`, `width` (see [Image width](#image-width)), padding, `border-radius`, `border` (see [Borders and corners](#borders-and-corners)). `fluid-on-mobile` holds on an image that fills its column; on a narrower one it is `approximated`, since the image [keeps its width on phones](/guide/images#width-on-phones). |
 | `mj-button` | `ButtonBlock` | `href`, `background-color`, `color`, `font-size`, `font-family`, padding, `width` (see [Button width](#button-width)), `border-radius`, `border` (see [Borders and corners](#borders-and-corners)). |
 | `mj-divider` | `DividerBlock` | `border-color`, `border-width`, `width` (see [Divider width](#divider-width)), padding. |
@@ -16521,8 +16529,8 @@ The 21 rules `lintAccessibility` ships, grouped by what they check. Each rule li
 |---|---|---|---|
 | `a11y.text-all-caps` | warning | — | All-caps body text — Long stretches of all-caps text are read letter-by-letter by some screen readers and slow visual reading by 10–20%. Use sentence case for body copy; reserve caps for short labels. |
 | `a11y.text-justified` | warning | yes | Justified body text — Stretching word spacing to flush both margins opens uneven "rivers" of white space that are hardest to track for dyslexic and low-vision readers, and email clients justify without hyphenation so the gaps get wider still. Only paragraph blocks are checked; every other block stores alignment as a field whose type excludes `justify`. The fix removes the declaration rather than forcing `left`, so the paragraph inherits the document default — which is also correct for right-to-left content. [1](https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation) |
-| `a11y.text-low-contrast` | error | — | Heading contrast is too low — WCAG AA requires 4.5:1 for body text and 3:1 for large text (18pt / ~24px). Headings ≥24px (H1, H2) get the relaxed 3:1 threshold; H3 (22px) and H4 (18px) require 4.5:1. The bold-text relaxation isn't applied — TipTap stores bold inline in HTML, not as a structured field. Below that, text becomes unreadable for low-vision users and in bright outdoor light. Only Title blocks are checked; paragraph color lives in inline HTML. [1](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum) |
-| `a11y.text-too-small` | warning | — | Text is too small — Email body text below 14px becomes hard to read on mobile. Some clients also auto-zoom or scale up small fonts in unpredictable ways. Stay at 14px or larger. |
+| `a11y.text-low-contrast` | error | — | Heading contrast is too low — WCAG AA requires 4.5:1 for body text and 3:1 for large text (18pt / ~24px). Headings ≥24px (by default H1, H2) get the relaxed 3:1 threshold; H3 (22px) and H4 (18px) require 4.5:1. A title with a size of its own is judged by that size. The bold-text relaxation isn't applied — TipTap stores bold inline in HTML, not as a structured field. Below that, text becomes unreadable for low-vision users and in bright outdoor light. Only Title blocks are checked; paragraph color lives in inline HTML. [1](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum) |
+| `a11y.text-too-small` | warning | — | Text is too small — Email body text below 14px becomes hard to read on mobile. Some clients also auto-zoom or scale up small fonts in unpredictable ways. Stay at 14px or larger. Menu, table and title blocks are checked; a title by its own size, else its level's. |
 
 ## Buttons
 

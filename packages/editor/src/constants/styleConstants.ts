@@ -170,6 +170,25 @@ export const FONT_SIZE_OPTIONS = [
   "64px",
 ];
 
+/**
+ * Title size field: any whole px, so finer than `FONT_SIZE_OPTIONS`. The bounds
+ * only guide the spinner; a typed value outside them is still taken.
+ */
+export const TITLE_FONT_SIZE_FIELD = {
+  min: 8,
+  max: 120,
+  step: 1,
+  grain: "whole",
+} as const;
+
+/** Title line height field, finer than `LINE_HEIGHT_OPTIONS`. */
+export const TITLE_LINE_HEIGHT_FIELD = {
+  min: 0.8,
+  max: 3,
+  step: 0.05,
+  grain: "any",
+} as const;
+
 export const LINE_HEIGHT_OPTIONS = [
   "1",
   "1.2",

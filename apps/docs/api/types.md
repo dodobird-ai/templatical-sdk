@@ -229,10 +229,14 @@ interface TitleBlock extends BaseBlock {
   color?: string;
   textAlign: 'left' | 'center' | 'right';
   fontFamily?: string;
+  fontSize?: number;   // px; absent = the level's size
+  lineHeight?: number; // multiple of fontSize; absent = TITLE_LINE_HEIGHT (1.3)
 }
 
 type HeadingLevel = 1 | 2 | 3 | 4;
 ```
+
+`resolveTitleFontSize(block)` and `resolveTitleLineHeight(block)` return the size and line height a title renders at: its own value when it sets a positive one, else the level's size from `HEADING_LEVEL_FONT_SIZE` and `TITLE_LINE_HEIGHT`. The renderer, the editor canvas and the accessibility rules all read them, so a custom renderer that does the same matches them.
 
 ### ParagraphBlock
 

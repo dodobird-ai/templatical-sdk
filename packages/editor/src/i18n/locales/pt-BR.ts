@@ -312,6 +312,8 @@ const ptBR: typeof en = {
     heading2: "Cabeçalho 2 (28px)",
     heading3: "Cabeçalho 3 (22px)",
     heading4: "Cabeçalho 4 (18px)",
+    fontSize: "Tamanho da Fonte",
+    lineHeight: "Altura da Linha",
     fontFamily: "Família da Fonte",
     inheritFont: "Usar fonte do template",
     color: "Cor",

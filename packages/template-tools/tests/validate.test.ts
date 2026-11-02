@@ -103,6 +103,30 @@ describe("validateTemplate — divider width", () => {
   });
 });
 
+describe("validateTemplate — title size and line height", () => {
+  const titleWith = (extra: object) =>
+    validateTemplate(template([title("title_1", "Hi", extra)]));
+
+  it("accepts a positive size and line height, fractions included", () => {
+    expect(titleWith({ fontSize: 31, lineHeight: 1.15 })).toEqual({
+      valid: true,
+      errors: [],
+    });
+    expect(titleWith({ fontSize: 31.5 }).valid).toBe(true);
+  });
+
+  it("rejects a size or line height that cannot be rendered", () => {
+    for (const extra of [
+      { fontSize: 0 },
+      { fontSize: -4 },
+      { lineHeight: 0 },
+      { lineHeight: -1.2 },
+    ]) {
+      expect(titleWith(extra).valid, JSON.stringify(extra)).toBe(false);
+    }
+  });
+});
+
 describe("validateTemplate — unhappy path", () => {
   it("rejects a non-object root", () => {
     expect(validateTemplate(null)).toEqual({
@@ -130,7 +154,9 @@ describe("validateTemplate — unhappy path", () => {
     });
     expect(result.valid).toBe(false);
     expect(
-      result.errors.some((e) => e.startsWith("settings") && e.includes("width")),
+      result.errors.some(
+        (e) => e.startsWith("settings") && e.includes("width"),
+      ),
     ).toBe(true);
   });
 
@@ -160,15 +186,15 @@ describe("validateTemplate — unhappy path", () => {
   });
 
   it("reports a missing block type as unknown rather than crashing", () => {
-    const result = validateTemplate(template([{ id: "x", styles: { padding } }]));
+    const result = validateTemplate(
+      template([{ id: "x", styles: { padding } }]),
+    );
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain("unknown or missing block type");
   });
 
   it("rejects unknown properties", () => {
-    const result = validateTemplate(
-      template([title("t", "Hi", { bogus: 1 })]),
-    );
+    const result = validateTemplate(template([title("t", "Hi", { bogus: 1 })]));
     expect(result.valid).toBe(false);
     // Otherwise-valid block: the only complaint must be the unknown property.
     expect(result.errors).toHaveLength(1);

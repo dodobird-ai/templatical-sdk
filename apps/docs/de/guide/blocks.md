@@ -15,7 +15,7 @@ Um Blöcke programmatisch zu erstellen, siehe [Programmatische Templates](/de/gu
 
 | Bedarf | Block | Hinweise |
 |------|-------|-------|
-| Überschriften, Titel | [Title](#title) | Überschriften mit fester Größe (H1-H4) mit Formatierung auf Blockebene |
+| Überschriften, Titel | [Title](#title) | Überschriften (H1-H4) mit Formatierung auf Blockebene und optional eigener Größe |
 | Fließtext, Absätze | [Paragraph](#paragraph) | Rich Text mit Inline-Formatierung über TipTap |
 | Fotos, Banner, Logos | [Image](#image) | Optionales Link-Wrapping, responsive Breite |
 | Call-to-Action | [Button](#button) | Bulletproof-Schaltflächen, über `mj-button` als HTML-Tabellen gerendert |
@@ -32,7 +32,9 @@ Um Blöcke programmatisch zu erstellen, siehe [Programmatische Templates](/de/gu
 
 ## Title
 
-Ein Überschriften-Block mit festen Größenstufen. Verwenden Sie Titel für Überschriften, Sektionsüberschriften und andere prominente Texte.
+Ein Überschriften-Block. Verwenden Sie Titel für Überschriften, Sektionsüberschriften und andere prominente Texte.
+
+Die Überschriftsebene (H1-H4) legt das Überschriftenelement und eine Standardgröße fest. In den Titel-Einstellungen kann ein Titel zusätzlich eine eigene Schriftgröße in px und eine eigene Zeilenhöhe bekommen. Lassen Sie ein Feld leer, gilt der Standard: Das leere Feld zeigt den Wert, der gerade gilt. Die Ebene bestimmt weiterhin das Element, eine auf 20px gesetzte H1 bleibt also die Hauptüberschrift der E-Mail.
 
 Titel sind fett (Schriftstärke 700): auf der Arbeitsfläche, während Sie sie bearbeiten, und in der E-Mail. Fettdruck innerhalb eines Titels verlangt eine noch kräftigere Schriftstärke. Websichere Schriften wie Arial haben keine, deshalb ist er nur in einer Schrift sichtbar, die eine besitzt.
 
@@ -43,6 +45,8 @@ Titel sind fett (Schriftstärke 700): auf der Arbeitsfläche, während Sie sie b
 | `color` | `string` | Textfarbe |
 | `textAlign` | `'left' \| 'center' \| 'right'` | Horizontale Ausrichtung |
 | `fontFamily` | `string` | Überschreibung der Schriftfamilie |
+| `fontSize` | `number` | Schriftgröße in px, überschreibt die der Ebene. Ohne Angabe gilt die Größe der Ebene |
+| `lineHeight` | `number` | Zeilenhöhe als Vielfaches der Schriftgröße, etwa `1.15`. Ohne Angabe gilt `1.3` |
 
 ## Paragraph
 

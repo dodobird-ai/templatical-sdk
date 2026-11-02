@@ -176,6 +176,8 @@ export const SELECTORS = {
    */
   blockToolbar: '[data-testid="block-toolbar"]',
   paragraphSpacing: '[data-testid="paragraph-spacing"]',
+  titleFontSize: '[data-testid="title-font-size"]',
+  titleLineHeight: '[data-testid="title-line-height"]',
   videoWidthMode: '[data-testid="video-width-mode"]',
   videoWidthInput: '[data-testid="video-width-input"]',
   rightPanelSettings: "#tpl-tabpanel-settings",
