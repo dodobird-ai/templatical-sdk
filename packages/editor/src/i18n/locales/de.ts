@@ -689,6 +689,7 @@ const de: typeof en = {
     clear: "Farbe entfernen",
     transparent: "Transparent",
     presetColors: "Vordefinierte Farben",
+    pickFromScreen: "Vom Bildschirm aufnehmen",
   },
 
   // Merge-Tag

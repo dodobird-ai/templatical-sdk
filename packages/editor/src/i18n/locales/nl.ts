@@ -625,6 +625,7 @@ const nl: typeof en = {
     clear: "Kleur wissen",
     transparent: "Transparant",
     presetColors: "Vooraf ingestelde kleuren",
+    pickFromScreen: "Kiezen van scherm",
   },
   mergeTag: {
     editAsText: "Als tekst bewerken",

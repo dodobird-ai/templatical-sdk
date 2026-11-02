@@ -683,6 +683,7 @@ export default {
     clear: "Clear color",
     transparent: "Transparent",
     presetColors: "Preset colors",
+    pickFromScreen: "Pick from screen",
   },
 
   // Merge Tag

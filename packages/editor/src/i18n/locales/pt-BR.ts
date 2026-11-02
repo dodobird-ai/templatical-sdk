@@ -689,6 +689,7 @@ const ptBR: typeof en = {
     clear: "Limpar cor",
     transparent: "Transparente",
     presetColors: "Cores predefinidas",
+    pickFromScreen: "Capturar da tela",
   },
 
   // Merge Tag

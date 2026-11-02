@@ -690,6 +690,7 @@ const es: typeof en = {
     clear: "Limpiar color",
     transparent: "Transparente",
     presetColors: "Colores predefinidos",
+    pickFromScreen: "Tomar de la pantalla",
   },
 
   // Merge Tag
