@@ -31,6 +31,7 @@ import NoticeStack from "./components/NoticeStack.vue";
 import type { LocaleNotice } from "./components/localization/LocaleNotices.vue";
 import LanguageBar from "./components/localization/LanguageBar.vue";
 import { useLocaleActions } from "./composables/useLocaleActions";
+import { useHostOperations } from "./composables/useHostOperations";
 import { useTranslationFeature } from "./composables/useTranslationFeature";
 import {
   useActiveLocaleCoverage,
@@ -667,6 +668,19 @@ const versionHistory = props.config.versionHistory
 
 if (versionHistory) capabilities.versionHistory = versionHistory.capability;
 
+// --- Host operations (the public `applyOperations`) ---
+// The host's batches arrive from outside like a collaborator's, so they get
+// the same merge-tag normalization; with collaboration, the controller sends
+// them as this session's own edit.
+const hostOperations = useHostOperations({
+  editor,
+  history: () => core.history,
+  collaboration,
+  normalize: (ops, content) =>
+    normalizeRemoteOperations(ops, content, liveMergeTags),
+  isPreviewingVersion: () => versionHistory?.isPreviewing.value ?? false,
+});
+
 /**
  * Left/right insets for the canvas body and the footer, which must always agree.
  *
@@ -763,6 +777,7 @@ defineExpose({
     scrollToBlock(copy.id);
     return copy.id;
   },
+  applyOperations: hostOperations.applyOperations,
   setTheme: (theme: UiTheme) => editor.setUiTheme(theme),
   setMergeTags: core.setMergeTags,
   isDirty: () => editor.state.isDirty,
