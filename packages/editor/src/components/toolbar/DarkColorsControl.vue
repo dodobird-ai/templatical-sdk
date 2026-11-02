@@ -1,20 +1,21 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="F extends DarkColorField">
 import FieldRow from "./FieldRow.vue";
 import ColorPicker from "../ColorPicker.vue";
 import { useI18n } from "../../composables/useI18n";
-import type { DarkColorField, TemplateDarkColors } from "@templatical/types";
+import type { DarkColorField } from "@templatical/types";
 import { withDarkColor } from "../../utils/darkColors";
 
 /**
  * The colors a block or the template uses when the reader's mail client is in
  * dark mode, one color picker per field. Clearing every picker emits
- * `undefined`, so nothing is stored.
+ * `undefined`, so nothing is stored. Generic over the fields shown, so what it
+ * emits holds only those fields: a section's control cannot emit a link color.
  */
 const props = defineProps<{
-  colors: TemplateDarkColors | undefined;
-  fields: readonly DarkColorField[];
+  colors: Partial<Record<F, string>> | undefined;
+  fields: readonly F[];
   /** Labels replacing the default ones, e.g. a button's fill. */
-  labels?: Partial<Record<DarkColorField, string>>;
+  labels?: Partial<Record<F, string>>;
   /** Prefix of the `data-testid` on the control and on each field. */
   testId: string;
   /** Localization path of the stored object, for the field override badge. */
@@ -24,7 +25,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "update", colors: TemplateDarkColors | undefined): void;
+  (e: "update", colors: Partial<Record<F, string>> | undefined): void;
 }>();
 
 const { t } = useI18n();
@@ -36,11 +37,11 @@ const SEED_COLORS: Record<DarkColorField, string> = {
   linkColor: "#8ab4f8",
 };
 
-function label(field: DarkColorField): string {
+function label(field: F): string {
   return props.labels?.[field] ?? t.darkColors[field];
 }
 
-function update(field: DarkColorField, value: string): void {
+function update(field: F, value: string): void {
   emit("update", withDarkColor(props.colors, field, value));
 }
 </script>

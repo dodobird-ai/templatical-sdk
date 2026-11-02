@@ -15978,6 +15978,8 @@ Some mail apps restyle an email when the reader uses dark mode. Set `darkColors`
 
 A block's own `textColor` wins over the template's, and the template's `linkColor` wins over both for links.
 
+The template's `textColor` and `linkColor` reach titles and paragraphs only. Menus, tables, social icon labels and dividers keep their light colors, and so do countdowns, which render as an image. A section shown as a hero takes no dark background, and the Dark Mode group is hidden for it. Dark colors on a block hidden on every viewport have no effect. When the template sets a dark `backgroundColor`, check that these blocks stay readable on it, for example by giving the section that holds a menu a light dark-mode `backgroundColor`, so the menu keeps the background its text was chosen for. A `*` or `\` in a dark color is removed: neither occurs in a color, and a `/*` would comment out the rules after it.
+
 ```ts
 const content = {
   settings: {

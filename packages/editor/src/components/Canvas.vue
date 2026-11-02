@@ -91,7 +91,11 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const editor = requireInject(EDITOR_KEY, "Canvas");
-const { displayBlock, settings: displaySettings } = useLocalizedDisplay({
+const {
+  content: displayContent,
+  displayBlock,
+  settings: displaySettings,
+} = useLocalizedDisplay({
   content: computed(() => props.content),
   activeLocale: computed(() =>
     props.previewMode ? null : (editor.activeLocale?.value ?? null),
@@ -186,9 +190,11 @@ const canvasStyle = computed(() =>
 );
 // A template with dark colors previews them instead of the inversion; see
 // `DarkPreview`. The authored rules at the end of this file mirror the CSS
-// the renderer emits for the email.
+// the renderer emits for the email. Decided on the content the canvas shows
+// (the active language's), since a language can set or clear dark colors;
+// only read while dark mode is on, so the light canvas never resolves it.
 const darkPreview = computed(() =>
-  resolveDarkPreview(props.darkMode, props.content),
+  props.darkMode ? resolveDarkPreview(true, displayContent.value) : "off",
 );
 const canvasBackgroundColor = computed(() => {
   const dark = displaySettings.value.darkColors?.backgroundColor;

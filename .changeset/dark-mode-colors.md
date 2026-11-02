@@ -6,7 +6,7 @@
 "@templatical/ai-kit": minor
 ---
 
-Add dark mode colors: optional `darkColors` on `TemplateSettings` (`backgroundColor`, `textColor`, `linkColor`) and on section (`backgroundColor`), title and paragraph (`backgroundColor`, `textColor`) and button (`backgroundColor` for the fill, `textColor` for the label) blocks, with `hasDarkColors` and `isDarkColorSet` helpers in `@templatical/types`.
+Add dark mode colors: optional `darkColors` on `TemplateSettings` (`backgroundColor`, `textColor`, `linkColor`) and on section (`backgroundColor`), title and paragraph (`backgroundColor`, `textColor`) and button (`backgroundColor` for the fill, `textColor` for the label) blocks, with `hasDarkColors`, `isDarkColorSet`, `canHaveDarkColors` and `darkColorSources` helpers in `@templatical/types`. The template's dark text and link colors reach titles and paragraphs; a hero section takes no dark background.
 
 `renderToMjml` gives each element that sets one a class named after its role and color, and emits one `<mj-style>` holding `!important` rules inside `@media (prefers-color-scheme: dark)` and under Outlook's `[data-ogsc]` (text) and `[data-ogsb]` (backgrounds) attributes. It adds no `<meta>` tag and no `color-scheme` property. A template without dark colors renders byte for byte as before.
 

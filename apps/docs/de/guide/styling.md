@@ -151,6 +151,8 @@ Manche Mail-Apps gestalten eine E-Mail um, wenn der Empfänger den Dunkelmodus n
 
 Die eigene `textColor` eines Blocks hat Vorrang vor der des Templates, und die `linkColor` des Templates hat für Links Vorrang vor beiden.
 
+Die `textColor` und `linkColor` des Templates erreichen nur Titel und Absätze. Menüs, Tabellen, die Beschriftungen von Social-Icons und Trennlinien behalten ihre hellen Farben, ebenso Countdowns, die als Bild gerendert werden. Eine Section, die als Hero angezeigt wird, erhält keinen dunklen Hintergrund, und die Gruppe **Dunkelmodus** ist für sie ausgeblendet. Dark-Mode-Farben an einem Block, der auf allen Viewports ausgeblendet ist, haben keine Wirkung. Setzt das Template einen dunklen `backgroundColor`, prüfen Sie, ob diese Blöcke darauf lesbar bleiben, etwa indem Sie der Section, die ein Menü enthält, einen hellen Dark-Mode-`backgroundColor` geben, sodass das Menü den Hintergrund behält, für den sein Text gewählt wurde. Ein `*` oder `\` in einer Dark-Mode-Farbe wird entfernt: Keines der beiden kommt in einer Farbe vor, und ein `/*` würde die folgenden Regeln auskommentieren.
+
 ```ts
 const content = {
   settings: {

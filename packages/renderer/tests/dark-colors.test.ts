@@ -10,6 +10,7 @@ import {
   createSlotBlock,
   createTitleBlock,
   createWrapperBlock,
+  hasDarkColors,
   type Block,
   type TemplateContent,
 } from "@templatical/types";
@@ -30,8 +31,12 @@ function withBlocks(
 
 /**
  * Every block type that can carry dark colors, with fixed ids so the
- * rendered MJML is stable. The snapshot below was recorded from the renderer
- * before dark colors existed, so it holds the "absent = unchanged" promise.
+ * rendered MJML is stable, plus the shapes whose `css-class` the change
+ * touches: a block hidden on mobile, a full-width button and a section with a
+ * background image. The snapshot below was recorded by running this file
+ * against the renderer at v0.52.1 (`packages/renderer/src` checked out from
+ * c2adfc3b), before dark colors existed, so it holds the "absent =
+ * unchanged" promise.
  */
 function kitchenSink(): TemplateContent {
   const section = createSectionBlock({
@@ -57,6 +62,22 @@ function kitchenSink(): TemplateContent {
       section,
       createTitleBlock({ id: "title-2", content: "<p>Top-level title</p>" }),
       createButtonBlock({ id: "button-2", text: "No link", url: "" }),
+      createParagraphBlock({
+        id: "paragraph-desktop-only",
+        content: "<p>Desktop only</p>",
+        visibility: { desktop: true, mobile: false },
+      }),
+      createButtonBlock({
+        id: "button-full",
+        text: "Full width",
+        url: "https://example.com",
+        width: "full",
+      }),
+      createSectionBlock({
+        id: "section-image",
+        backgroundImage: createBackgroundImage("https://example.com/bg.jpg"),
+        children: [[createTitleBlock({ id: "title-3", content: "<p>Over an image</p>" })]],
+      }),
     ],
     { linkColor: "#0066cc" },
   );
@@ -324,6 +345,33 @@ describe("renderToMjml with dark colors", () => {
     );
   });
 
+  it("drops a comment opener so later rules survive", async () => {
+    const mjml = await renderToMjml(
+      withBlocks(
+        [createTitleBlock({ darkColors: { textColor: "#fafafa" } })],
+        { darkColors: { linkColor: "red /* " } },
+      ),
+    );
+    expect([
+      mjml.includes("/*"),
+      mjml.includes(
+        ".tpl-rich-text a, .tpl-rich-text a * { color: red / !important; }",
+      ),
+      mjml.includes(
+        "[data-ogsc] .tpl-dark-text-fafafa, [data-ogsc] .tpl-dark-text-fafafa * { color: #fafafa !important; }",
+      ),
+    ]).toEqual([false, true, true]);
+  });
+
+  it("drops a backslash escape", async () => {
+    const mjml = await renderToMjml(
+      withBlocks([], { darkColors: { backgroundColor: "\\2a red" } }),
+    );
+    expect(mjml).toContain(
+      ".tpl-dark-body, .tpl-dark-body > div { background-color: 2a red !important; }",
+    );
+  });
+
   it("never emits a meta tag or a color-scheme declaration", async () => {
     const mjml = await renderToMjml(darkSink());
     // `prefers-color-scheme` is the media feature; a bare `color-scheme`
@@ -380,5 +428,57 @@ describe("dark colors through the MJML compiler", () => {
         /<td\s+align="center" class="tpl-dark-button-bg-8ab4f8"/,
       ].map((pattern) => pattern.test(html)),
     ).toEqual([true, true, true, true]);
+  });
+});
+
+describe("hasDarkColors and the rendered email agree", () => {
+  function hero(children: Block[][] = [[]]): Block {
+    return createSectionBlock({
+      children,
+      backgroundImage: {
+        ...createBackgroundImage("https://example.com/hero.jpg"),
+        naturalWidth: 1200,
+        naturalHeight: 600,
+      },
+      hero: { height: "image", verticalAlign: "middle" },
+      darkColors: { backgroundColor: "#000000" },
+    });
+  }
+  const hidden = { desktop: false, mobile: false };
+  const cases: Array<[string, TemplateContent]> = [
+    ["no dark colors", kitchenSink()],
+    ["a title's dark text", withBlocks([createTitleBlock({ darkColors: { textColor: "#fff" } })])],
+    ["a template dark link only", withBlocks([], { darkColors: { linkColor: "#8ab4f8" } })],
+    ["a hero section's dark background only", withBlocks([hero()])],
+    [
+      "a block hidden everywhere",
+      withBlocks([createTitleBlock({ visibility: hidden, darkColors: { textColor: "#fff" } })]),
+    ],
+    [
+      "a block inside a section hidden everywhere",
+      withBlocks([
+        createSectionBlock({
+          visibility: hidden,
+          children: [[createTitleBlock({ darkColors: { textColor: "#fff" } })]],
+        }),
+      ]),
+    ],
+    [
+      "a block inside a hero section",
+      withBlocks([
+        hero([[createTitleBlock({ darkColors: { textColor: "#fff" } })]]),
+      ]),
+    ],
+    ["only cleared dark colors", withBlocks([createButtonBlock({ darkColors: { textColor: "" } })])],
+  ];
+
+  it.each(cases)("for %s", async (_name, content) => {
+    const mjml = await renderToMjml(content);
+    expect(hasDarkColors(content)).toBe(mjml.includes("prefers-color-scheme"));
+  });
+
+  it("covers both answers", async () => {
+    const answers = cases.map(([, content]) => hasDarkColors(content));
+    expect([answers.includes(true), answers.includes(false)]).toEqual([true, true]);
   });
 });

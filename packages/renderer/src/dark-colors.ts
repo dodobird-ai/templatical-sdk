@@ -1,13 +1,11 @@
 import type { Block, TemplateDarkColors } from "@templatical/types";
 import {
+  canHaveDarkColors,
+  darkColorSources,
   isDarkColorSet,
-  isSection,
-  isWrapper,
-  resolveHero,
 } from "@templatical/types";
 import { escapeCssValue } from "./escape";
 import { RICH_TEXT_CSS_CLASS } from "./rich-text";
-import { isHiddenOnAll } from "./visibility";
 
 /**
  * Dark colors become CSS, never inline styles: a mail client in dark mode
@@ -124,8 +122,16 @@ function target(
   return isDarkColorSet(color) ? [{ role, color: color.trim() }] : [];
 }
 
-/** The dark colors a block paints, in a fixed role order. */
+/**
+ * The dark colors a block paints, in a fixed role order. None for a block
+ * that cannot have them (`canHaveDarkColors`), such as a hero section, whose
+ * image paints over the whole box and whose markup has no element the
+ * section selectors reach.
+ */
 function darkColorTargets(block: Block): DarkColorTarget[] {
+  if (!canHaveDarkColors(block)) {
+    return [];
+  }
   switch (block.type) {
     case "title":
     case "paragraph":
@@ -139,11 +145,7 @@ function darkColorTargets(block: Block): DarkColorTarget[] {
         ...target("button-text", block.darkColors?.textColor),
       ];
     case "section":
-      // A hero paints its image over the whole box, and mj-hero's markup has
-      // no element the section selectors reach.
-      return resolveHero(block)?.applied
-        ? []
-        : target("section-bg", block.darkColors?.backgroundColor);
+      return target("section-bg", block.darkColors?.backgroundColor);
     default:
       return [];
   }
@@ -157,20 +159,16 @@ export function darkColorClasses(block: Block): string[] {
   return darkColorTargets(block).map(roleClass);
 }
 
-function collectTargets(blocks: Block[], out: DarkColorTarget[]): void {
-  for (const block of blocks) {
-    if (isHiddenOnAll(block)) {
-      continue;
-    }
-    out.push(...darkColorTargets(block));
-    if (isSection(block)) {
-      for (const column of block.children) {
-        collectTargets(column, out);
-      }
-    } else if (isWrapper(block)) {
-      collectTargets(block.children, out);
-    }
-  }
+/**
+ * A color as a CSS value inside the dark-mode `<mj-style>`. MJML merges every
+ * non-inline `mj-style` into one `<style>` element, so on top of
+ * `escapeCssValue` (which drops `;{}` and line breaks) every `*` and `\` is
+ * dropped: without a `*` no comment can open, and `red /*` would otherwise
+ * comment out every rule after it, the custom-block stylesheets included.
+ * Neither character occurs in a valid color; `/` does (`rgb(0 0 0 / 50%)`).
+ */
+export function escapeDarkColor(color: string): string {
+  return escapeCssValue(color.trim()).replace(/[*\\]/g, "");
 }
 
 function rule(
@@ -181,7 +179,7 @@ function rule(
   return {
     selectors: ROLE_SELECTORS[role](scope),
     property: ROLE_PROPERTY[role],
-    value: escapeCssValue(color.trim()),
+    value: escapeDarkColor(color),
   };
 }
 
@@ -207,8 +205,7 @@ function darkColorRules(
     rules.push(rule("text", richText, settings.textColor));
   }
 
-  const targets: DarkColorTarget[] = [];
-  collectTargets(blocks, targets);
+  const targets = darkColorSources(blocks).flatMap(darkColorTargets);
   const seen = new Set<string>();
   for (const entry of targets) {
     const className = roleClass(entry);
@@ -223,7 +220,7 @@ function darkColorRules(
     rules.push({
       selectors: [`${richText} a`, `${richText} a *`],
       property: "color",
-      value: escapeCssValue(settings.linkColor.trim()),
+      value: escapeDarkColor(settings.linkColor),
     });
   }
 

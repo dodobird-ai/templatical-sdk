@@ -30,6 +30,7 @@ import {
 import {
   DARK_COLOR_FIELDS,
   darkColorFieldsFor,
+  setsDarkColor,
   withDarkColor,
 } from "../src/utils/darkColors";
 import { resolveDarkPreview } from "../src/utils/darkPreview";
@@ -87,6 +88,18 @@ describe("darkColorFieldsFor", () => {
     expect(darkColorFieldsFor(createImageBlock())).toBe(null);
   });
 
+  it("offers nothing to a hero section, which the email gives none", () => {
+    const hero = createSectionBlock({
+      backgroundImage: {
+        ...createBackgroundImage("https://example.com/hero.jpg"),
+        naturalWidth: 1200,
+        naturalHeight: 600,
+      },
+      hero: { height: "image", verticalAlign: "middle" },
+    });
+    expect(darkColorFieldsFor(hero)).toBe(null);
+  });
+
   it("covers exactly the block types that carry darkColors", () => {
     expect(Object.keys(DARK_COLOR_FIELDS).sort()).toEqual([
       "button",
@@ -94,6 +107,17 @@ describe("darkColorFieldsFor", () => {
       "section",
       "title",
     ]);
+  });
+});
+
+describe("setsDarkColor", () => {
+  it.each([
+    ["no dark colors", createTitleBlock(), false],
+    ["only cleared ones", createTitleBlock({ darkColors: { textColor: "" } }), false],
+    ["one set", createButtonBlock({ darkColors: { textColor: "#000000" } }), true],
+    ["a block type without them", createImageBlock(), false],
+  ] as const)("is right for %s", (_name, block, expected) => {
+    expect(setsDarkColor(block)).toBe(expected);
   });
 });
 
@@ -266,6 +290,31 @@ describe("Canvas dark preview", () => {
     ).toContain("tpl-has-dark-text");
   });
 
+  it("decides the preview on the language being shown", async () => {
+    const content = withBlocks([createTitleBlock()]);
+    content.settings.locales = ["de"];
+    content.settings.l10n = {
+      de: { set: { darkColors: { backgroundColor: "#121212" } } },
+    };
+    const editor = useEditor({ content });
+    const wrapper = mountEditor(Canvas, {
+      props: {
+        viewport: "desktop",
+        content,
+        selectedBlockId: null,
+        darkMode: true,
+        previewMode: false,
+      },
+      provides: { [EDITOR_KEY]: editor, [TRANSLATIONS_KEY]: en },
+    });
+    const preview = () =>
+      wrapper.get(".tpl-canvas").attributes("data-dark-preview");
+    const before = preview();
+    editor.setActiveLocale("de");
+    await wrapper.vm.$nextTick();
+    expect([before, preview()]).toEqual(["inverted", "authored"]);
+  });
+
   it("keeps the light background when the preview is off", () => {
     const content = withBlocks([]);
     content.settings.darkColors = { backgroundColor: "#121212" };
@@ -319,6 +368,63 @@ describe("Toolbar dark colors group", () => {
     const control = wrapper.get('[data-testid="block-dark-colors"]');
     expect((control.element.parentElement as HTMLElement).style.display).toBe(
       "",
+    );
+  });
+
+  it("opens when a dark color arrives on the selected block", async () => {
+    const block = createTitleBlock({ id: "t" });
+    const wrapper = mountToolbar(block);
+    const control = () =>
+      wrapper.get('[data-testid="block-dark-colors"]').element
+        .parentElement as HTMLElement;
+    const before = control().style.display;
+    await wrapper.setProps({
+      block: { ...block, darkColors: { textColor: "#ffffff" } },
+    });
+    expect([before, control().style.display]).toEqual(["none", ""]);
+  });
+
+  it("stays open while the same block's last dark color is cleared", async () => {
+    const block = createTitleBlock({
+      id: "t",
+      darkColors: { textColor: "#ffffff" },
+    });
+    const wrapper = mountToolbar(block);
+    await wrapper.setProps({ block: { ...block, darkColors: undefined } });
+    expect(
+      (
+        wrapper.get('[data-testid="block-dark-colors"]').element
+          .parentElement as HTMLElement
+      ).style.display,
+    ).toBe("");
+  });
+
+  it("closes on selecting another block without dark colors", async () => {
+    const wrapper = mountToolbar(
+      createTitleBlock({ id: "a", darkColors: { textColor: "#ffffff" } }),
+    );
+    await wrapper.setProps({ block: createTitleBlock({ id: "b" }) });
+    expect(
+      (
+        wrapper.get('[data-testid="block-dark-colors"]').element
+          .parentElement as HTMLElement
+      ).style.display,
+    ).toBe("none");
+  });
+
+  it("is absent for a hero section", () => {
+    const wrapper = mountToolbar(
+      createSectionBlock({
+        backgroundImage: {
+          ...createBackgroundImage("https://example.com/hero.jpg"),
+          naturalWidth: 1200,
+          naturalHeight: 600,
+        },
+        hero: { height: "image", verticalAlign: "middle" },
+      }),
+    );
+    expect(wrapper.find('[data-testid="block-dark-colors"]').exists()).toBe(
+      false,
     );
   });
 

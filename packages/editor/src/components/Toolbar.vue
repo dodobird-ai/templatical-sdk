@@ -42,7 +42,7 @@ import { computed, inject, ref, watch } from "vue";
 import { blockTypeIcons } from "../utils/blockTypeIcons";
 import { getBlockTypeLabel } from "../utils/blockTypeLabels";
 import { withCurrentFont } from "../utils/withCurrentFont";
-import { darkColorFieldsFor } from "../utils/darkColors";
+import { darkColorFieldsFor, setsDarkColor } from "../utils/darkColors";
 import CollapsibleSection from "./toolbar/CollapsibleSection.vue";
 import DarkColorsControl from "./toolbar/DarkColorsControl.vue";
 import {
@@ -101,15 +101,21 @@ const fontFamilies = computed(() =>
 );
 
 // Dark colors: one group for every block type that has them, so each type's
-// toolbar does not repeat it. Open whenever the block already sets one, so a
-// dark color is never hidden behind a closed group.
+// toolbar does not repeat it. Open whenever the block sets one, so a dark
+// color is never hidden behind a closed group: on selecting a block, and when
+// a color arrives some other way (undo, redo, the AI). Never forced closed
+// while the same block stays selected, so clearing the last picker keeps the
+// group in view.
 const darkColorFields = computed(() => darkColorFieldsFor(props.block));
 const darkColorsOpen = ref(false);
 watch(
-  () => props.block.id,
-  () => {
-    darkColorsOpen.value =
-      "darkColors" in props.block && props.block.darkColors !== undefined;
+  () => [props.block.id, setsDarkColor(props.block)] as const,
+  ([id, sets], previous) => {
+    if (previous === undefined || id !== previous[0]) {
+      darkColorsOpen.value = sets;
+    } else if (sets) {
+      darkColorsOpen.value = true;
+    }
   },
   { immediate: true },
 );

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  canHaveDarkColors,
+  createBackgroundImage,
   createButtonBlock,
   createDefaultTemplateContent,
   createImageBlock,
@@ -7,14 +9,31 @@ import {
   createSectionBlock,
   createTitleBlock,
   createWrapperBlock,
+  darkColorSources,
   hasDarkColors,
   isDarkColorSet,
 } from "../src";
-import type { Block, TemplateContent } from "../src";
+import type { Block, SectionBlock, TemplateContent } from "../src";
 
 function content(blocks: Block[]): TemplateContent {
   return { ...createDefaultTemplateContent(), blocks };
 }
+
+/** A one-column section with an image and a hero, so the hero applies. */
+function heroSection(id: string): SectionBlock {
+  return createSectionBlock({
+    id,
+    hero: { height: "image", verticalAlign: "middle" },
+    backgroundImage: {
+      ...createBackgroundImage("https://example.com/hero.jpg"),
+      naturalWidth: 1200,
+      naturalHeight: 600,
+    },
+    darkColors: { backgroundColor: "#000000" },
+  });
+}
+
+const hiddenEverywhere = { desktop: false, mobile: false };
 
 describe("isDarkColorSet", () => {
   it("is true for a color", () => {
@@ -74,5 +93,96 @@ describe("hasDarkColors", () => {
       createSectionBlock({ darkColors: { backgroundColor: "#000000" } }),
     ];
     expect(hasDarkColors(content([wrapper]))).toBe(true);
+  });
+});
+
+describe("canHaveDarkColors", () => {
+  it("is true for the four block types that carry dark colors", () => {
+    expect(
+      [
+        createSectionBlock(),
+        createTitleBlock(),
+        createParagraphBlock(),
+        createButtonBlock(),
+      ].map(canHaveDarkColors),
+    ).toEqual([true, true, true, true]);
+  });
+
+  it("is false for an image", () => {
+    expect(canHaveDarkColors(createImageBlock())).toBe(false);
+  });
+
+  it("is false for a section shown as a hero", () => {
+    expect(canHaveDarkColors(heroSection("hero"))).toBe(false);
+  });
+});
+
+describe("darkColorSources", () => {
+  it("lists the blocks that set dark colors, in document order", () => {
+    const section = createSectionBlock({
+      id: "s",
+      darkColors: { backgroundColor: "#111111" },
+    });
+    section.children = [
+      [createTitleBlock({ id: "t", darkColors: { textColor: "#eeeeee" } })],
+    ];
+    const ids = darkColorSources([
+      section,
+      createParagraphBlock({ id: "plain" }),
+      createButtonBlock({ id: "b", darkColors: { textColor: "#000000" } }),
+    ]).map((block) => block.id);
+    expect(ids).toEqual(["s", "t", "b"]);
+  });
+
+  it("skips a hero section but keeps the blocks inside it", () => {
+    const hero = heroSection("hero");
+    hero.children = [
+      [createTitleBlock({ id: "inside", darkColors: { textColor: "#fff" } })],
+    ];
+    expect(darkColorSources([hero]).map((block) => block.id)).toEqual([
+      "inside",
+    ]);
+  });
+
+  it("skips a block hidden on every viewport, children included", () => {
+    const section = createSectionBlock({
+      id: "hidden",
+      visibility: hiddenEverywhere,
+      darkColors: { backgroundColor: "#111111" },
+    });
+    section.children = [
+      [createTitleBlock({ id: "inside", darkColors: { textColor: "#fff" } })],
+    ];
+    expect(darkColorSources([section])).toEqual([]);
+  });
+
+  it("keeps a block hidden on one viewport only", () => {
+    const title = createTitleBlock({
+      id: "mobile-only",
+      visibility: { desktop: false, mobile: true },
+      darkColors: { textColor: "#fff" },
+    });
+    expect(darkColorSources([title]).map((block) => block.id)).toEqual([
+      "mobile-only",
+    ]);
+  });
+});
+
+describe("hasDarkColors and the email agree", () => {
+  it("is false when the only dark color is on a hero section", () => {
+    expect(hasDarkColors(content([heroSection("hero")]))).toBe(false);
+  });
+
+  it("is false when the only dark color is on a block hidden everywhere", () => {
+    expect(
+      hasDarkColors(
+        content([
+          createTitleBlock({
+            visibility: hiddenEverywhere,
+            darkColors: { textColor: "#ffffff" },
+          }),
+        ]),
+      ),
+    ).toBe(false);
   });
 });

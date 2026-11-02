@@ -64,7 +64,12 @@ export type {
   TemplateDarkColors,
   TextDarkColors,
 } from "./dark-colors";
-export { hasDarkColors, isDarkColorSet } from "./dark-colors";
+export {
+  canHaveDarkColors,
+  darkColorSources,
+  hasDarkColors,
+  isDarkColorSet,
+} from "./dark-colors";
 
 // Background images (sections and wrapper bands)
 export type {

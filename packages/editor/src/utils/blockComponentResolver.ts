@@ -9,6 +9,7 @@ import type {
 } from "@templatical/types";
 import {
   RICH_TEXT_SPACING,
+  canHaveDarkColors,
   encodeCssUrl,
   isDarkColorSet,
   resolveBackgroundImage,
@@ -116,20 +117,21 @@ export function documentDarkColorClasses(settings: TemplateSettings): string[] {
  * `dark-colors.ts` makes the same choices for the email: which block types
  * carry which colors, and that a hero section takes none.
  */
-const DARK_COLOR_HOSTS = {
-  "--tpl-dark-bg": "tpl-has-dark-bg",
-  "--tpl-dark-text": "tpl-has-dark-text",
-  "--tpl-dark-button-bg": "tpl-has-dark-button-bg",
-  "--tpl-dark-button-text": "tpl-has-dark-button-text",
-} as const;
+const DARK_COLOR_HOSTS = [
+  ["--tpl-dark-bg", "tpl-has-dark-bg"],
+  ["--tpl-dark-text", "tpl-has-dark-text"],
+  ["--tpl-dark-button-bg", "tpl-has-dark-button-bg"],
+  ["--tpl-dark-button-text", "tpl-has-dark-button-text"],
+] as const;
 
-type DarkColorVar = keyof typeof DARK_COLOR_HOSTS;
+type DarkColorVar = (typeof DARK_COLOR_HOSTS)[number][0];
 
 function darkColorVars(block: Block): Partial<Record<DarkColorVar, string>> {
   const vars: Partial<Record<DarkColorVar, string>> = {};
   const set = (name: DarkColorVar, color: string | undefined): void => {
     if (isDarkColorSet(color)) vars[name] = color;
   };
+  if (!canHaveDarkColors(block)) return vars;
   switch (block.type) {
     case "title":
     case "paragraph":
@@ -141,9 +143,7 @@ function darkColorVars(block: Block): Partial<Record<DarkColorVar, string>> {
       set("--tpl-dark-button-text", block.darkColors?.textColor);
       break;
     case "section":
-      if (!resolveHero(block)?.applied) {
-        set("--tpl-dark-bg", block.darkColors?.backgroundColor);
-      }
+      set("--tpl-dark-bg", block.darkColors?.backgroundColor);
       break;
   }
   return vars;
@@ -158,9 +158,9 @@ export function darkColorHostClasses(
   style: Record<string, string> | null | undefined,
 ): string[] {
   if (!style) return [];
-  return (Object.keys(DARK_COLOR_HOSTS) as DarkColorVar[])
-    .filter((name) => name in style)
-    .map((name) => DARK_COLOR_HOSTS[name]);
+  return DARK_COLOR_HOSTS.filter(([name]) => name in style).map(
+    ([, hostClass]) => hostClass,
+  );
 }
 
 /** Display-only inputs to the canvas style helpers. */
