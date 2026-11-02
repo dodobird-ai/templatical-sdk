@@ -3,6 +3,7 @@ import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import { describe, expect, it } from "vitest";
 import type {
+  Block,
   ContentDirection,
   MenuBlock,
   ParagraphBlock,
@@ -112,6 +113,66 @@ describe("title inference", () => {
 
     expect(block.color).toBe("#abcdef");
     expect(block.fontFamily).toBe("Verdana");
+  });
+});
+
+describe("title size and line height", () => {
+  /** The heading markup `renderers/title.ts` writes inside a title's mj-text. */
+  const RENDERED_HEADING =
+    '<h2 style="margin:0;font-size:inherit;color:inherit;line-height:inherit;font-weight:700">T</h2>';
+
+  function titleOf(block: Block | null): TitleBlock {
+    if (block?.type !== "title") {
+      throw new Error(`expected a title block, got ${block?.type ?? "none"}`);
+    }
+    return block;
+  }
+
+  it("reads the size and line height of a heading that inherits them from its own mj-text", () => {
+    const { result } = convert(
+      RENDERED_HEADING,
+      'font-size="31.5px" line-height="1.5"',
+    );
+    const block = titleOf(result.block);
+
+    expect(block.fontSize).toBe(31.5);
+    expect(block.lineHeight).toBe(1.5);
+  });
+
+  it("keeps an own size equal to the document's mj-text default", () => {
+    // The renderer's head always declares `<mj-text font-size="14px" />`, so
+    // a title whose own size is 14 repeats the ambient value inline.
+    const { result } = convertWithHead(
+      '<mj-attributes><mj-text font-size="14px" /></mj-attributes>',
+      RENDERED_HEADING,
+      'font-size="14px"',
+    );
+
+    expect(titleOf(result.block).fontSize).toBe(14);
+  });
+
+  it("does not read the document's mj-attributes defaults as a title's own size or line height", () => {
+    const { result } = convertWithHead(
+      '<mj-attributes><mj-all font-size="13px" /><mj-text line-height="1.6" /></mj-attributes>',
+      RENDERED_HEADING,
+    );
+    const block = titleOf(result.block);
+
+    expect("fontSize" in block).toBe(false);
+    expect("lineHeight" in block).toBe(false);
+  });
+
+  it("does not take the mj-text's size for a heading that does not inherit it", () => {
+    // An h2 without `font-size:inherit` is displayed at the browser's 1.5em
+    // of the mj-text size, so 20px is not the size it shows at.
+    const { result } = convert(
+      "<h2>T</h2>",
+      'font-size="20px" line-height="1.6"',
+    );
+    const block = titleOf(result.block);
+
+    expect("fontSize" in block).toBe(false);
+    expect("lineHeight" in block).toBe(false);
   });
 });
 

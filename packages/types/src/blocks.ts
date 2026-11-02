@@ -342,11 +342,15 @@ export interface TitleBlock extends BaseBlock {
    * Font size in px, overriding the heading level's. Absent means the level's
    * size: 36, 28, 22 or 18 for levels 1 to 4. The level still decides the
    * heading element.
+   *
+   * @exclusiveMinimum 0
    */
   fontSize?: number;
   /**
    * Line height as a multiple of the font size, such as 1.15. Absent means
    * 1.3.
+   *
+   * @exclusiveMinimum 0
    */
   lineHeight?: number;
 }

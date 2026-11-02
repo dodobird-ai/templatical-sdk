@@ -63,8 +63,35 @@ test.describe("Title size and title line height", () => {
       })
       .toEqual({ fontSize: "31px", lineHeight: "46.5px" });
 
+    // Both attributes on the title's own mj-text: paragraphs, menus and
+    // tables all write line-height="1.5" too, so an unscoped match would pass
+    // on any later block.
     const mjml = await getMjml(page);
-    expect(mjml).toMatch(/font-size="31px"[\s\S]*?line-height="1\.5"/);
+    expect(mjml).toMatch(/<mj-text\s+font-size="31px"[^>]*line-height="1\.5"/);
+
+    // A lone "-" is what Chromium reports as an empty value with
+    // validity.badInput set. It must not read as the field being emptied: the
+    // title keeps 1.5 (46.5px), not the default 1.3 (40.3px).
+    await lineHeight.click();
+    await lineHeight.press("ControlOrMeta+a");
+    await lineHeight.pressSequentially("-");
+    expect(
+      await lineHeight.evaluate(
+        (el) => el instanceof HTMLInputElement && el.validity.badInput,
+      ),
+    ).toBe(true);
+    expect((await canvasTitle(page)).lineHeight).toBe("46.5px");
+    await lineHeight.fill("1.2");
+    await expect
+      .poll(async () => (await canvasTitle(page)).lineHeight)
+      .toBe("37.2px");
+
+    // A 0 is no size, so it changes nothing, and leaving the field shows the
+    // stored size again.
+    await size.fill("0");
+    await size.blur();
+    await expect(size).toHaveValue("31");
+    expect((await canvasTitle(page)).fontSize).toBe("31px");
 
     // Emptying the size field hands the title back to its level.
     await size.fill("");

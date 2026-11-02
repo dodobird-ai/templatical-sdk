@@ -18,7 +18,12 @@ import type {
   MenuItemData,
   TableRowData,
 } from "@templatical/types";
-import { parseAlignment, parseColor, parsePxValue } from "./attribute-parser";
+import {
+  parseAlignment,
+  parseColor,
+  parseDefinitePx,
+  parsePxValue,
+} from "./attribute-parser";
 import {
   ownAttr,
   readParagraphGap,
@@ -63,6 +68,7 @@ const HEADING_LEVELS: Record<string, number> = {
 };
 
 function convertTitle(
+  $el: Cheerio<Element>,
   html: string,
   attrs: Attrs,
   sourceLevel: number,
@@ -82,8 +88,12 @@ function convertTitle(
 
   // title.ts always writes the size and line height in effect, so only a value
   // other than the level's size or TITLE_LINE_HEIGHT is the title's own.
-  const fontSize = parsePxValue(attrs["font-size"]);
-  const lineHeight = parseUnitlessLineHeight(attrs["line-height"]);
+  const fontSize = parseDefinitePx(
+    ownInheritedValue($el, $heading, "font-size", attrs, cascade),
+  );
+  const lineHeight = parseUnitlessLineHeight(
+    ownInheritedValue($el, $heading, "line-height", attrs, cascade),
+  );
 
   const block = createTitleBlock({
     content: $heading.html() ?? "",
@@ -91,7 +101,9 @@ function convertTitle(
     textAlign: parseAlignment(attrs.align, "left"),
     ...(color ? { color } : {}),
     ...(fontFamily ? { fontFamily } : {}),
-    ...(fontSize > 0 && fontSize !== HEADING_LEVEL_FONT_SIZE[level]
+    ...(fontSize !== null &&
+    fontSize > 0 &&
+    fontSize !== HEADING_LEVEL_FONT_SIZE[level]
       ? { fontSize }
       : {}),
     ...(lineHeight !== undefined && lineHeight !== TITLE_LINE_HEIGHT
@@ -115,6 +127,46 @@ function convertTitle(
         : {}),
     },
   };
+}
+
+/**
+ * A title's own `font-size` or `line-height`, as its mj-text sets it.
+ *
+ * `title.ts` writes both on the title's mj-text and sets them to `inherit` on
+ * the heading, and only in that shape is the mj-text's value the one the
+ * heading is shown at: a heading that does not inherit is shown at the
+ * browser's own multiple of it (an h2 at 1.5em). So the value is read only
+ * when the heading inherits it.
+ *
+ * An inline attribute is always the title's own, even when it repeats the
+ * document default: the renderer's head declares `<mj-text font-size="14px">`,
+ * so a 14px title repeats it. Without one, {@link ownAttr} keeps a named
+ * `mj-class` value and drops what came only from the `<mj-attributes>`
+ * defaults, which would otherwise land on every heading of the document.
+ */
+function ownInheritedValue(
+  $el: Cheerio<Element>,
+  $heading: Cheerio<AnyNode>,
+  property: "font-size" | "line-height",
+  attrs: Attrs,
+  cascade: AttributeCascade,
+): string | undefined {
+  if (!inheritsProperty($heading.attr("style"), property)) return undefined;
+  return $el.attr(property) ?? ownAttr(attrs, property, "mj-text", cascade);
+}
+
+/** Whether an inline `style` sets `property` to `inherit`. */
+function inheritsProperty(
+  style: string | undefined,
+  property: string,
+): boolean {
+  return (style ?? "").split(";").some((declaration) => {
+    const [name, value] = declaration.split(":");
+    return (
+      name?.trim().toLowerCase() === property &&
+      value?.trim().toLowerCase() === "inherit"
+    );
+  });
 }
 
 /**
@@ -472,7 +524,13 @@ export function convertTextElement(
   const root = rootElements(html);
 
   if (root.count === 1 && HEADING_LEVELS[root.tag]) {
-    return convertTitle(html, attrs, HEADING_LEVELS[root.tag], ctx.cascade);
+    return convertTitle(
+      $el,
+      html,
+      attrs,
+      HEADING_LEVELS[root.tag],
+      ctx.cascade,
+    );
   }
 
   if (root.count === 1 && root.tag === "table") {
