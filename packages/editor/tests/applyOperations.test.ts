@@ -12,7 +12,9 @@ import { nextTick } from "vue";
 import {
   createDefaultTemplateContent,
   createParagraphBlock,
+  createSlotBlock,
   createTitleBlock,
+  isParagraph,
   type TemplateContent,
 } from "@templatical/types";
 import {
@@ -36,9 +38,12 @@ function content(): TemplateContent {
   return result;
 }
 
-async function open(config: Partial<TemplaticalEditorConfig> = {}) {
-  const container = document.createElement("div");
-  document.body.appendChild(container);
+async function open(
+  config: Partial<TemplaticalEditorConfig> = {},
+  container: HTMLElement = document.body.appendChild(
+    document.createElement("div"),
+  ),
+) {
   const handle = await init({
     container,
     shadowDom: false,
@@ -82,9 +87,43 @@ describe("editor.applyOperations", () => {
     expect(JSON.stringify(editor.getContent())).toBe(after);
   });
 
-  it("marks the editor dirty and reports it through onDirtyChange", async () => {
+  it("replaces the whole template with a setContent operation as one undo step", async () => {
+    const editor = await open();
+    const before = JSON.stringify(editor.getContent());
+    const replacement = createDefaultTemplateContent();
+    replacement.blocks = [createTitleBlock({ id: "new", content: "Fresh" })];
+
+    const result = editor.applyOperations([
+      { op: "setContent", content: replacement },
+    ]);
+
+    expect(result).toEqual({ applied: true });
+    expect(editor.getContent().blocks.map((b) => b.id)).toEqual(["new"]);
+    const after = JSON.stringify(editor.getContent());
+
+    press(false);
+    expect(JSON.stringify(editor.getContent())).toBe(before);
+
+    press(true);
+    expect(JSON.stringify(editor.getContent())).toBe(after);
+  });
+
+  it("throws on a setContent operation that carries a slot, and changes nothing", async () => {
+    const editor = await open();
+    const before = JSON.stringify(editor.getContent());
+    const replacement = createDefaultTemplateContent();
+    replacement.blocks = [createSlotBlock()];
+
+    expect(() =>
+      editor.applyOperations([{ op: "setContent", content: replacement }]),
+    ).toThrow(/slot/i);
+    expect(JSON.stringify(editor.getContent())).toBe(before);
+  });
+
+  it("marks the editor dirty and reports it through onDirtyChange and onChange", async () => {
     const onDirtyChange = vi.fn();
-    const editor = await open({ onDirtyChange });
+    const onChange = vi.fn();
+    const editor = await open({ onDirtyChange, onChange, changeDebounce: 10 });
     expect(editor.isDirty()).toBe(false);
 
     editor.applyOperations([
@@ -94,6 +133,10 @@ describe("editor.applyOperations", () => {
 
     expect(editor.isDirty()).toBe(true);
     expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    expect(onChange.mock.lastCall?.[0].settings.backgroundColor).toBe(
+      "#000000",
+    );
   });
 
   it("refuses the whole batch and leaves undo with nothing to do", async () => {
@@ -135,10 +178,10 @@ describe("editor.applyOperations", () => {
       },
     ]);
 
-    const paragraph = editor
-      .getContent()
-      .blocks.find((b) => b.id === "p1") as { content: string };
-    expect(paragraph.content).toContain('data-merge-tag="{{first_name}}"');
+    const paragraph = editor.getContent().blocks.find((b) => b.id === "p1");
+    expect(paragraph && isParagraph(paragraph) && paragraph.content).toContain(
+      'data-merge-tag="{{first_name}}"',
+    );
   });
 
   it("throws on a handle whose editor was unmounted", async () => {
@@ -148,5 +191,17 @@ describe("editor.applyOperations", () => {
     expect(() =>
       editor.applyOperations([{ op: "deleteBlock", blockId: "p1" }]),
     ).toThrow("[Templatical] Editor not ready");
+  });
+
+  it("throws on a handle a later init() on its container replaced, and leaves the replacement alone", async () => {
+    const container = document.body.appendChild(document.createElement("div"));
+    const first = await open({}, container);
+    const second = await open({}, container);
+    const before = JSON.stringify(second.getContent());
+
+    expect(() =>
+      first.applyOperations([{ op: "deleteBlock", blockId: "p1" }]),
+    ).toThrow("[Templatical] Editor not ready");
+    expect(JSON.stringify(second.getContent())).toBe(before);
   });
 });

@@ -12,6 +12,9 @@ import {
   createParagraphBlock,
   createSlotBlock,
   createTitleBlock,
+  createWrapperBlock,
+  isParagraph,
+  isTitle,
   OperationError,
   type Operation,
   type TemplateContent,
@@ -74,6 +77,13 @@ function open(
 
 const snapshot = (content: TemplateContent) => JSON.stringify(content);
 
+/** The text of the block at `index`, which the seed and the batches keep a title or paragraph. */
+function textAt(content: TemplateContent, index: number): string {
+  const block = content.blocks[index];
+  if (block && (isTitle(block) || isParagraph(block))) return block.content;
+  throw new Error(`No title or paragraph at ${index}`);
+}
+
 const twoEdits: Operation[] = [
   { op: "updateBlock", blockId: "t1", set: { content: "Welcome" } },
   {
@@ -96,9 +106,7 @@ describe("useHostOperations", () => {
       "p1",
       "p2",
     ]);
-    expect(
-      (editor.content.value.blocks[0] as { content: string }).content,
-    ).toBe("Welcome");
+    expect(textAt(editor.content.value, 0)).toBe("Welcome");
 
     history.undo();
     expect(snapshot(editor.content.value)).toBe(before);
@@ -182,9 +190,7 @@ describe("useHostOperations", () => {
     ]);
     block.content = "<p>Changed by the caller later</p>";
 
-    expect(
-      (editor.content.value.blocks[2] as { content: string }).content,
-    ).toBe("<p>Mine</p>");
+    expect(textAt(editor.content.value, 2)).toBe("<p>Mine</p>");
   });
 
   it("clears the selection when the batch deletes the selected block", () => {
@@ -223,9 +229,7 @@ describe("useHostOperations", () => {
 
     host.applyOperations([twoEdits[0]]);
 
-    expect(
-      (editor.content.value.blocks[0] as { content: string }).content,
-    ).toBe("Normalized");
+    expect(textAt(editor.content.value, 0)).toBe("Normalized");
   });
 
   it("returns a refusal the normalizer raises, and changes nothing", () => {
@@ -275,6 +279,25 @@ describe("useHostOperations", () => {
     expect(history.canUndo.value).toBe(false);
   });
 
+  it("throws on a wrapper block, as setContent does, before changing anything", () => {
+    const { editor, history, host } = open();
+    const before = snapshot(editor.content.value);
+
+    expect(() =>
+      host.applyOperations([
+        twoEdits[0],
+        {
+          op: "addBlock",
+          block: createWrapperBlock(),
+          parent: null,
+          after: null,
+        },
+      ]),
+    ).toThrow(/wrapper/i);
+    expect(snapshot(editor.content.value)).toBe(before);
+    expect(history.canUndo.value).toBe(false);
+  });
+
   it("refuses to edit while a version is previewed", () => {
     const { editor, host } = open({ isPreviewingVersion: () => true });
     const before = snapshot(editor.content.value);
@@ -290,14 +313,19 @@ describe("useHostOperations", () => {
       applied: true as const,
       inverse: [] as Operation[],
     }));
+    const normalized: Operation[] = [
+      { op: "updateBlock", blockId: "t1", set: { content: "Normalized" } },
+    ];
     const { editor, history, host } = open({
       collaboration: { core: { applyOperations } },
+      normalize: () => normalized,
     });
     const before = snapshot(editor.content.value);
 
     expect(host.applyOperations(twoEdits)).toEqual({ applied: true });
 
-    expect(applyOperations).toHaveBeenCalledWith(twoEdits, {});
+    // The normalized batch, not the caller's: tags are converted on this path too.
+    expect(applyOperations).toHaveBeenCalledWith(normalized, {});
     // The controller owns content and undo; the local stack is untouched.
     expect(snapshot(editor.content.value)).toBe(before);
     expect(history.canUndo.value).toBe(false);

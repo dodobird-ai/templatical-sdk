@@ -785,8 +785,10 @@ interface TemplaticalEditorBase {
    * locale operations edit a language version. Bare merge tags are converted
    * the same way `setContent` converts them, and the editor applies a copy, so
    * objects in the batch never become editor state. An empty batch applies and
-   * records nothing. With `collaboration`, the batch is sent as this session's
-   * own edit and can be refused for a lock another session holds.
+   * records nothing. The batch is checked against the template, not against
+   * `localization.locales`, so filter batches you did not write yourself. With
+   * `collaboration`, the batch is sent as this session's own edit and can be
+   * refused for a lock another session holds.
    *
    * Throws for a slot or wrapper block, as `setContent` does, while a version
    * from the version history is on the canvas (code `version_preview`), and on
