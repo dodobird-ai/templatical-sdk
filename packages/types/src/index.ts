@@ -390,6 +390,17 @@ export {
   findOpenTagEnd,
   getTagAttrValue,
 } from "./html-scan";
+export type {
+  CustomHeadCheck,
+  CustomHeadForbiddenElement,
+  CustomHeadRefusal,
+} from "./custom-head";
+export {
+  CUSTOM_HEAD_ALLOWED_HTTP_EQUIV,
+  CUSTOM_HEAD_FORBIDDEN_ELEMENTS,
+  checkCustomHeadCss,
+  checkCustomHeadTags,
+} from "./custom-head";
 export { fillEmptyParagraphs, isBlankRichText } from "./rich-text";
 export type { FontFamily } from "./fonts";
 export {

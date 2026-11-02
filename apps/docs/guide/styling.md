@@ -19,15 +19,15 @@ interface BlockStyles {
 ```
 
 ```ts
-import { createParagraphBlock } from '@templatical/types';
+import { createParagraphBlock } from "@templatical/types";
 
 const block = createParagraphBlock({
-  content: '<p>Styled text</p>',
+  content: "<p>Styled text</p>",
 });
 
 block.styles = {
   padding: { top: 16, right: 24, bottom: 16, left: 24 },
-  backgroundColor: '#f0f9ff',
+  backgroundColor: "#f0f9ff",
 };
 ```
 
@@ -58,12 +58,12 @@ A paragraph block holding more than one `<p>` spaces them by `paragraphSpacing`,
 
 ```ts
 const block = createParagraphBlock({
-  content: '<p>First.</p><p>Second.</p>',
+  content: "<p>First.</p><p>Second.</p>",
   paragraphSpacing: 16,
 });
 ```
 
-The canvas and the exported email apply this identically, so the gap you see in the editor is the gap that ships. It only affects space *between* paragraphs inside one block — the space around the block is `styles.padding`, and a block with a single paragraph has no internal gap at all.
+The canvas and the exported email apply this identically, so the gap you see in the editor is the gap that ships. It only affects space _between_ paragraphs inside one block — the space around the block is `styles.padding`, and a block with a single paragraph has no internal gap at all.
 
 List spacing is not configurable: MJML resets nothing for `ul`/`ol`/`li`, so those values exist to pin down mail-client defaults rather than to be designed with.
 
@@ -94,33 +94,35 @@ This is useful for showing different content at different screen sizes -- for ex
 
 Beyond individual block styles, the template itself has global settings that affect the overall layout.
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| `width` | `number` | Template content width in px (typically 600) |
-| `backgroundColor` | `string` | Outer background color behind the template |
-| `textColor` | `string` | Default text color, inherited by every text block (Title, Paragraph, Menu, Table) unless the block sets its own color or an inline text-color mark. Defaults to `#1a1a1a`. |
-| `linkColor` | `string` | Document-level link color applied to every link (rich-text and menu). Optional — when unset, links inherit the surrounding text color. A per-block or per-item color still overrides. |
-| `linkUnderline` | `boolean` | Whether body (rich-text) links are underlined. Defaults to `true`. Buttons and menu items keep their own text-decoration. |
-| `fontFamily` | `string` | Default font family for all blocks |
-| `locale` | `string` | BCP-47 content language (`<html lang>`). Defaults to `en` on a blank template |
-| `direction` | `'ltr' \| 'rtl'` | Writing direction. Unset follows the content language |
-| `preheaderText` | `string` | Inbox preview line |
+| Setting           | Type             | Description                                                                                                                                                                           |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `width`           | `number`         | Template content width in px (typically 600)                                                                                                                                          |
+| `backgroundColor` | `string`         | Outer background color behind the template                                                                                                                                            |
+| `textColor`       | `string`         | Default text color, inherited by every text block (Title, Paragraph, Menu, Table) unless the block sets its own color or an inline text-color mark. Defaults to `#1a1a1a`.            |
+| `linkColor`       | `string`         | Document-level link color applied to every link (rich-text and menu). Optional — when unset, links inherit the surrounding text color. A per-block or per-item color still overrides. |
+| `linkUnderline`   | `boolean`        | Whether body (rich-text) links are underlined. Defaults to `true`. Buttons and menu items keep their own text-decoration.                                                             |
+| `fontFamily`      | `string`         | Default font family for all blocks                                                                                                                                                    |
+| `locale`          | `string`         | BCP-47 content language (`<html lang>`). Defaults to `en` on a blank template                                                                                                         |
+| `direction`       | `'ltr' \| 'rtl'` | Writing direction. Unset follows the content language                                                                                                                                 |
+| `preheaderText`   | `string`         | Inbox preview line                                                                                                                                                                    |
+| `customHeadCss`   | `string`         | Extra CSS for the email's `<head>`. See [Custom head](#custom-head)                                                                                                                   |
+| `customHeadTags`  | `string`         | Extra `<head>` tags. See [Custom head](#custom-head)                                                                                                                                  |
 
 These are configured through the editor's `init()` config or by modifying the template JSON directly:
 
 ```ts
-import { init } from '@templatical/editor';
+import { init } from "@templatical/editor";
 
 const editor = await init({
-  container: '#editor',
+  container: "#editor",
   content: {
     settings: {
       width: 640,
-      backgroundColor: '#f8fafc',
-      textColor: '#1a1a1a',
+      backgroundColor: "#f8fafc",
+      textColor: "#1a1a1a",
       linkUnderline: true,
-      locale: 'en',
-      fontFamily: 'Inter, system-ui, sans-serif',
+      locale: "en",
+      fontFamily: "Inter, system-ui, sans-serif",
     },
     blocks: [],
   },
@@ -132,3 +134,51 @@ Individual blocks can override the template-level `fontFamily` by setting their 
 Text color works the same way: text blocks (Title, Paragraph, Menu, Table) inherit `textColor` from the template settings, and any block that sets its own color overrides it. Customize the document default through `init({ templateDefaults: { textColor } })`.
 
 Links follow the same cascade: set a document `linkColor` to apply one color to every link (rich-text and menu), or leave it unset so links inherit the surrounding text color. `linkUnderline` (on by default) underlines body links — buttons and menu items keep their own text-decoration. A per-block or per-item color (e.g. a Menu item's color) still overrides the document link color. Individual rich-text links can also be given their own color in the link dialog, which overrides the document link color — and because the color sits on the link itself, its underline matches.
+
+## Custom head {#custom-head}
+
+A template can carry its own `<head>` content: CSS the built-in styles don't cover, and tags such as `<meta>` or Outlook conditional comments. Authors edit both in the **Custom head** card of the Settings tab; in content they are two settings:
+
+```ts
+content.settings.customHeadCss = ".footer a { color: #666666 !important; }";
+content.settings.customHeadTags = [
+  '<meta name="x-apple-disable-message-reformatting">',
+  "<!--[if mso]><style>td { font-family: 'Segoe UI', Arial, sans-serif; }</style><![endif]-->",
+].join("\n");
+```
+
+The renderer adds them at the end of `<mj-head>`, after every built-in and custom-block rule:
+
+```xml
+<mj-raw>
+<meta name="x-apple-disable-message-reformatting">
+<!--[if mso]><style>td { font-family: 'Segoe UI', Arial, sans-serif; }</style><![endif]-->
+</mj-raw>
+<mj-style>
+.footer a { color: #666666 !important; }
+</mj-style>
+```
+
+- **CSS is a plain `<style>`.** It is not inlined, so put rules that must survive clients without `<style>` support on the blocks themselves. Coming last, it wins ties with the built-in rules.
+- **Conditional comments go in the tags, not the CSS.** MJML strips a comment written directly in `<mj-head>`; the content of `<mj-raw>` reaches the compiled `<head>` as written.
+- **The canvas ignores both.** The editor never applies or runs author head content; see it in the export preview or the sent email.
+- **Unset or blank adds nothing.** A template without a custom head renders byte for byte as before.
+- **Per language.** Like other settings, a language version can override either field in its `l10n` layer.
+
+### What is refused
+
+A value that could break the MJML document or run code is left out of the render whole, never partly, and the renderer logs a `console.warn` naming the reason. The panel shows the same reason under the field as the author types; the value stays stored as typed so it can be fixed.
+
+| Field            | Refused                                                                                                                                                                                                                                                                         | Why                                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customHeadCss`  | any `<`                                                                                                                                                                                                                                                                         | It could close the `<mj-style>` or the compiled `<style>`. In a CSS string, write `\3C`.                                                            |
+| `customHeadTags` | `<script>`, `<iframe>`, `<frame>`, `<frameset>`, `<object>`, `<embed>`, `<applet>`, `<svg>`, `<math>`, `<plaintext>`, `<base>`, `<form>`, `<html>`, `<head>`, `<body>`, `<mjml>` and every `<mj-*>` tag, opening or closing                                                     | Active content, document structure, or the end of the `<mj-raw>`                                                                                    |
+| `customHeadTags` | an `on*` attribute                                                                                                                                                                                                                                                              | Event handlers run in browsers that show the HTML                                                                                                   |
+| `customHeadTags` | a URL attribute (`href`, `src`, …) outside the editor's link schemes                                                                                                                                                                                                            | `javascript:`, `data:` and similar                                                                                                                  |
+| `customHeadTags` | a `<!--` without `-->`, a tag without `>`, a `<style>`, `<title>`, `<noscript>`, `<textarea>`, `<xmp>`, `<noembed>` or `<noframes>` without its closing tag                                                                                                                     | Each would swallow the rest of the head                                                                                                             |
+| `customHeadTags` | `http-equiv` other than `content-type` or `x-ua-compatible`                                                                                                                                                                                                                     | `refresh`, `set-cookie` and the like act on the page showing the email, such as a host's preview                                                    |
+| `customHeadTags` | a malformed tag: `<` or `>` inside a tag (also in a quoted value: write `&lt;` / `&gt;`), a quote, `=` or backtick in an attribute name or unquoted value, attributes not separated by whitespace, anything after a closing tag's name, a self-closing `<style/>` or `<title/>` | Browsers, MJML and mail clients recover from these differently, so a tag the check reads one way could be read another way where the email is shown |
+
+The check reads every `<` in the tags as a possible tag, inside comments and `<style>` too, so markup a browser would treat as text is held to the same rules.
+
+`checkCustomHeadCss` and `checkCustomHeadTags` from `@templatical/types` return the verdict (`empty`, `accepted` with the trimmed value, or `refused` with a typed reason) for hosts that validate before saving. Like the settings allowlist, the check runs in the browser and in the renderer, not on your server; validate what you persist. To keep authors out of the head entirely, leave both fields out of [`templateSettings.fields`](/api/editor#restricting-the-settings-panel).

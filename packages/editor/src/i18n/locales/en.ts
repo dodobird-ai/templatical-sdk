@@ -653,6 +653,33 @@ export default {
     contentDirection: "Right-to-left",
     contentDirectionHint:
       "Writing direction of the email, independent of the editor's own language. When unset, follows the content language (Arabic, Hebrew, …).",
+    customHead: "Custom head",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "Added to the email's <head> as a <style> block, after the built-in styles. Not inlined, and not applied on the canvas.",
+    customHeadTags: "Head tags",
+    customHeadTagsHint:
+      "Meta and link tags, styles and Outlook conditional comments, added to the email's <head> as written.",
+    customHeadRefusal: {
+      markupInCss:
+        "CSS can't contain “<”. This CSS is left out of the email until it's fixed.",
+      forbiddenElement:
+        "<{element}> isn't allowed here. These tags are left out of the email until it's removed.",
+      eventHandler:
+        "Event handler attributes ({attribute}) aren't allowed. These tags are left out of the email until it's removed.",
+      unsafeUrl:
+        "The {attribute} URL uses a scheme that isn't allowed. These tags are left out of the email until it's fixed.",
+      unclosedComment:
+        "A comment opened with <!-- is never closed with -->. These tags are left out of the email until it's closed.",
+      unclosedTag:
+        "A tag is never closed with >. These tags are left out of the email until it's closed.",
+      unclosedElement:
+        "<{element}> is never closed with </{element}>. These tags are left out of the email until it's closed.",
+      forbiddenHttpEquiv:
+        "http-equiv=\"{value}\" isn't allowed; only content-type and x-ua-compatible are. These tags are left out of the email until it's removed.",
+      malformedTag:
+        "A tag here can be read in more than one way: a < or > inside it, a quote or = in an unquoted value, or attributes without spaces between them. These tags are left out of the email until it's fixed.",
+    },
     tips: "Tips",
     tip1: "600px is the standard width for email templates",
     tip2: "Use web-safe fonts for best compatibility",

@@ -2038,6 +2038,14 @@
         "direction": {
           "$ref": "#/definitions/ContentDirection",
           "description": "Writing direction of the delivered email: the canvas `dir` and the rendered `<mjml dir>`. Independent of the editor chrome (`init({ locale })`). Optional: when unset, `resolveContentDirection` falls through to the content language (`ar` / `he` / `fa` / … → `\"rtl\"`, otherwise `\"ltr\"`). An explicit `\"ltr\"` on an Arabic template is a stated decision, not a missing value."
+        },
+        "customHeadCss": {
+          "type": "string",
+          "description": "Custom head CSS: author CSS emitted as its own `<mj-style>` at the end of `<mj-head>`, after every built-in rule, so it wins ties in the cascade. It is not inlined, and the editor canvas never applies it. Unset or blank renders nothing. A value containing `<` is left out of the render whole (see `checkCustomHeadCss`)."
+        },
+        "customHeadTags": {
+          "type": "string",
+          "description": "Custom head tags: raw markup (`<meta>`, `<link>`, `<style>`, Outlook conditional comments) emitted inside an `<mj-raw>` at the end of `<mj-head>`, so it reaches the compiled `<head>` unchanged. Unset or blank renders nothing. A value with `<script>`, an `on*` attribute, an `mj-*` tag or another refused construct is left out of the render whole (see `checkCustomHeadTags`)."
         }
       },
       "required": [

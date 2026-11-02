@@ -273,6 +273,8 @@ content.settings.direction = 'ltr';
 | `preheaderText` | `string` | Vorschautext, der in der Posteingangsliste angezeigt wird |
 | `locale` | `string` | BCP-47-Inhaltssprache (`<html lang>`) |
 | `direction` | `'ltr' \| 'rtl'` | Schreibrichtung. Ungesetzt folgt der Inhaltssprache |
+| `customHeadCss` | `string` | Zusätzliches CSS für den `<head>` der E-Mail. Siehe [Eigener Head](/de/guide/styling#custom-head) |
+| `customHeadTags` | `string` | Zusätzliche `<head>`-Tags. Siehe [Eigener Head](/de/guide/styling#custom-head) |
 
 Für Standardwerte und wie Sie diese anpassen können, siehe [Block- & Template-Standardwerte](/de/guide/defaults).
 

@@ -659,6 +659,33 @@ const ptBR: typeof en = {
     contentDirection: "Da direita para a esquerda",
     contentDirectionHint:
       "Direção de escrita do e-mail, independente do idioma do editor. Se não for definida, segue o idioma do conteúdo (árabe, hebraico, …).",
+    customHead: "Head personalizado",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "Adicionado ao <head> do e-mail como bloco <style>, depois dos estilos integrados. Não é aplicado inline nem no canvas.",
+    customHeadTags: "Tags do head",
+    customHeadTagsHint:
+      "Tags meta e link, estilos e comentários condicionais do Outlook, adicionados ao <head> do e-mail como escritos.",
+    customHeadRefusal: {
+      markupInCss:
+        "O CSS não pode conter “<”. Este CSS fica fora do e-mail até ser corrigido.",
+      forbiddenElement:
+        "<{element}> não é permitido aqui. Estas tags ficam fora do e-mail até ele ser removido.",
+      eventHandler:
+        "Atributos de manipuladores de eventos ({attribute}) não são permitidos. Estas tags ficam fora do e-mail até ele ser removido.",
+      unsafeUrl:
+        "A URL de {attribute} usa um esquema não permitido. Estas tags ficam fora do e-mail até ser corrigida.",
+      unclosedComment:
+        "Um comentário aberto com <!-- nunca é fechado com -->. Estas tags ficam fora do e-mail até ele ser fechado.",
+      unclosedTag:
+        "Uma tag nunca é fechada com >. Estas tags ficam fora do e-mail até ser fechada.",
+      unclosedElement:
+        "<{element}> nunca é fechado com </{element}>. Estas tags ficam fora do e-mail até ele ser fechado.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" não é permitido; só content-type e x-ua-compatible. Estas tags ficam fora do e-mail até ele ser removido.',
+      malformedTag:
+        "Uma tag aqui pode ser lida de mais de uma forma: um < ou > dentro dela, uma aspa ou = num valor sem aspas, ou atributos sem espaço entre eles. Estas tags ficam fora do e-mail até ser corrigida.",
+    },
     tips: "Dicas",
     tip1: "600px é a largura padrão para templates de e-mail",
     tip2: "Use fontes seguras para web para melhor compatibilidade",

@@ -167,7 +167,7 @@ Layout `settings` is a full `TemplateSettings`. Only `backgroundColor` is read.
 | Field | Winner |
 | --- | --- |
 | `backgroundColor` | layout → `mj-body` |
-| `width`, `fontFamily`, `textColor`, `linkColor`, `linkUnderline`, `locale`, `preheaderText`, `direction` | content |
+| `width`, `fontFamily`, `textColor`, `linkColor`, `linkUnderline`, `locale`, `preheaderText`, `direction`, `customHeadCss`, `customHeadTags` | content |
 
 Content `settings.backgroundColor` is not mutated. Template Settings still edits it. It is not `mj-body` when a layout is applied. `direction` comes from the authored template. Layout does not set `dir`.
 

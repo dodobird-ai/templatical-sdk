@@ -661,6 +661,33 @@ const ca: typeof en = {
     contentDirection: "De dreta a esquerra",
     contentDirectionHint:
       "Direcció d'escriptura del correu, independent de l'idioma de l'editor. Si no s'indica, segueix l'idioma del contingut (àrab, hebreu, …).",
+    customHead: "Capçalera personalitzada",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "S'afegeix al <head> del correu com a bloc <style>, després dels estils integrats. No s'insereix en línia ni s'aplica al llenç.",
+    customHeadTags: "Etiquetes de capçalera",
+    customHeadTagsHint:
+      "Etiquetes meta i link, estils i comentaris condicionals d'Outlook, afegits al <head> del correu tal com s'escriuen.",
+    customHeadRefusal: {
+      markupInCss:
+        "El CSS no pot contenir «<». Aquest CSS queda fora del correu fins que es corregeixi.",
+      forbiddenElement:
+        "<{element}> no està permès aquí. Aquestes etiquetes queden fora del correu fins que se suprimeixi.",
+      eventHandler:
+        "Els atributs de gestors d'esdeveniments ({attribute}) no estan permesos. Aquestes etiquetes queden fora del correu fins que se suprimeixi.",
+      unsafeUrl:
+        "L'URL de {attribute} fa servir un esquema no permès. Aquestes etiquetes queden fora del correu fins que es corregeixi.",
+      unclosedComment:
+        "Un comentari obert amb <!-- no es tanca mai amb -->. Aquestes etiquetes queden fora del correu fins que es tanqui.",
+      unclosedTag:
+        "Una etiqueta no es tanca mai amb >. Aquestes etiquetes queden fora del correu fins que es tanqui.",
+      unclosedElement:
+        "<{element}> no es tanca mai amb </{element}>. Aquestes etiquetes queden fora del correu fins que es tanqui.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" no està permès; només content-type i x-ua-compatible. Aquestes etiquetes queden fora del correu fins que se suprimeixi.',
+      malformedTag:
+        "Una etiqueta es pot llegir de més d'una manera: un < o > a dins, una cometa o = en un valor sense cometes, o atributs sense espais entre ells. Aquestes etiquetes queden fora del correu fins que es corregeixi.",
+    },
     tips: "Consells",
     tip1: "600px és l'amplada estàndard per a les plantilles de correu electrònic",
     tip2: "Utilitzeu fonts segures per a la web per obtenir la millor compatibilitat",

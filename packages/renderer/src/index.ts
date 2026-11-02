@@ -3,13 +3,17 @@ import type {
   ContentDirection,
   CustomBlock,
   CustomBlockDefinition,
+  CustomHeadRefusal,
   TemplateContent,
+  TemplateSettings,
   CustomFont,
   SectionWrapper,
   SpacingValue,
 } from "@templatical/types";
 import {
   applyLayout,
+  checkCustomHeadCss,
+  checkCustomHeadTags,
   defaultLocaleOf,
   assertNoSlotInContent,
   assertNoWrapperInContent,
@@ -266,7 +270,7 @@ export async function renderToMjml(
       @media only screen and (min-width: 481px) {
         .tpl-hide-desktop { display: none !important; mso-hide: all !important; }
       }
-    </mj-style>${renderCustomBlockStylesheets(customBlockStylesheets)}
+    </mj-style>${renderCustomBlockStylesheets(customBlockStylesheets)}${renderCustomHead(toRender.settings)}
   </mj-head>
   <mj-body width="${renderContext.containerWidth}px" background-color="${backgroundColor}">
 ${bodyContent}
@@ -584,6 +588,60 @@ function renderCustomBlockStylesheets(stylesheets: string[]): string {
   return stylesheets
     .map((css) => `\n    <mj-style>\n${css}\n    </mj-style>`)
     .join("");
+}
+
+/**
+ * The template's custom head, last in `<mj-head>`: its tags in one `<mj-raw>`
+ * (the only head element MJML passes through verbatim; a bare head comment —
+ * an Outlook conditional — would be stripped), then its CSS in one
+ * `<mj-style>`, after every built-in and custom-block rule so it wins the
+ * cascade on ties. Unset or blank values add nothing, so a template without a
+ * custom head renders byte for byte as before. A refused value is left out
+ * whole and named in a warning: emitting part of it would put CSS or markup
+ * in the email that the author did not write.
+ */
+function renderCustomHead(settings: TemplateSettings): string {
+  const tags = checkCustomHeadTags(settings.customHeadTags);
+  const css = checkCustomHeadCss(settings.customHeadCss);
+  let head = "";
+  if (tags.status === "accepted") {
+    head += `\n    <mj-raw>\n${tags.value}\n    </mj-raw>`;
+  } else if (tags.status === "refused") {
+    warnCustomHeadRefused("customHeadTags", tags.refusal);
+  }
+  if (css.status === "accepted") {
+    head += `\n    <mj-style>\n${css.value}\n    </mj-style>`;
+  } else if (css.status === "refused") {
+    warnCustomHeadRefused("customHeadCss", css.refusal);
+  }
+  return head;
+}
+
+function warnCustomHeadRefused(
+  field: "customHeadCss" | "customHeadTags",
+  refusal: CustomHeadRefusal,
+): void {
+  console.warn(
+    `[Templatical] settings.${field} was left out of the render: ${refusal.reason}${refusalDetail(refusal)}.`,
+  );
+}
+
+function refusalDetail(refusal: CustomHeadRefusal): string {
+  switch (refusal.reason) {
+    case "forbidden-element":
+    case "unclosed-element":
+      return ` (<${refusal.element}>)`;
+    case "event-handler":
+    case "unsafe-url":
+      return ` (${refusal.attribute})`;
+    case "forbidden-http-equiv":
+      return ` (${refusal.value})`;
+    case "markup-in-css":
+    case "unclosed-comment":
+    case "unclosed-tag":
+    case "malformed-tag":
+      return "";
+  }
 }
 
 // Re-export utilities for consumers

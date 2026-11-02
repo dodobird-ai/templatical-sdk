@@ -659,6 +659,33 @@ const de: typeof en = {
     contentDirection: "Rechts-nach-links",
     contentDirectionHint:
       "Schreibrichtung der E-Mail, unabhängig von der Sprache des Editors. Ungesetzt folgt sie der Inhaltssprache (Arabisch, Hebräisch, …).",
+    customHead: "Eigener Head",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "Wird als <style>-Block nach den eingebauten Styles in den <head> der E-Mail eingefügt. Nicht inline und nicht auf der Arbeitsfläche angewendet.",
+    customHeadTags: "Head-Tags",
+    customHeadTagsHint:
+      "Meta- und Link-Tags, Styles und bedingte Kommentare für Outlook, unverändert in den <head> der E-Mail eingefügt.",
+    customHeadRefusal: {
+      markupInCss:
+        "CSS darf kein „<“ enthalten. Dieses CSS fehlt in der E-Mail, bis es korrigiert ist.",
+      forbiddenElement:
+        "<{element}> ist hier nicht erlaubt. Diese Tags fehlen in der E-Mail, bis es entfernt ist.",
+      eventHandler:
+        "Event-Handler-Attribute ({attribute}) sind nicht erlaubt. Diese Tags fehlen in der E-Mail, bis es entfernt ist.",
+      unsafeUrl:
+        "Die URL in {attribute} verwendet ein nicht erlaubtes Schema. Diese Tags fehlen in der E-Mail, bis sie korrigiert ist.",
+      unclosedComment:
+        "Ein mit <!-- geöffneter Kommentar wird nie mit --> geschlossen. Diese Tags fehlen in der E-Mail, bis er geschlossen ist.",
+      unclosedTag:
+        "Ein Tag wird nie mit > geschlossen. Diese Tags fehlen in der E-Mail, bis es geschlossen ist.",
+      unclosedElement:
+        "<{element}> wird nie mit </{element}> geschlossen. Diese Tags fehlen in der E-Mail, bis es geschlossen ist.",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" ist nicht erlaubt, nur content-type und x-ua-compatible. Diese Tags fehlen in der E-Mail, bis es entfernt ist.',
+      malformedTag:
+        "Ein Tag lässt sich hier auf mehr als eine Art lesen: ein < oder > darin, ein Anführungszeichen oder = in einem Wert ohne Anführungszeichen oder Attribute ohne Leerzeichen dazwischen. Diese Tags fehlen in der E-Mail, bis es korrigiert ist.",
+    },
     tips: "Tipps",
     tip1: "600px ist die Standardbreite für E-Mail-Vorlagen",
     tip2: "Verwenden Sie websichere Schriften für beste Kompatibilität",

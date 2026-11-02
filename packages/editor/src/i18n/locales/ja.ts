@@ -583,6 +583,33 @@ const translations: typeof en = {
     contentDirection: "右から左に表示",
     contentDirectionHint:
       "エディターの言語とは独立した、メール本文の文字方向です。未設定の場合は本文の言語 (アラビア語、ヘブライ語など) に従います。",
+    customHead: "カスタムヘッド",
+    customHeadCss: "CSS",
+    customHeadCssHint:
+      "組み込みスタイルの後に <style> ブロックとしてメールの <head> に追加されます。インライン化されず、キャンバスにも適用されません。",
+    customHeadTags: "ヘッドタグ",
+    customHeadTagsHint:
+      "meta タグ、link タグ、スタイル、Outlook の条件付きコメントを、そのままメールの <head> に追加します。",
+    customHeadRefusal: {
+      markupInCss:
+        "CSS に「<」は使えません。修正するまで、この CSS はメールに含まれません。",
+      forbiddenElement:
+        "<{element}> はここでは使えません。削除するまで、これらのタグはメールに含まれません。",
+      eventHandler:
+        "イベントハンドラー属性（{attribute}）は使えません。削除するまで、これらのタグはメールに含まれません。",
+      unsafeUrl:
+        "{attribute} の URL は許可されていないスキームです。修正するまで、これらのタグはメールに含まれません。",
+      unclosedComment:
+        "<!-- で始まるコメントが --> で閉じられていません。閉じるまで、これらのタグはメールに含まれません。",
+      unclosedTag:
+        "タグが > で閉じられていません。閉じるまで、これらのタグはメールに含まれません。",
+      unclosedElement:
+        "<{element}> が </{element}> で閉じられていません。閉じるまで、これらのタグはメールに含まれません。",
+      forbiddenHttpEquiv:
+        'http-equiv="{value}" は使えません（使えるのは content-type と x-ua-compatible だけです）。削除するまで、これらのタグはメールに含まれません。',
+      malformedTag:
+        "複数の読み方ができるタグがあります（タグ内の < や >、引用符なしの値の中の引用符や =、間に空白のない属性）。修正するまで、これらのタグはメールに含まれません。",
+    },
     tips: "ヒント",
     tip1: "メールテンプレートの標準的な幅は600pxです",
     tip2: "互換性を高めるにはWebセーフフォントを使用してください",
