@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import {
   inputClass,
   inputGroupInputClass,
@@ -15,11 +15,18 @@ import {
  * means "use the default", which `placeholder` shows; emptying the field is
  * how the block goes back to it. Unlike `NumberWithSuffix`, whose value is
  * always set, this one emits `undefined` for an emptied field.
+ *
+ * With `showDefault` the default is the field's value rather than a grey hint,
+ * so the field always reads the size in effect. Emptying it then takes effect
+ * when the user leaves the field: going back to the default on the keystroke
+ * would write the default into the input while they are replacing the number.
  */
 const props = defineProps<{
   modelValue: number | undefined;
   /** The value in effect while the block sets none. */
   placeholder: string;
+  /** Show `placeholder` as the value while the block sets none. */
+  showDefault?: boolean;
   min: number;
   max: number;
   step: number;
@@ -38,6 +45,11 @@ const emit = defineEmits<{
 
 const input = ref<HTMLInputElement | null>(null);
 
+/** What the field reads while the user is not typing in it. */
+const shown = computed(
+  () => props.modelValue ?? (props.showDefault ? props.placeholder : ""),
+);
+
 function onInput(): void {
   const el = input.value;
   if (!el) return;
@@ -46,6 +58,7 @@ function onInput(): void {
     props.grain,
   );
   if (entry.kind === "typing") return;
+  if (entry.kind === "clear" && props.showDefault) return;
   emit("update:modelValue", entry.kind === "size" ? entry.value : undefined);
 }
 
@@ -57,7 +70,12 @@ function onInput(): void {
 function onChange(): void {
   const el = input.value;
   if (!el) return;
-  el.value = props.modelValue === undefined ? "" : String(props.modelValue);
+  if (props.showDefault && el.value.trim() === "" && !el.validity?.badInput) {
+    emit("update:modelValue", undefined);
+    el.value = props.placeholder;
+    return;
+  }
+  el.value = String(shown.value);
 }
 </script>
 
@@ -68,8 +86,8 @@ function onChange(): void {
       type="number"
       :data-testid="testid"
       :class="inputGroupInputClass"
-      :value="modelValue ?? ''"
-      :placeholder="placeholder"
+      :value="shown"
+      :placeholder="showDefault ? undefined : placeholder"
       :min="min"
       :max="max"
       :step="step"
@@ -84,8 +102,8 @@ function onChange(): void {
     type="number"
     :data-testid="testid"
     :class="inputClass"
-    :value="modelValue ?? ''"
-    :placeholder="placeholder"
+    :value="shown"
+    :placeholder="showDefault ? undefined : placeholder"
     :min="min"
     :max="max"
     :step="step"

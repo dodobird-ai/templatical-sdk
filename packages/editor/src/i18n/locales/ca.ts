@@ -310,10 +310,10 @@ const ca: typeof en = {
   // Toolbar - Title
   title: {
     level: "Nivell d'encapçalament",
-    heading1: "Encapçalament 1 (36px)",
-    heading2: "Encapçalament 2 (28px)",
-    heading3: "Encapçalament 3 (22px)",
-    heading4: "Encapçalament 4 (18px)",
+    heading1: "Encapçalament 1",
+    heading2: "Encapçalament 2",
+    heading3: "Encapçalament 3",
+    heading4: "Encapçalament 4",
     fontSize: "Mida de la font",
     lineHeight: "Interlínia",
     fontFamily: "Tipus de lletra",
