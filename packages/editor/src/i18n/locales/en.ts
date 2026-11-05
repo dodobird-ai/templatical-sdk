@@ -312,10 +312,10 @@ export default {
   // Toolbar - Title
   title: {
     level: "Heading Level",
-    heading1: "Heading 1 (36px)",
-    heading2: "Heading 2 (28px)",
-    heading3: "Heading 3 (22px)",
-    heading4: "Heading 4 (18px)",
+    heading1: "Heading 1",
+    heading2: "Heading 2",
+    heading3: "Heading 3",
+    heading4: "Heading 4",
     fontSize: "Font Size",
     lineHeight: "Line Height",
     fontFamily: "Font Family",

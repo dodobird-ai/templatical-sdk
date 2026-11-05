@@ -318,10 +318,10 @@ const es: typeof en = {
   // Toolbar - Title
   title: {
     level: "Nivel de encabezado",
-    heading1: "Encabezado 1 (36px)",
-    heading2: "Encabezado 2 (28px)",
-    heading3: "Encabezado 3 (22px)",
-    heading4: "Encabezado 4 (18px)",
+    heading1: "Encabezado 1",
+    heading2: "Encabezado 2",
+    heading3: "Encabezado 3",
+    heading4: "Encabezado 4",
     fontSize: "Tamaño de fuente",
     lineHeight: "Interlineado",
     fontFamily: "Familia tipográfica",

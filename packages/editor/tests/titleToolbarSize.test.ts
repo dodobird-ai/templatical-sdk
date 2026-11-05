@@ -83,12 +83,41 @@ describe("readOptionalSize", () => {
   });
 });
 
+describe("heading level names", () => {
+  const locales = import.meta.glob<{ default: unknown }>(
+    "../src/i18n/locales/*.ts",
+    { eager: true },
+  );
+
+  it.each(Object.keys(locales))(
+    "%s leaves the size to the size field",
+    (path) => {
+      expect(path).toMatch(/locales/);
+      const labels = JSON.stringify(locales[path]).match(
+        /"heading[1-4]":"[^"]*"/g,
+      );
+      expect(labels).toHaveLength(4);
+      expect(labels?.filter((label) => /\dpx/.test(label))).toEqual([]);
+    },
+  );
+});
+
 describe("TitleToolbar size controls", () => {
-  it("shows an empty size field with the level's size as its placeholder", () => {
+  it("reads the level's size as the field's value, not a hint", () => {
     const input = sizeInput(mountIt(createTitleBlock({ level: 3 })));
     expect(input.exists()).toBe(true);
-    expect(inputOf(input).value).toBe("");
-    expect(input.attributes("placeholder")).toBe("22");
+    expect(inputOf(input).value).toBe("22");
+    expect(input.attributes("placeholder")).toBeUndefined();
+  });
+
+  it("picking a level drops a size set by hand, so the title takes that level's size", async () => {
+    const wrapper = mountIt(createTitleBlock({ level: 1, fontSize: 31 }));
+    await wrapper.find("select").setValue("3");
+    // toStrictEqual: `fontSize: undefined` is what clears the size, and toEqual
+    // would also accept an update that leaves it out and keeps the old size.
+    expect(wrapper.emitted("update")).toStrictEqual([
+      [{ level: 3, fontSize: undefined }],
+    ]);
   });
 
   it("shows the title's own size when it sets one", () => {
@@ -114,8 +143,15 @@ describe("TitleToolbar size controls", () => {
 
   it("emptying the size field returns the title to its level's size", async () => {
     const wrapper = mountIt(createTitleBlock({ level: 1, fontSize: 31 }));
-    await sizeInput(wrapper).setValue("");
+    const input = sizeInput(wrapper);
+    inputOf(input).value = "";
+    await input.trigger("input");
+    // Not on the keystroke: the default would land in the input mid-edit.
+    expect(wrapper.emitted("update")).toBeUndefined();
+    expect(inputOf(input).value).toBe("");
+    await input.trigger("change");
     expect(wrapper.emitted("update")).toEqual([[{ fontSize: undefined }]]);
+    expect(inputOf(input).value).toBe("36");
   });
 
   it("keeps the stored line height while the entry cannot be parsed yet", () => {

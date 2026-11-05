@@ -317,10 +317,10 @@ const de: typeof en = {
   // Toolbar - Title
   title: {
     level: "Überschriftenebene",
-    heading1: "Überschrift 1 (36px)",
-    heading2: "Überschrift 2 (28px)",
-    heading3: "Überschrift 3 (22px)",
-    heading4: "Überschrift 4 (18px)",
+    heading1: "Überschrift 1",
+    heading2: "Überschrift 2",
+    heading3: "Überschrift 3",
+    heading4: "Überschrift 4",
     fontSize: "Schriftgröße",
     lineHeight: "Zeilenhöhe",
     fontFamily: "Schriftart",
