@@ -20,6 +20,7 @@ import {
   type CustomBlockDefinition,
 } from "../src";
 import * as localization from "../src/localization";
+import { expectLinear } from "./helpers/expectLinear";
 
 const liquid = SYNTAX_PRESETS.liquid;
 const options = { syntax: liquid, only: "all" as const };
@@ -56,6 +57,164 @@ function values(extracted: ReturnType<typeof localeStrings>) {
 }
 
 describe("maskTags", () => {
+  it("matches the previous custom-regex loop over seeded text", () => {
+    const syntax = {
+      value: /%%[a-z]+%%/gi,
+      logic: /\[%\s*if\s+[a-z]+\s*%\]/gi,
+    };
+    const reference = (text: string) => {
+      const patterns = [syntax.logic, syntax.value].map(
+        (pattern) =>
+          new RegExp(pattern.source, pattern.flags.replace(/[gy]/g, "") + "g"),
+      );
+      const tokens: string[] = [];
+      let cursor = 0;
+      while (cursor < text.length) {
+        const matches = patterns.flatMap((pattern) => {
+          pattern.lastIndex = cursor;
+          let match = pattern.exec(text);
+          while (match && match[0].length === 0) {
+            pattern.lastIndex = match.index + 1;
+            match = pattern.exec(text);
+          }
+          return match ? [{ index: match.index, value: match[0] }] : [];
+        });
+        matches.sort(
+          (a, b) => a.index - b.index || a.value.length - b.value.length,
+        );
+        const match = matches[0];
+        if (!match) break;
+        tokens.push(match.value);
+        cursor = match.index + match.value.length;
+      }
+      let result = text;
+      let offset = 0;
+      for (const [index, token] of tokens.entries()) {
+        const start = result.indexOf(token, offset);
+        const marker = `<x id="${index + 1}"/>`;
+        result =
+          result.slice(0, start) + marker + result.slice(start + token.length);
+        offset = start + marker.length;
+      }
+      return { text: result, tokens };
+    };
+    let seed = 92381;
+    const random = () =>
+      (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32;
+    const chunks = [
+      "x",
+      " ",
+      "%%name%%",
+      "%%VIP%%",
+      "[% if vip %]",
+      "%%unfinished",
+      "[% nope %]",
+      "%%a%%%%b%%",
+    ];
+    for (let sample = 0; sample < 150; sample++) {
+      const text = Array.from(
+        { length: 2 + Math.floor(random() * 35) },
+        () => chunks[Math.floor(random() * chunks.length)],
+      ).join("");
+      expect(maskTags(text, syntax, "text")).toEqual(reference(text));
+    }
+  });
+
+  it("does not re-execute an exhausted custom pattern for every value tag", () => {
+    const syntax = { value: /%%[a-z]+%%/g, logic: /\[%\s*if\s+[a-z]+\s*%\]/g };
+    const original = RegExp.prototype.exec;
+    const calls = (count: number) => {
+      let logic = 0;
+      let value = 0;
+      const spy = vi
+        .spyOn(RegExp.prototype, "exec")
+        .mockImplementation(function (this: RegExp, text: string) {
+          if (this.source === syntax.logic.source) logic++;
+          if (this.source === syntax.value.source) value++;
+          return original.call(this, text);
+        });
+      try {
+        expect(
+          maskTags("%%name%% ".repeat(count), syntax, "text").tokens,
+        ).toHaveLength(count);
+      } finally {
+        spy.mockRestore();
+      }
+      return { logic, value };
+    };
+    const small = calls(50);
+    const large = calls(200);
+    expect(small.logic).toBeLessThanOrEqual(2);
+    expect(large.logic).toBeLessThanOrEqual(2);
+    expect(large.value).toBeLessThanOrEqual(small.value * 4 + 1);
+  });
+
+  it("skips a zero-length custom match and finds a later logic tag", () => {
+    const syntax = { value: /\[\[\w+\]\]/g, logic: /^|<if>/g };
+
+    expect(maskTags("Hi <if> [[name]]!", syntax, "text")).toEqual({
+      text: 'Hi <x id="1"/> <x id="2"/>!',
+      tokens: ["<if>", "[[name]]"],
+    });
+  });
+
+  it("masks many unclosed built-in openers linearly", () => {
+    const text = "{{".repeat(90_000);
+    expect(maskTags(text, liquid, "text")).toEqual({ text, tokens: [] });
+    expectLinear(
+      (n) => {
+        const value = "{{".repeat(n);
+        return () => maskTags(value, liquid, "text");
+      },
+      5_000,
+      40,
+    );
+  });
+  it("masks unclosed openers from a spread preset linearly", () => {
+    const syntax = { ...liquid, opener: "<<" };
+    const text = "{{".repeat(90_000);
+    expect(maskTags(text, syntax, "text")).toEqual({ text, tokens: [] });
+    expectLinear(
+      (n) => {
+        const value = "{{".repeat(n);
+        return () => maskTags(value, syntax, "text");
+      },
+      5_000,
+      40,
+    );
+  });
+  it("masks many complete tags followed by unclosed openers linearly", () => {
+    const text = "{{x}}".repeat(20_000) + "{{".repeat(90_000);
+    expect(maskTags(text, liquid, "text").tokens).toHaveLength(20_000);
+    expectLinear(
+      (n) => {
+        const value = "{{x}}".repeat(n) + "{{".repeat(n * 4);
+        return () => maskTags(value, liquid, "text");
+      },
+      500,
+      40,
+    );
+  });
+  it("masks overlapping candidates and unclosed openers linearly", () => {
+    expect(
+      maskTags("{{#if x}}}{{#if y}}}", SYNTAX_PRESETS.handlebars, "text"),
+    ).toEqual({
+      text: '<x id="1"/>}<x id="2"/>}',
+      tokens: ["{{#if x}}", "{{#if y}}"],
+    });
+    const text = "{{#if x}}}".repeat(20_000) + "{{".repeat(60_000);
+    expect(
+      maskTags(text, SYNTAX_PRESETS.handlebars, "text").tokens,
+    ).toHaveLength(20_000);
+    expectLinear(
+      (n) => {
+        const value = "{{#if x}}}".repeat(n) + "{{".repeat(n * 3);
+        return () => maskTags(value, SYNTAX_PRESETS.handlebars, "text");
+      },
+      500,
+      20,
+    );
+  });
   it("masks chips whole and raw tags in document order, preserving original bytes", () => {
     const html = `<p>{{before}} Hi ${chip}, {{ city }} and {{first_name}}</p>`;
     const masked = maskTags(html, liquid, "html");

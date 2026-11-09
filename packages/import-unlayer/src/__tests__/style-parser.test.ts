@@ -4,11 +4,13 @@ import {
   parseColor,
   parsePaddingShorthand,
   parseBorderObject,
+  isTransparentColor,
   parseDividerWidth,
   parseFontFamily,
   readUnlayerBackgroundImage,
 } from "../style-parser";
 import type { UnlayerBackgroundImage } from "../types";
+import { expectLinear } from "./expectLinear";
 
 describe("parsePxValue", () => {
   it("parses '12px' to 12", () => {
@@ -45,12 +47,12 @@ describe("parsePxValue", () => {
   // rewrite collapses to a single `\s*(?:px\s*)?` so trailing whitespace
   // is matched by one quantifier with no backtracking.
   it("rejects digit-then-long-whitespace input in linear time (ReDoS regression)", () => {
-    const adversarial = "9" + " ".repeat(50_000) + "x";
-    const start = Date.now();
-    const result = parsePxValue(adversarial);
-    const elapsed = Date.now() - start;
-    expect(result).toBe(0); // `x` makes it fail the `px?` group
-    expect(elapsed).toBeLessThan(500);
+    // `x` makes it fail the `px?` group
+    expect(parsePxValue("9" + " ".repeat(50_000) + "x")).toBe(0);
+    expectLinear((n) => {
+      const value = "9" + " ".repeat(n) + "x";
+      return () => parsePxValue(value);
+    }, 2_000);
   });
 });
 
@@ -110,6 +112,20 @@ describe("parsePaddingShorthand", () => {
       left: 0,
     });
   });
+
+  // CSS drops a padding with a negative length, judged before rounding:
+  // -0.4px rounds to -0. A literal -0 is 0.
+  it("reads a shorthand with a negative side as no padding", () => {
+    for (const value of ["-10px 0px", "10px -0.4px", "5px 5px 5px -1px"]) {
+      expect(parsePaddingShorthand(value)).toEqual({
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+      });
+    }
+    expect(parsePaddingShorthand("10px -0px").top).toBe(10);
+  });
 });
 
 describe("parseBorderObject", () => {
@@ -120,14 +136,166 @@ describe("parseBorderObject", () => {
         borderTopStyle: "dotted",
         borderTopColor: "#ff0000",
       }),
-    ).toEqual({ width: 3, style: "dotted", color: "#ff0000" });
+    ).toEqual({ width: 3, style: "dotted", color: "#ff0000", drawn: true });
   });
   it("returns defaults on undefined", () => {
     expect(parseBorderObject(undefined)).toEqual({
       width: 0,
       style: "solid",
       color: "#000000",
+      drawn: true,
     });
+  });
+  it("is not drawn at a stated 0 width, with no style, or in a transparent colour", () => {
+    for (const border of [
+      {
+        borderTopWidth: "0px",
+        borderTopStyle: "solid",
+        borderTopColor: "#ccc",
+      },
+      { borderTopWidth: "1px", borderTopStyle: "none", borderTopColor: "#ccc" },
+      {
+        borderTopWidth: "1px",
+        borderTopStyle: "hidden",
+        borderTopColor: "#ccc",
+      },
+      {
+        borderTopWidth: "1px",
+        borderTopStyle: "solid",
+        borderTopColor: "transparent",
+      },
+      {
+        borderTopWidth: "1px",
+        borderTopStyle: "solid",
+        borderTopColor: "rgba(0,0,0,0)",
+      },
+    ]) {
+      expect([border, parseBorderObject(border).drawn]).toEqual([
+        border,
+        false,
+      ]);
+    }
+  });
+  // A zero-width pattern that can split a run of zeros or of spaces two ways
+  // backtracks quadratically on a long run that fails to match (CodeQL
+  // js/polynomial-redos).
+  it("reads long runs of zeros and spaces in linear time (ReDoS regression)", () => {
+    const border = (borderTopWidth: string) =>
+      parseBorderObject({
+        borderTopWidth,
+        borderTopStyle: "solid",
+        borderTopColor: "#cccccc",
+      });
+    for (const width of [
+      (n: number) => `${"0".repeat(n)}x`,
+      (n: number) => `0${" ".repeat(n)}x`,
+    ]) {
+      expect(border(width(40_000)).drawn).toBe(true);
+      expectLinear((n) => {
+        const value = width(n);
+        return () => border(value);
+      }, 2_000);
+    }
+  });
+
+  it("reads a zero width in every CSS length unit", () => {
+    for (const borderTopWidth of ["0svh", "0lh", "0cqw", "0dvmax", "0Q"]) {
+      expect([
+        borderTopWidth,
+        parseBorderObject({
+          borderTopWidth,
+          borderTopStyle: "solid",
+          borderTopColor: "#ccc",
+        }).drawn,
+      ]).toEqual([borderTopWidth, false]);
+    }
+  });
+
+  it("reads a zero width in any unit and a style in any case", () => {
+    for (const border of [
+      {
+        borderTopWidth: "0pt",
+        borderTopStyle: "solid",
+        borderTopColor: "#ccc",
+      },
+      {
+        borderTopWidth: "0em",
+        borderTopStyle: "solid",
+        borderTopColor: "#ccc",
+      },
+      {
+        borderTopWidth: "+0px",
+        borderTopStyle: "solid",
+        borderTopColor: "#ccc",
+      },
+      { borderTopWidth: "1px", borderTopStyle: "NONE", borderTopColor: "#ccc" },
+      {
+        borderTopWidth: "1px",
+        borderTopStyle: " Hidden ",
+        borderTopColor: "#ccc",
+      },
+    ]) {
+      expect([border, parseBorderObject(border).drawn]).toEqual([
+        border,
+        false,
+      ]);
+    }
+    expect(
+      parseBorderObject({
+        borderTopWidth: "2px",
+        borderTopStyle: "DASHED",
+        borderTopColor: "#ccc",
+      }),
+    ).toEqual({ width: 2, style: "dashed", color: "#cccccc", drawn: true });
+  });
+
+  it("is drawn with an unreadable width", () => {
+    expect(
+      parseBorderObject({
+        borderTopWidth: "thin",
+        borderTopStyle: "solid",
+        borderTopColor: "#ccc",
+      }).drawn,
+    ).toBe(true);
+  });
+  it("takes no room with a none or hidden style", () => {
+    expect(
+      parseBorderObject({
+        borderTopWidth: "3px",
+        borderTopStyle: "hidden",
+        borderTopColor: "#ccc",
+      }).width,
+    ).toBe(0);
+  });
+});
+
+describe("isTransparentColor", () => {
+  it("is true for a colour with no opacity", () => {
+    for (const value of [
+      "transparent",
+      "TRANSPARENT",
+      "#0000",
+      "#ffffff00",
+      "rgba(0, 0, 0, 0)",
+      "rgb(0 0 0 / 0%)",
+      "hsla(0, 0%, 100%, 0)",
+    ]) {
+      expect([value, isTransparentColor(value)]).toEqual([value, true]);
+    }
+  });
+
+  it("is false for a colour that paints", () => {
+    for (const value of [
+      undefined,
+      "",
+      "#000",
+      "#ffffff80",
+      "rgba(0, 0, 0, 0.5)",
+      "rgb(0 0 0 / 1%)",
+      "red",
+    ]) {
+      expect([value, isTransparentColor(value)]).toEqual([value, false]);
+    }
   });
 });
 
@@ -157,12 +325,11 @@ describe("parseDividerWidth", () => {
   });
 
   it("rejects digit-then-long-whitespace input in linear time (ReDoS guard)", () => {
-    const adversarial = "9" + " ".repeat(50_000) + "x";
-    const start = Date.now();
-    const result = parseDividerWidth(adversarial);
-    const elapsed = Date.now() - start;
-    expect(result).toBeUndefined();
-    expect(elapsed).toBeLessThan(500);
+    expect(parseDividerWidth("9" + " ".repeat(50_000) + "x")).toBeUndefined();
+    expectLinear((n) => {
+      const value = "9" + " ".repeat(n) + "x";
+      return () => parseDividerWidth(value);
+    }, 2_000);
   });
 });
 
@@ -330,23 +497,28 @@ describe("readUnlayerBackgroundImage", () => {
 });
 
 describe("readUnlayerBackgroundImage on adversarial input", () => {
-  const digits = "0".repeat(100_000);
+  const run = (length: number) => {
+    const digits = "0".repeat(length);
+    return readUnlayerBackgroundImage(
+      {
+        url: "u",
+        size: `${digits}!`,
+        position: "custom",
+        customPosition: [`${digits}!`, `${digits}!`],
+      },
+      "Row",
+      600,
+    );
+  };
 
   it("reads runs of digits and spaces in linear time", () => {
-    const run = () =>
-      readUnlayerBackgroundImage(
-        {
-          url: "u",
-          size: `${digits}!`,
-          position: "custom",
-          customPosition: [`${digits}!`, `${digits}!`],
-        },
-        "Row",
-        600,
-      );
-    const started = performance.now();
-    run();
-    expect(performance.now() - started).toBeLessThan(1000);
+    expect(run(100_000)?.image).toEqual({
+      url: "u",
+      size: "auto",
+      position: { x: "center", y: "center" },
+      repeat: false,
+    });
+    expectLinear((n) => () => run(n), 8_000);
   });
 });
 

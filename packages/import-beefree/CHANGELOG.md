@@ -1,5 +1,157 @@
 # @templatical/import-beefree
 
+## 0.57.2
+
+### Patch Changes
+
+- Updated dependencies [27eb4be]
+  - @templatical/types@0.57.2
+
+## 0.57.1
+
+### Patch Changes
+
+- fb2afae: Preserve explicit zero and shorthand padding on BeeFree buttons, with longhands taking precedence. Let an entirely bold label override any button style weight; import missing or unreadable weights as regular otherwise, and note lost partial bold formatting.
+- 81da2d1: BeeFree multi-column rows now convert outer column edges and matching top or bottom sides into section borders; painted column backgrounds, inner borders, and overlapping row borders still warn.
+- 36bc74f: cloneBlock serializes a block tree once and remints IDs throughout the copy.
+  MJML table inference imports only rows owned by the outer table and keeps nested table markup inside its cell.
+  HTML layout table classification stops at the first content tag or cell with an element child.
+  Topol unsupported nodes are preserved as compact JSON.
+  Topol social imports each platform and URL pair once and notes how many repeats it dropped.
+  Chamaileon report notes quote at most 80 characters of document expressions and values, adding an ellipsis when truncated.
+  Easy Email Pro report notes quote at most 80 characters of document attribute values, adding an ellipsis when truncated.
+  Easy Email Pro makes a `$var()` replacement only while the attribute stays within 65,536 characters; a reference that would exceed that stays verbatim and counts as unresolved, and literal text is never cut.
+  BeeFree keeps a text or social-icon `font-weight` only when it is `normal`, `bold`, `bolder`, `lighter`, a CSS-wide keyword or a number from 1 to 1000, and drops a text `font-family` stack over 256 characters with an approximated note.
+- Updated dependencies [36bc74f]
+- Updated dependencies [c05e2a8]
+  - @templatical/types@0.57.1
+
+## 0.57.0
+
+### Patch Changes
+
+- ad58b8e: The canvas draws a button at the same height as the export (#1144). The renderer now writes `line-height="120%"` explicitly; compiled HTML is unchanged.
+- 59a17bc: The Unlayer, BeeFree and Topol importers check for a repeated warning in constant time, so a design with thousands of languages no longer slows the import quadratically. The Chamaileon importer looks up variable references in a table built once per document. The renderer escapes control characters in a block's type and id before it logs the missing-renderer warning. `templatical live` answers 400 to a request target it can't parse, where it used to exit.
+- Updated dependencies [ad58b8e]
+- Updated dependencies [0bdfeac]
+- Updated dependencies [0511bb6]
+- Updated dependencies [a2f3ed8]
+  - @templatical/types@0.57.0
+
+## 0.56.1
+
+### Patch Changes
+
+- @templatical/types@0.56.1
+
+## 0.56.0
+
+### Minor Changes
+
+- 2466654: Breaking changes:
+
+  - Imported sections can now have `columns: "4"`, `"1-3"`, `"3-1"` or `"1-2-1"`. A four-cell row from HTML, Unlayer or Stripo that used to flatten into one column now keeps four columns. Callers that read `section.columns` or count `children` must handle these values and four child arrays.
+  - The over-limit warning now says Templatical supports up to four columns, and folding importers fold rows of five or more columns onto `"4"` instead of `"3"`. Callers that match the old warning text or expect three columns after a fold must update.
+
+  Importers map source rows onto the four new section layouts. Four equal columns become `"4"`, 25/75 becomes `"1-3"`, 75/25 becomes `"3-1"`, and 25/50/25 becomes `"1-2-1"`. A ratio that is not exact snaps to the nearest of the nine layouts and keeps that importer's existing note. Stripo rows keep the equal layout for their column count. Unequal px widths, on a plugin frame or a compiled column, are reported approximated, and a column with no readable width is named in that note when the readable widths differ. Rows with more than four columns still flatten or fold into the last column, and the warning says Templatical supports up to four columns.
+
+- f9de817: Breaking changes:
+
+  - An imported full-width section whose only background is the source band now carries that colour and image on `section.wrapper` (`backgroundColor`, `backgroundImage`, with `fullWidth: true`) instead of `section.styles.backgroundColor` and `section.backgroundImage`. Code that reads an imported section's background must also read `section.wrapper`.
+  - When an imported section keeps its own background image, the Chamaileon, Stripo, HTML and Unlayer importers no longer apply the source band colour, because Outlook desktop paints a wrapper colour over that image. There is no replacement colour. Chamaileon, Stripo and HTML report the section `approximated` with a note; Unlayer names the dropped colour in `report.warnings`. The BeeFree importer keeps a distinct container colour on the wrapper, and Topol, MJML and Easy Email Pro move the colour together with the image.
+
+  Importers map a source full-width background band onto `section.wrapper` with `fullWidth: true`, so the colour and image run to the window edge and the content stays at the email width.
+
+  BeeFree row container backgrounds, Unlayer row backgrounds (`backgroundImage.fullWidth` not `false`), Chamaileon `fullwidth` bands, Topol and MJML and Easy Email Pro `full-width="full-width"`, Stripo stripes around an inner body, and an HTML 100% table wrapped around a fixed-width table all set that flag. A full-width section whose only background is the band moves that background onto the wrapper and leaves the section background unset. Content-area backgrounds stay on the section. When the section keeps its own background image, the band colour is left off the wrapper and the import notes it, because Outlook desktop paints a wrapper colour over that image; the band image still goes on the wrapper. A Stripo stripe with no inner body keeps its colour on the section.
+
+### Patch Changes
+
+- Updated dependencies [5744da5]
+- Updated dependencies [f9de817]
+- Updated dependencies [2466654]
+- Updated dependencies [be84dd0]
+  - @templatical/types@0.56.0
+
+## 0.55.0
+
+### Minor Changes
+
+- 200ab00: A real-design audit of the BeeFree importer found it converts every design but loses fidelity and, in one case, breaks Twig at send time. This release closes the gaps it found.
+
+  - **Merge tags.** HTML character references inside `{{ }}`, `{% %}` and `{# #}` are decoded, so `&#39;`, `&quot;` and `&gt;` no longer reach Twig or Liquid (`&nbsp;` inside a token becomes a plain space). A double quote inside a token in an HTML attribute stays encoded as `&quot;`. References outside a token stay encoded. BeeFree's `<code data-bee-type="mergetag">` wrapper is removed so the token keeps its formatting and no longer renders monospace. A chip that holds only a space becomes one plain space; a leading space before a single token in a chip is dropped.
+  - **Text.** Line-height (a percentage becomes a unitless ratio), letter-spacing and per-link colour are kept, and module text styles also apply to lists, headings and divs. The module font size is written on each paragraph, list and heading element so the line box matches. A paragraph module keeps `computedStyle.paragraphSpacing` (zero when absent), a blank paragraph stays one empty line, and a list imports BeeFree's list box inline (zero margins, indent from `liIndent`).
+  - **Headings.** The heading level is the title level whose size is nearest the BeeFree font size, with the exact size on the text. A level more than 1px off is reported approximated.
+  - **Layout.** A single-column row keeps its column padding, background and border on the section; a multi-column row adds each column's padding to its modules and warns when a column background or border is dropped. A fully transparent column background is unset, so it does not replace the row background and does not warn. A row's container background becomes a band as wide as the email. Hide-on-mobile and hide-on-desktop set visibility, `rowColStackOnMobile: false` keeps 2- and 3-column sections side by side, and a row border maps to the section border. Column ratios with no exact layout and row widths that differ from the email width are named in the warnings.
+  - **Buttons.** A label line-height above 120% of the font size is split into top and bottom padding. `width: 100%` becomes full width, a px width stays pixels and a drawn border is kept. Font weight maps to the nearest `fontWeight` (`regular`, `medium`, `bold`). A letter-spacing or a percentage width other than 100% is not carried: the button is reported approximated with one short note.
+  - **Images.** An image in a multi-column section that the renderer would widen on mobile imports with `fluidOnMobile: false`, because BeeFree does not stretch it.
+  - **Social and fonts.** A social icon whose id is a UUID is recognised from its name or link host, and an unknown network is kept as an image or a link. A link or image with a rejected scheme is dropped; a recognised icon then uses `#`. Social icons keep alignment, spacing, size and a circle, rounded or square set. `convertBeeFreeTemplate` returns `customFonts` (`{ name, url }[]`) from web fonts that have a URL, and warns only when a used font has no URL and is not a system stack.
+
+- e784e63: `SocialPlatform` includes `xing`. Social icon blocks can use a XING icon, drawn from the same glyph as the other platforms, in the editor and in every rendered style and tone.
+
+  BeeFree, MJML, Stripo, Unlayer, Topol and Chamaileon imports map a Xing icon onto `xing`. A BeeFree icon is recognized from its id, name, alt, title or a `xing.com` link, instead of being kept as an image.
+
+### Patch Changes
+
+- e784e63: A 7/12 or 5/12 BeeFree column row imports as an even two-column section. When a snapped column is narrower than its grid share, the shortfall comes back from the padding that faces the next column, so a one-line footer stays one line.
+- ed7d96f: Two importer corrections.
+
+  - **Beefree.** When a 7/12 or 5/12 row snaps to an even split, the padding returned to a column no longer changes what a module displays. A 240px image keeps its width, a lone icon, divider, video and button keep theirs, and text still gets the padding back. Column padding a snapped column keeps, including padding only on its outer edge, still narrows the room an image is measured in, so an image as wide as that room is full width.
+  - **Stripo.** A social icon is identified by the file name of its `src`, not by the host or folders of the URL, so `https://xing.com.evil.example/icons/other.png` stays a website link. A URL with no file name, such as `https://xing.com.evil.example?file=other.png`, stays a website link too; the query and hash are not the file name. An icon whose name matches no network becomes a website icon, and that social block is reported approximated.
+
+- Updated dependencies [200ab00]
+- Updated dependencies [9151730]
+- Updated dependencies [e784e63]
+  - @templatical/types@0.55.0
+
+## 0.54.2
+
+### Patch Changes
+
+- Updated dependencies [a72fbd8]
+  - @templatical/types@0.54.2
+
+## 0.54.1
+
+### Patch Changes
+
+- @templatical/types@0.54.1
+
+## 0.54.0
+
+### Minor Changes
+
+- 6c932cd: `convertBeeFreeTemplate()` imports images at the width BeeFree shows them, keeps spacing dividers invisible, and converts the Icons module, addons and empty modules.
+
+  - **Image width (#1069).** An `autowidth` image is sized like a `fixedwidth` one, from `computedStyle.width` (its file's width capped at the column), and is `"full"` only when that reaches the image's room. A 111px `autowidth` logo in an 800px template imported at full width; it now imports at `111`. A `computedStyle.width` written as a number (`187.5`, in older exports) is read too, and `computedStyle.class` `fullwidth` imports as `"full"`. A percentage under `100%` becomes that share of the room in px, reported `approximated` with a `note`.
+  - **Dividers that draw no line (#1070).** A divider whose `border-top` is 0 wide, `none`, `hidden` or transparent (`transparent`, or an alpha of 0 such as `rgba(0, 0, 0, 0)`) becomes a `spacer` whose height is its top and bottom padding plus a transparent border's width (a negative padding counts as 0, as CSS drops it), reported `converted` with a `note` naming the height. One that adds up to 0px produces no block and is reported `skipped`. These imported as visible lines: `0px solid transparent` as a 1px black line, `10px solid transparent` as a 10px black bar.
+  - **Icons module (#1071).** `mailup-bee-newsletter-modules-icons` with one icon and no text becomes an `image` at `computedStyle.iconHeight`. Any other Icons module becomes an HTML table with the icons, their text and links, reported `html-fallback` with the `note` `Icons module rebuilt as an HTML table.` Both replace an empty `<!-- Unsupported BeeFree module -->` comment.
+  - **Addons (#1071).** `mailup-bee-newsletter-modules-addon` converts as the module whose payload it carries (`image`, `html`, `heading`, `paragraph`, `text`, `list`, `button`, `divider`, `menu` or `iconsList`). An image addon links to `image.href` only; GIPHY's `image.url` is the GIF's page and isn't imported.
+  - **Empty modules.** `mailup-bee-newsletter-modules-empty`, and an Icons module with no icons, produce no block and are reported `skipped` with `templaticalBlockType: null`.
+
+  Rules and tables: the [BeeFree migration guide](https://docs.templatical.com/guide/migration-from-beefree). Check an imported template with `template-tools validate imported.json`.
+
+### Patch Changes
+
+- @templatical/types@0.54.0
+
+## 0.53.0
+
+### Minor Changes
+
+- cef9348: Importers keep the source's languages
+
+  - Every importer takes `defaultLocale?: string` and sets `settings.locale` from the language the source declares (`<html lang>`, `<mjml lang>`, Beefree's `language.value`, Topol's primary `langs` entry), else from `defaultLocale`, else `"en"`. Unlayer JSON declares no default language, so pass `defaultLocale`.
+  - Beefree module `translations`, Unlayer `values._languages` and Topol `translations` become language versions.
+  - Each language or key an importer drops, and each subject, title or description left to the host, gets a `report.warnings` entry.
+  - Unlayer converts Lexical `textJson` and `paragraph` content to paragraph blocks instead of the HTML fallback.
+
+  The mappings follow the vendors' documented JSON, checked 2026-10-28; real multilingual exports weren't available to test against. Check an import with `template-tools validate imported.json --locale <tag>`, and see the [Beefree](https://docs.templatical.com/guide/migration-from-beefree#languages), [Unlayer](https://docs.templatical.com/guide/migration-from-unlayer#languages) and [Topol](https://docs.templatical.com/guide/migration-from-topol#languages) guides.
+
+### Patch Changes
+
+- Updated dependencies [cef9348]
+  - @templatical/types@0.53.0
+
 ## 0.52.1
 
 ### Patch Changes

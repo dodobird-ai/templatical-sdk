@@ -224,7 +224,11 @@ export async function renderToMjml(
   const fontFamily = renderContext.resolveFontFamily(
     toRender.settings.fontFamily,
   );
-  const backgroundColor = toRender.settings.backgroundColor;
+  // MJML copies the body colour into compiled HTML styles. Markup in a colour
+  // has no valid CSS meaning and must not survive into that output.
+  const backgroundColor = /[<>]/.test(toRender.settings.backgroundColor)
+    ? "transparent"
+    : toRender.settings.backgroundColor;
   // Document-level default text color → the `<mj-text>` default below. Blocks
   // that set their own color (e.g. Title) or carry inline text-color marks
   // override it. Omitted when unset so existing templates render identically.
@@ -273,7 +277,7 @@ export async function renderToMjml(
       }
     </mj-style>${renderDarkColorStyle(toRender.settings.darkColors, blocks)}${renderCustomBlockStylesheets(customBlockStylesheets)}${renderCustomHead(toRender.settings)}
   </mj-head>
-  <mj-body width="${renderContext.containerWidth}px" background-color="${backgroundColor}"${darkBodyClassAttr(toRender.settings.darkColors)}>
+  <mj-body width="${escapeAttr(String(renderContext.containerWidth))}px" background-color="${escapeCssValue(backgroundColor)}"${darkBodyClassAttr(toRender.settings.darkColors)}>
 ${bodyContent}
   </mj-body>
 </mjml>`;
@@ -298,6 +302,7 @@ function renderTopLevelBlock(block: Block, context: RenderContext): string {
         padding: block.styles.padding,
         borderRadius: block.borderRadius,
         backgroundImage: block.backgroundImage,
+        fullWidth: block.fullWidth,
       },
       context.contentDirection,
     );
@@ -341,6 +346,11 @@ function insideWrapper(
  * `section.wrapper`. Padding is always explicit: MJML's wrapper default is
  * `20px 0`, ours is 0. Direction is explicit for the same reason: MJML's
  * default `ltr` would otherwise be inlined on the band of an RTL email.
+ * `fullWidth` is MJML's `full-width="full-width"`: the band spans the
+ * viewport and the children stay at the body width. A viewport-wide band has
+ * no visible corners, so `border-radius` is omitted while it is on. Background
+ * image attributes stay the ones `mj-wrapper` already takes; MJML places them
+ * on the full-width table and its Outlook VML fill.
  */
 function renderMjWrapper(
   inner: string,
@@ -352,9 +362,12 @@ function renderMjWrapper(
   const padding = ` padding="${
     wrapper.padding ? toPaddingString(wrapper.padding) : "0"
   }"`;
-  const radius = borderRadiusAttr(wrapper.borderRadius);
+  const radius = wrapper.fullWidth
+    ? ""
+    : borderRadiusAttr(wrapper.borderRadius);
+  const fullWidth = wrapper.fullWidth ? ' full-width="full-width"' : "";
   const dirAttr = direction === "rtl" ? ' direction="rtl"' : "";
-  return `<mj-wrapper${bg}${bgImage}${padding}${radius}${dirAttr}>
+  return `<mj-wrapper${bg}${bgImage}${padding}${radius}${fullWidth}${dirAttr}>
 ${inner}
 </mj-wrapper>`;
 }
@@ -586,9 +599,17 @@ function renderCustomBlockStylesheets(stylesheets: string[]): string {
   // One `<mj-style>` per unique stylesheet so per-definition CSS can be
   // independently inspected in the rendered MJML, and authors can grep their
   // contribution without disentangling a merged blob.
-  return stylesheets
-    .map((css) => `\n    <mj-style>\n${css}\n    </mj-style>`)
-    .join("");
+  return (
+    stylesheets
+      // MJML parses tags inside `<mj-style>`, so a stored stylesheet could close
+      // it or open an element of its own. `\3c ` is CSS's escape for `<`: the
+      // stylesheet means the same and carries no tag. CSS without `<` is unchanged.
+      .map(
+        (css) =>
+          `\n    <mj-style>\n${css.replaceAll("<", "\\3c ")}\n    </mj-style>`,
+      )
+      .join("")
+  );
 }
 
 /**

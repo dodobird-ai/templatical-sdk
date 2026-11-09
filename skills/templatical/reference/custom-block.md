@@ -122,7 +122,7 @@ first quote a user types. Mapped values and
 errors are redacted if they echo the secret. Check the recipe once before
 opening the preview (`--values` must be a JSON object):
 
-    npx -y @templatical/template-tools@0.52.1 custom-block fetch .templatical/custom-blocks/<type>.json --values '{"productId":"123"}' --json
+    npx -y @templatical/template-tools@0.57.2 custom-block fetch .templatical/custom-blocks/<type>.json --values '{"productId":"123"}' --json
 
 `unmapped` lists `map` entries the response didn't contain — fix the paths
 before going on. If the variable isn't set, ask the user to export it in the
@@ -134,22 +134,27 @@ their picker.
 
 ## 4. Validate
 
-    npx -y @templatical/template-tools@0.52.1 custom-block validate .templatical/custom-blocks/<type>.json --json
+    npx -y @templatical/template-tools@0.57.2 custom-block validate .templatical/custom-blocks/<type>.json --json
 
 Fix every `error`. Treat `warning`s as defects unless there's a reason —
 say the reason. Never start or reload the preview on an invalid definition. A
-field only the recipe reads (the id it fetches by) counts as used.
+field only the recipe reads (the id it fetches by) counts as used. Repeatable
+`minItems` and `maxItems` each have a ceiling of 100. Liquid renders have a
+`CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` of `1e7` allocation units and a
+`CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` of 2000 ms; a limit error makes validation
+fail. A `dataSourcePreview` response is capped at `MAX_RECIPE_RESPONSE_BYTES`
+(1 MiB), including error responses; a larger response makes the fetch fail.
 
 To check the rendered output without the browser, render one state to a file:
 
-    npx -y @templatical/template-tools@0.52.1 custom-block render .templatical/custom-blocks/<type>.json --state defaults --format mjml -o .templatical/custom-blocks/<type>.mjml
+    npx -y @templatical/template-tools@0.57.2 custom-block render .templatical/custom-blocks/<type>.json --state defaults --format mjml -o .templatical/custom-blocks/<type>.mjml
 
 ## 5. Live preview
 
 Start it per [live-setup.md](live-setup.md), with the block instead of a
 template:
 
-    npx -y @templatical/template-tools@0.52.1 live --custom-block .templatical/custom-blocks/<type>.json --json
+    npx -y @templatical/template-tools@0.57.2 live --custom-block .templatical/custom-blocks/<type>.json --json
 
 Add `--host .templatical/<template>.json` to show it inside one of their
 templates. The canvas is a specimen sheet: the block with its defaults, with

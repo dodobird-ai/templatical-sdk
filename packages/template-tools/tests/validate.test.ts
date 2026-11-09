@@ -53,6 +53,22 @@ function title(id: string, content: string, extra: object = {}) {
 }
 
 describe("validateTemplate — happy path", () => {
+  it("accepts fullWidth on a section wrapper and a layout wrapper", () => {
+    const section = createSectionBlock({
+      wrapper: { fullWidth: true, backgroundColor: "#112233", borderRadius: 12 },
+    });
+    const band = createWrapperBlock({
+      fullWidth: true,
+      borderRadius: 16,
+      styles: { backgroundColor: "#112233", padding },
+      children: [createSlotBlock()],
+    });
+    const doc = { ...createDefaultTemplateContent(), blocks: [section, band] };
+    const { valid, errors } = validateTemplate(doc);
+    expect(errors).toEqual([]);
+    expect(valid).toBe(true);
+  });
+
   it("accepts a minimal valid template", () => {
     const result = validateTemplate(template([title("title_1", "Hi")]));
     expect(result).toEqual({ valid: true, errors: [] });
@@ -124,6 +140,57 @@ describe("validateTemplate — title size and line height", () => {
     ]) {
       expect(titleWith(extra).valid, JSON.stringify(extra)).toBe(false);
     }
+  });
+});
+
+describe("validateTemplate — image fluid on mobile", () => {
+  const image = (fluidOnMobile: unknown) =>
+    validateTemplate(
+      template([
+        {
+          ...createImageBlock({ src: "https://example.com/a.png" }),
+          fluidOnMobile,
+        },
+      ]),
+    );
+
+  it("accepts true, false and an omitted field", () => {
+    expect(image(true).errors).toEqual([]);
+    expect(image(false).errors).toEqual([]);
+    expect(validateTemplate(template([createImageBlock()])).errors).toEqual([]);
+  });
+
+  it("rejects a string", () => {
+    const result = image("true");
+    expect(result.valid).toBe(false);
+    expect(result.errors.join("\n")).toContain("fluidOnMobile");
+  });
+});
+
+describe("validateTemplate — button font weight", () => {
+  const button = (fontWeight: unknown) =>
+    validateTemplate(template([{ ...createButtonBlock(), fontWeight }]));
+
+  it("accepts regular, medium and bold", () => {
+    expect(button("regular").errors).toEqual([]);
+    expect(button("medium").errors).toEqual([]);
+    expect(button("bold").errors).toEqual([]);
+  });
+
+  it("rejects a number or any other word", () => {
+    for (const weight of [400, "normal", "semibold", ""]) {
+      const result = button(weight);
+      expect(result.valid, JSON.stringify(weight)).toBe(false);
+      expect(result.errors.join("\n"), JSON.stringify(weight)).toContain(
+        "fontWeight",
+      );
+    }
+  });
+
+  it("accepts a button that omits the weight", () => {
+    expect(validateTemplate(template([createButtonBlock()])).errors).toEqual(
+      [],
+    );
   });
 });
 

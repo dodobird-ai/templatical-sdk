@@ -20,12 +20,14 @@ import {
   FONTS_MANAGER_KEY,
   MERGE_TAG_SAMPLE_MODE_KEY,
   PREVIEW_RESOLUTION_KEY,
+  READ_ONLY_SURFACE_KEY,
   USE_MERGE_TAG_SAMPLES_KEY,
   requireInject,
 } from "../keys";
 import { VueDraggable } from "vue-draggable-plus";
 import {
   documentDarkColorClasses,
+  EMAIL_FRAME_WIDTH_VAR,
   getDocumentStyle,
   resolveBlockComponent,
 } from "../utils/blockComponentResolver";
@@ -119,6 +121,10 @@ const mergeTagSampleMode = inject(MERGE_TAG_SAMPLE_MODE_KEY, null);
 // Null in headless mounts and when no resolver is configured.
 const previewResolution = inject(PREVIEW_RESOLUTION_KEY, null);
 provide(
+  READ_ONLY_SURFACE_KEY,
+  computed(() => props.previewMode),
+);
+provide(
   USE_MERGE_TAG_SAMPLES_KEY,
   computed(
     () =>
@@ -156,7 +162,9 @@ const appliesConditionFilter = inject(APPLIES_CONDITION_FILTER_KEY, null);
 
 const blocks = computed({
   get: () => props.content.blocks,
-  set: (value: Block[]) => updateBlockList(editor, value),
+  set: (value: Block[]) => {
+    if (!props.previewMode) updateBlockList(editor, value);
+  },
 });
 
 // Shared with the preview canvas and the save dialog's scaled rows, so all
@@ -309,7 +317,7 @@ function handleFetchData(
     dataSourceFetched: boolean;
   },
 ): void {
-  if (block.type !== "custom") {
+  if (props.previewMode || block.type !== "custom") {
     return;
   }
 
@@ -360,8 +368,10 @@ function handleFetchData(
       }"
     />
     <!-- CONTENT COLUMN — the email content at its true width, centered in the
-         stage. A full-width section fills this column but not the surrounding
-         gutters, so the global background remains visible beside it. -->
+         stage. A section's own background fills this column but not the
+         surrounding gutters, so the global background remains visible beside
+         it. A wrapper with `fullWidth` paints past the column to the canvas
+         pane; `--tpl-email-frame-width` keeps that band's inner frame here. -->
     <div
       data-testid="canvas-wrapper"
       role="region"
@@ -369,6 +379,7 @@ function handleFetchData(
       class="tpl-canvas-wrapper tpl:relative"
       :style="{
         width: `${viewportWidth}px`,
+        [EMAIL_FRAME_WIDTH_VAR]: `${viewportWidth}px`,
         transition: EMAIL_FRAME_WIDTH_TRANSITION,
       }"
     >
@@ -449,7 +460,9 @@ function handleFetchData(
               : '',
           ]"
           @update="
-            (event) => updateBlockList(editor, blocks, undefined, 0, event)
+            (event) =>
+              !previewMode &&
+              updateBlockList(editor, blocks, undefined, 0, event)
           "
           @dragenter="handleEmptyDragEnter"
           @dragleave="handleEmptyDragLeave"
@@ -558,7 +571,7 @@ function handleFetchData(
                   @fetch-data="handleFetchData(block, $event)"
                   @update="
                     (updates: Partial<Block>) =>
-                      editor.updateBlock(block.id, updates)
+                      !previewMode && editor.updateBlock(block.id, updates)
                   "
                 />
               </BlockWrapper>

@@ -848,11 +848,6 @@ defineExpose({
       <!-- Canvas area — absolute, fills remaining space -->
       <div
         class="tpl-body tpl:absolute tpl:bottom-0 tpl:overflow-auto tpl:bg-[var(--tpl-canvas-bg)]"
-        style="
-          transition:
-            left var(--tpl-transition),
-            right var(--tpl-transition);
-        "
         :style="contentInsetStyle"
         :class="bodyInsetClass"
       >
@@ -932,7 +927,7 @@ defineExpose({
              itself with auto margins and keeps its own clearance
              (Canvas.vue). A flex-centred child that overflows sticks out on
              both sides, and the left side can never be scrolled to. -->
-        <main class="tpl-main tpl:flex tpl:py-8">
+        <main class="tpl-main tpl-canvas-pane tpl:flex tpl:py-8">
           <Canvas
             :viewport="editor.state.viewport"
             :content="core.previewResolution.content.value"
@@ -965,7 +960,6 @@ defineExpose({
         v-show="!editor.state.previewMode"
         v-model:tab="rightSidebarTab"
         :style="contentInsetStyle"
-        style="transition-property: right"
         :selected-block="
           editor.selectedBlock.value
             ? localized.displayBlock(editor.selectedBlock.value)

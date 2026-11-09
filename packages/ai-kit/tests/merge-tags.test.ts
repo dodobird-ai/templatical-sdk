@@ -5,10 +5,26 @@ import {
   mergeTagTokensIn,
   unknownMergeTags,
 } from "../src/server";
+import { expectLinear } from "./helpers/expectLinear";
 
 describe("merge tags in AI input and output (S7 Y5)", () => {
+  it("scans unclosed built-in openers linearly", () => {
+    expect(mergeTagTokens("{{".repeat(90_000), "liquid")).toEqual([]);
+    expectLinear(
+      (n) => {
+        const value = "{{".repeat(n);
+        return () => mergeTagTokens(value, "liquid");
+      },
+      500,
+      1_000,
+    );
+  });
   it.each([
-    ["liquid", "Hi {{ first_name }} and {{coupon}}", ["{{ first_name }}", "{{coupon}}"]],
+    [
+      "liquid",
+      "Hi {{ first_name }} and {{coupon}}",
+      ["{{ first_name }}", "{{coupon}}"],
+    ],
     ["handlebars", "Hi {{{raw}}} {{name}}", ["{{{raw}}}", "{{name}}"]],
     ["mailchimp", "Hi *|FNAME|*", ["*|FNAME|*"]],
     ["ampscript", "Hi %%=v(@name)=%%", ["%%=v(@name)=%%"]],
@@ -34,18 +50,22 @@ describe("merge tags in AI input and output (S7 Y5)", () => {
     ).toBe("<p>Hi {{first_name}}, *|A&B|*</p>");
   });
 
-  it("returns unterminated merge-tag spans unchanged in under 100 ms", () => {
+  it("returns unterminated merge-tag spans unchanged in linear time", () => {
     const html = '<span data-merge-tag=""'.repeat(900);
-    const started = performance.now();
-    const result = flattenMergeTags(html);
-    const elapsed = performance.now() - started;
-    expect(result).toBe(html);
-    expect(elapsed).toBeLessThan(100);
+    expect(flattenMergeTags(html)).toBe(html);
+    expectLinear((n) => {
+      const value = '<span data-merge-tag=""'.repeat(n);
+      return () => flattenMergeTags(value);
+    }, 500);
   });
 
   it("names each unknown token once, in order, and checks nothing for custom", () => {
     expect(
-      unknownMergeTags("liquid", ["{{a}}", "{{b}}", "{{a}}", "{{c}}", "{{b}}"], ["{{a}}"]),
+      unknownMergeTags(
+        "liquid",
+        ["{{a}}", "{{b}}", "{{a}}", "{{c}}", "{{b}}"],
+        ["{{a}}"],
+      ),
     ).toEqual(["{{b}}", "{{c}}"]);
     expect(unknownMergeTags("custom", ["{{b}}"], [])).toEqual([]);
   });

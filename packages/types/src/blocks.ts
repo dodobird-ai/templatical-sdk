@@ -169,6 +169,26 @@ export interface BlockVisibility {
   mobile: boolean;
 }
 
+/**
+ * A display condition wraps a block in host-owned before/after markup so the
+ * block renders only when the condition holds.
+ */
+export interface DisplayCondition {
+  label: string;
+  before: string;
+  after: string;
+  group?: string;
+  description?: string;
+  /**
+   * Opaque host state. The editor stores it and hands it back as `current`
+   * when the host builder reopens, and never reads it. It must survive
+   * `JSON.stringify` — content is cloned with `safeClone`, so values that
+   * JSON drops (functions, `undefined` keys, a `Date` becoming an ISO string)
+   * do not round-trip.
+   */
+  data?: unknown;
+}
+
 export interface BaseBlock {
   /** Per-language layers, keyed by BCP 47 tag; see `resolveLocale`. */
   l10n?: Record<string, BlockLocaleLayer>;
@@ -176,33 +196,37 @@ export interface BaseBlock {
   type: string;
   styles: BlockStyles;
   visibility?: BlockVisibility;
-  displayCondition?: {
-    label: string;
-    before: string;
-    after: string;
-    group?: string;
-    description?: string;
-  };
+  displayCondition?: DisplayCondition;
 }
 
-export type ColumnLayout = "1" | "2" | "3" | "2-1" | "1-2";
+export type ColumnLayout =
+  "1" | "2" | "3" | "4" | "2-1" | "1-2" | "3-1" | "1-3" | "1-2-1";
 
 /**
  * Optional outer frame for a section. When present, the section is rendered
  * inside an `mj-wrapper` — a band (its own background + padding) that frames
  * the section, e.g. a white card sitting on a colored band. The band is as
- * wide as the email body (`settings.width`), not the recipient's viewport.
+ * wide as the email body (`settings.width`), not the recipient's viewport,
+ * unless `fullWidth` is set.
  */
 export interface SectionWrapper {
   backgroundColor?: string;
   padding?: SpacingValue;
   /**
    * Corner radius in px for the outer frame — one number, or a radius per
-   * corner. Omitted/0 = square corners.
+   * corner. Omitted/0 = square corners. Ignored while `fullWidth` is on: a
+   * viewport-wide band has no visible corners, so the renderer omits
+   * `border-radius`.
    */
   borderRadius?: BorderRadiusValue;
   /** Image behind the band; `backgroundColor` is its fallback. */
   backgroundImage?: BackgroundImage;
+  /**
+   * When true, the band spans the recipient's viewport (`full-width` on
+   * `mj-wrapper`) while the section stays at the email width. Absent or
+   * false keeps the band at `settings.width`.
+   */
+  fullWidth?: boolean;
 }
 
 export interface SectionBlock extends BaseBlock {
@@ -301,6 +325,13 @@ export function resolveTitleLineHeight(
     ? block.lineHeight
     : TITLE_LINE_HEIGHT;
 }
+
+/**
+ * A button label's line box as a ratio of its font size. The renderer emits
+ * it and the canvas draws it, matching MJML's `mj-button` default so compiled
+ * HTML stays unchanged.
+ */
+export const BUTTON_LINE_HEIGHT = 1.2;
 
 /**
  * A title block's font weight.
@@ -419,6 +450,14 @@ export interface ImageBlock extends BaseBlock {
   linkOpenInNewTab?: boolean;
   placeholderUrl?: string;
   decorative?: boolean;
+  /**
+   * Whether the image fills its column on a phone (`mj-image`
+   * `fluid-on-mobile`). Omitted keeps the automatic rule: fluid only when the
+   * image fills its column on desktop. `true` always emits the attribute;
+   * `false` never does. Video thumbnails have no equivalent and stay on the
+   * automatic rule.
+   */
+  fluidOnMobile?: boolean;
 }
 
 export interface ButtonBlock extends BaseBlock {
@@ -442,6 +481,11 @@ export interface ButtonBlock extends BaseBlock {
   fontSize: number;
   buttonPadding: SpacingValue;
   fontFamily?: string;
+  /**
+   * Label weight. `"regular"` is 400, `"medium"` is 500 and `"bold"` is 700.
+   * Omitted renders bold, which is what a button with no weight renders.
+   */
+  fontWeight?: "regular" | "medium" | "bold";
   width?: number | "full";
   /**
    * Placement of the button within its column. No visible effect when `width`
@@ -493,6 +537,7 @@ export type SocialPlatform =
   | "twitter"
   | "instagram"
   | "linkedin"
+  | "xing"
   | "youtube"
   | "tiktok"
   | "pinterest"
@@ -648,14 +693,26 @@ export interface SlotBlock extends BaseBlock {
 /**
  * Layout-only band rendered as `mj-wrapper`. The block is the band:
  * `styles.backgroundColor` / `styles.padding` / `borderRadius` /
- * `backgroundImage` map to the wrapper. Legal in layout only.
+ * `backgroundImage` map to the wrapper. `fullWidth` spans the recipient's
+ * viewport; absent or false keeps the band at the email width. A corner
+ * radius is ignored while `fullWidth` is on. Legal in layout only.
  */
 export interface WrapperBlock extends BaseBlock {
   type: "wrapper";
   children: Block[];
+  /**
+   * Corner radius in px. Ignored while `fullWidth` is on: a viewport-wide
+   * band has no visible corners, so the renderer omits `border-radius`.
+   */
   borderRadius?: number;
   /** Image behind the band; `styles.backgroundColor` is its fallback. */
   backgroundImage?: BackgroundImage;
+  /**
+   * When true, the band spans the recipient's viewport (`full-width` on
+   * `mj-wrapper`) while its children stay at the email width. Absent or
+   * false keeps the band at that width.
+   */
+  fullWidth?: boolean;
 }
 
 export type Block =

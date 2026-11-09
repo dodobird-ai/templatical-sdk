@@ -25,10 +25,10 @@ import {
   createWrapperBlock,
   createParagraphBlock,
   createDefaultTemplateContent,
-} from '@templatical/editor';
+} from "@templatical/editor";
 
 const layout = createDefaultTemplateContent();
-layout.settings.backgroundColor = '#f3f4f6';
+layout.settings.backgroundColor = "#f3f4f6";
 layout.blocks = [
   createParagraphBlock({
     content:
@@ -36,7 +36,7 @@ layout.blocks = [
   }),
   createWrapperBlock({
     styles: {
-      backgroundColor: '#ffffff',
+      backgroundColor: "#ffffff",
       padding: { top: 24, right: 24, bottom: 24, left: 24 },
     },
     borderRadius: 12,
@@ -49,7 +49,7 @@ layout.blocks = [
 ];
 
 const editor = await init({
-  container: '#editor',
+  container: "#editor",
   layout,
   sectionWrapper: false,
 });
@@ -88,7 +88,9 @@ mj-body                         ← grauer Untergrund (layout.settings.backgroun
 
 **`slot`** ist die Stelle, an der `content.blocks` landen. Genau eines im Layout-Baum. Zulässig als Kind von `layout.blocks` (oberste Ebene) oder von `wrapper.children`. Unzulässig in einer Sektionsspalte, in einem verschachtelten Wrapper und im Editor-Inhalt. Die Palette lässt ihn aus. Ein `slot`, der `renderToMjml` ohne `layout` erreicht, wirft.
 
-**`wrapper`** ist die Layout-Karte: `styles.backgroundColor` / `styles.padding` / `borderRadius` / `backgroundImage` werden zu `mj-wrapper`. In Outlook unter Windows überdeckt die Hintergrundfarbe eines Bands das Hintergrundbild einer darin liegenden Sektion — setzen Sie das Bild auf das Band, oder lassen Sie das Band ohne Farbe. Der Linter des Editors sieht das Layout nicht und kann deshalb nicht davor warnen. Nur im Layout. Im Editor-Inhalt abgelehnt (`setContent` / `load` / `addBlock` / `createBlock('wrapper')`). Autorinnen nutzen weiterhin `section.wrapper` als Kurzform pro Sektion.
+**`wrapper`** ist die Layout-Karte: `styles.backgroundColor` / `styles.padding` / `borderRadius` / `backgroundImage` / `fullWidth` werden zu `mj-wrapper`. `fullWidth: true` reicht über das Fenster des Empfängers, während die Kinder bei `settings.width` bleiben; ein Eckenradius gilt nicht, solange es an ist. Weglassen oder `false` hält das Band auf der E-Mail-Breite. In Outlook unter Windows überdeckt die Hintergrundfarbe eines Bands das Hintergrundbild einer darin liegenden Sektion — setzen Sie das Bild auf das Band, oder lassen Sie das Band ohne Farbe. Der Linter des Editors sieht das Layout nicht und kann deshalb nicht davor warnen. Nur im Layout. Im Editor-Inhalt abgelehnt (`setContent` / `load` / `addBlock` / `createBlock('wrapper')`). Autorinnen nutzen weiterhin `section.wrapper` als Kurzform pro Sektion. Derselbe Schalter **Hintergrund über die volle Breite** liegt im Hintergrund-Panel des Wrapper-Blocks.
+
+Headless-`applyOperations` und `template-tools edit` adressieren vorhandene Wrapper-Kinder mit `parent: { wrapperId: string }`; Sektionen ohne `section.wrapper` dürfen direkte Wrapper-Kinder sein. Sektionen mit `section.wrapper` müssen auf der obersten Ebene bleiben: `addBlock`, `moveBlock` und `updateBlock` lehnen ihre Platzierung in einem Wrapper ab. Das bearbeitet einen Layout-Baum außerhalb des visuellen Editors. Der visuelle Editor lehnt selbst verfasste Wrapper weiterhin ab. Prüfen Sie ein Layout nach Operationen mit `validateLayout`; es lehnt auch verschachtelte Sektions-Wrapper ab. `setContent` prüft selbst nur die Form.
 
 Layout-Factories und -Helfer (`createSlotBlock`, `createWrapperBlock`, `createParagraphBlock`, `createDefaultTemplateContent`, `applyLayout`, `validateLayout`, `isSlot`, `isWrapper`, `layoutWrapsSlot`) werden aus `@templatical/editor` exportiert. Headless-Rendering kann `applyLayout` aus `@templatical/types` ohne den Editor importieren.
 
@@ -98,6 +100,7 @@ Layout-Factories und -Helfer (`createSlotBlock`, `createWrapperBlock`, `createPa
 [Templatical] layout: must contain exactly one slot block
 [Templatical] layout: slot must be a top-level or wrapper child, not nested in a section
 [Templatical] layout: a wrapper cannot contain a wrapper
+[Templatical] layout: a wrapper cannot contain a section with its own wrapper (section.wrapper)
 ```
 
 `setContent` / `load` / `addBlock` lehnen `slot` und `wrapper` im Inhalt ab.
@@ -175,20 +178,9 @@ Sie können die Einstellungen des Inhalts auf das Layout kopieren und `backgroun
 
 ## Headless-Nutzung
 
-```ts
-import { renderToMjml } from '@templatical/renderer';
-import { applyLayout, resolveLocale } from '@templatical/types';
+Dieses vollständige TypeScript-Beispiel benötigt `@templatical/renderer` und `@templatical/types`. Es erstellt ein Template und ein Layout mit je einer deutschen Version, setzt beide zusammen und rendert sie. Es gibt `true true 2 de` aus: Das Standard-Rendering enthält das `Legal notice` des Layouts, das deutsche sein `Impressum`, die zusammengesetzte Standardversion hat zwei Blöcke (den Titel des Templates im Slot, dann die Fußzeile), und `settings.locale` der deutschen Zusammensetzung ist `de`.
 
-const mjml = await renderToMjml(content, { layout });
-const composed = applyLayout(layout, content);
-
-// One language version of a localized template, as renderToMjml composes it:
-const germanMjml = await renderToMjml(content, { layout, locale: 'de' });
-const german = applyLayout(
-  resolveLocale(layout, 'de', { missing: 'default' }),
-  resolveLocale(content, 'de'),
-);
-```
+<<< @/snippets/layout-headless.ts
 
 Vorschau, `toMjml` und `toHtml` setzen zuerst zusammen, dann optional `resolvePreview`:
 

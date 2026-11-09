@@ -1,5 +1,101 @@
 # @templatical/quality
 
+## 0.57.2
+
+### Patch Changes
+
+- Updated dependencies [27eb4be]
+  - @templatical/types@0.57.2
+
+## 0.57.1
+
+### Patch Changes
+
+- Updated dependencies [36bc74f]
+- Updated dependencies [c05e2a8]
+  - @templatical/types@0.57.1
+
+## 0.57.0
+
+### Patch Changes
+
+- 418a249: `link.localhost-or-staging` matches `links.nonProductionHosts` globs in linear time, so a very long URL host no longer stalls the linter, and compatibility rules group CSS declarations and clients without copying arrays. The Easy Email Pro importer decodes HTML entities by looking at most six characters ahead of each `&`.
+- Updated dependencies [ad58b8e]
+- Updated dependencies [0bdfeac]
+- Updated dependencies [0511bb6]
+- Updated dependencies [a2f3ed8]
+  - @templatical/types@0.57.0
+
+## 0.56.1
+
+### Patch Changes
+
+- @templatical/types@0.56.1
+
+## 0.56.0
+
+### Minor Changes
+
+- 2466654: Breaking changes:
+
+  - `ColumnLayout` gains `"4"`, `"1-3"`, `"3-1"` and `"1-2-1"`. Code that switches over every layout value, or validates `section.columns` against the previous five, must handle these four values. There is no replacement value: a section may now have four columns.
+
+  Section columns accept four more layouts: `"4"` (four equal columns, 25% each), `"1-3"` (25/75), `"3-1"` (75/25), and `"1-2-1"` (25/50/25). A four-column section stacks to one column on mobile, the same as the two- and three-column layouts. `stackOnMobile: false` keeps any of these layouts side by side.
+
+### Patch Changes
+
+- Updated dependencies [5744da5]
+- Updated dependencies [f9de817]
+- Updated dependencies [2466654]
+- Updated dependencies [be84dd0]
+  - @templatical/types@0.56.0
+
+## 0.55.0
+
+### Patch Changes
+
+- 9151730: Built-in merge-tag scanning, merge-tag span handling, and CSS rule parsing complete in linear time on malformed template input. Pixel value parsers reject long invalid whitespace suffixes without super-linear backtracking.
+  The types package exports `scanSyntaxMatches`, `scanCombinedSyntaxMatches`, and `SyntaxMatch`.
+- 6cc3685: Lint auto-fixes now rewrite single-quoted attributes without adding attributes. Double-quoted values are copied as written, including entities, and a rewritten anchor tag is lowercase. Link and alignment fixes skip markup inside comments, link fixes use the same attribute decoding and HTML whitespace rules as detection, and alignment fixes split declarations on decoded CSS characters, so `&#59;` separates declarations, and keep the character references in the declarations they keep.
+- Updated dependencies [200ab00]
+- Updated dependencies [9151730]
+- Updated dependencies [e784e63]
+  - @templatical/types@0.55.0
+
+## 0.54.2
+
+### Patch Changes
+
+- Updated dependencies [a72fbd8]
+  - @templatical/types@0.54.2
+
+## 0.54.1
+
+### Patch Changes
+
+- @templatical/types@0.54.1
+
+## 0.54.0
+
+### Patch Changes
+
+- @templatical/types@0.54.0
+
+## 0.53.0
+
+### Minor Changes
+
+- cef9348: Localization checks for language versions
+
+  `contentLocale` lints a translated language version, and `localization.untranslated`, `localization.stale` and `localization.merge-tags-differ` report missing text, outdated `sourceHash` values and changed merge tags. `lintTemplate` includes the `localization` category; pass `customBlocks` to check custom `text` and `textarea` translations.
+
+  Additive and opt-in: existing templates need no migration. Keep every `@templatical/*` package on the same version. See [the `localization` options](https://docs.templatical.com/quality/options#localization).
+
+### Patch Changes
+
+- Updated dependencies [cef9348]
+  - @templatical/types@0.53.0
+
 ## 0.52.1
 
 ### Patch Changes

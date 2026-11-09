@@ -100,7 +100,7 @@ HTML-Elemente werden auf ihre Templatical-Entsprechungen abgebildet:
 | `<a>` als Button gestaltet (Hintergrund, Padding, Border-Radius oder `display: inline-block`) | `button` | Konvertiert |
 | `<a>` (Text-Link) | geht im umgebenden `paragraph` auf | Konvertiert |
 | `<a>`, das ein `<img>` umschließt | `image` mit `linkUrl` | Konvertiert |
-| `<hr>` | `divider` | Konvertiert (angenähert, wenn die Breite begrenzt oder nicht lesbar ist oder ein Divider mit Teilbreite links oder rechts ausgerichtet ist) |
+| `<hr>` | `divider`, oder `spacer`, wenn es [keine Linie zeichnet](#hr-lines) | Konvertiert (angenähert, wenn die Breite begrenzt oder nicht lesbar ist oder ein Divider mit Teilbreite links oder rechts ausgerichtet ist; übersprungen, wenn es keine Linie zeichnet und keinen Platz einnimmt) |
 | Leeres `<td>` mit explizit gesetzter Höhe | `spacer` | Konvertiert |
 | `<td>`, dessen gesamter Inhalt ein gestyltes Text-`<a>` ist | `button` | Konvertiert (Cell-as-Button-Muster) |
 | `<table>` (Layout, mehrere Zeilen/Spalten) | `section` (eine pro `<tr>`) | Konvertiert |
@@ -146,6 +146,20 @@ Der Platz der Linie ist der Anteil der Spalte an `settings.width` gemäß dem Sp
 
 Templatical zentriert jeden Divider. Ein `<hr>` mit Teilbreite, das sein `align`-Attribut oder seine Margins links oder rechts platzieren, ist angenähert; seine `note` nennt die Ausrichtung.
 
+### `<hr>`-Linien und Abstände {#hr-lines}
+
+Ein `<hr>` wird als die Linie importiert, die es zeichnet. Seine Linie ist der obere Rahmen (`border-top`, sonst die Kurzschreibweise `border`), oder der untere Rahmen, wenn der obere nichts zeichnet, wie bei `border: 0; border-bottom: 1px solid #cccccc`. Die Einzelangaben jeder Seite (`border-top-color`, `border-width: 0 0 1px` und Ähnliches) gelten über ihrer Kurzschreibweise. Ein Rahmen zeichnet nichts, wenn er 0 breit ist, `none` oder `hidden` ist oder transparent ist: `transparent` oder eine Farbe mit Alpha 0 wie `rgba(0, 0, 0, 0)` oder `#ffffff00`.
+
+| `<hr>` | Ergebnis | Status |
+|---|---|---|
+| kein Rahmen für oben oder unten angegeben: kein `border`, `border-top` oder `border-bottom` und keine ihrer Einzelangaben für Breite, Stil oder Farbe | `divider`, durchgezogen schwarz 1px | Konvertiert |
+| ein Rahmen, der zeichnet | `divider` in Breite und Farbe des Rahmens; `dashed` und `dotted` behalten ihren Stil, jeder andere Stil wird `solid` | Konvertiert |
+| kein Rahmen, der zeichnet, und ein `background` oder `background-color` mit `height` | `divider` in der Hintergrundfarbe, so dick wie `height`, durchgezogen | Konvertiert |
+| kein Rahmen, der zeichnet, kein Hintergrund, belegter Platz | `spacer` | Konvertiert, mit einer `note`, die die Höhe nennt |
+| kein Rahmen, der zeichnet, kein Hintergrund, kein belegter Platz | kein Block | Übersprungen |
+
+Das übliche E-Mail-`<hr>`, `border: 0; height: 1px; background: #cccccc`, ist die Hintergrund-Zeile. Ein transparenter Hintergrund oder eine `height` von 0 zeichnet keine Linie. Die `height` des Spacers ist die Summe aus den oberen und unteren Margins und Paddings des `<hr>`, seiner `height` und den Breiten transparenter oberer und unterer Rahmen; ein Rahmen mit `none` oder `hidden` belegt keinen Platz. Ein negatives Padding oder eine negative `height` zählt als 0, weil CSS sie verwirft; ein negativer Margin zählt mit. Sie fällt nie unter 0, negative Margins, die zusammen weniger ergeben, werden deshalb übersprungen. Ein Spacer rendert kein Padding, deshalb ist sein eigenes Padding 0. Die Breitenregeln oben gelten für jede Divider-Zeile.
+
 ## Inline-Formatierung
 
 `<br>`, `<em>`, `<strong>`, `<i>`, `<b>`, `<u>`, `<small>`, `<sub>` und `<sup>` bleiben in dem Text, zu dem sie gehören. Eine Folge davon wird zusammen mit dem umgebenden reinen Text zu einem einzigen `paragraph`, dessen Farbe, Größe und Ausrichtung aus der umgebenden Zelle stammen — `Hello<br>World` in einem `<td>` wird also ein Paragraph mit beiden Wörtern und dem Umbruch.
@@ -163,18 +177,19 @@ Jeder `<tr>` einer Layout-Tabelle wird zu einem `SectionBlock`. Die direkten `<t
 | Zellen pro Zeile | Templatical-Layout |
 |---|---|
 | 1 | `'1'` |
-| 2 | `'2'` bzw. `'2-1'` / `'1-2'`, je nach deklarierter Breite |
-| 3 | `'3'` |
-| 4+ | auf `'1'` zusammengefasst, mit Warnung und einem `approximated`-Eintrag im Bericht |
+| 2 | `'2'`, `'2-1'`, `'1-2'`, `'3-1'` oder `'1-3'`, je nach deklarierter Breite |
+| 3 | `'3'` oder `'1-2-1'`, je nach deklarierter Breite |
+| 4 | `'4'` |
+| 5+ | auf `'1'` zusammengefasst, mit Warnung und einem `approximated`-Eintrag im Bericht |
 
 ### Spaltenverhältnisse
 
-Eine zweizellige Zeile wählt zwischen `'2'`, `'2-1'` und `'1-2'` anhand der Breiten, die ihre Zellen deklarieren — ein `width`-Attribut, ein `style="width:…"` oder der Anteil im Klassennamen `mj-column-per-*`. Das nächstgelegene dieser Layouts gewinnt: `350` / `190` wird zu `'2-1'`, `33,33 %` / `66,66 %` zu `'1-2'`.
+Eine Zeile wählt unter den Layouts, die ihre Spaltenzahl halten, anhand der Breiten, die ihre Zellen deklarieren — ein `width`-Attribut, ein `style="width:…"` oder der Anteil im Klassennamen `mj-column-per-*`. Zwei Zellen wählen unter `'2'`, `'2-1'`, `'1-2'`, `'3-1'` und `'1-3'`; drei Zellen zwischen `'3'` und `'1-2-1'`; vier Zellen sind `'4'`. Das nächstgelegene gewinnt, wenn es auf der am weitesten abweichenden Spalte innerhalb von 6 Prozentpunkten liegt: `350` / `190` wird zu `'2-1'`, `25 %` / `75 %` zu `'1-3'` und `130` / `280` / `130` zu `'1-2-1'`. Liegen zwei Layouts gleich nah, gewinnt die kleinere Abweichung der schlechtesten Spalte.
 
-Ein Verhältnis, das kein Layout ausdrückt, wird als gleichmäßige Teilung dieser Zellenzahl importiert und als `approximated` gemeldet, mit einer Notiz, die die gemessenen Breiten nennt:
+Ein Verhältnis, dem kein Layout so nah kommt, wird als gleichmäßige Teilung dieser Zellenzahl importiert und als `approximated` gemeldet, mit einer Notiz, die die gemessenen Breiten nennt:
 
 ```txt
-Column widths 24.1% / 51.9% / 24.1% have no Templatical equivalent.
+Column widths 10% / 80% / 10% have no Templatical equivalent.
 The section was imported as 3 equal columns.
 ```
 
@@ -183,6 +198,8 @@ The section was imported as 3 equal columns.
 Tabellenbasierte E-Mails umschließen ihr eigentliches Layout mit einzelligen Tabellen. Eine Zeile mit einer einzigen Zelle, deren Inhalt ausschließlich aus Tabellen besteht, wird durchlaufen, statt eine Section zu werden — die Spaltenzahl wird so an der Zeile gelesen, die sie deklariert. Das gilt nur, wenn diese Zelle neben ihren Tabellen keinen Inhalt trägt und der `style` der Zeile weder eine Hintergrundfarbe noch ein Hintergrundbild noch ein Padding setzt. Eine Zeile, die eine dieser Bedingungen nicht erfüllt, wird eine eigene Section, denn die Section trägt Hintergrund und Padding der Zeile.
 
 Eine Füllfarbe, die der Abstieg passiert, aus dem `bgcolor` der Zeile, der Zelle oder der Tabelle, geht an die Sections darunter über. Ebenso ein Hintergrundbild der Zelle oder der Tabelle; landet es auf mehr als einer Section, ist jeder dieser Einträge `approximated` mit einer Notiz.
+
+Eine Wrapper-Zeile, deren Tabelle oder einzige Zelle `width="100%"` trägt (Attribut oder Style) und eine Hintergrundfarbe oder ein Hintergrundbild hat, und deren innere Tabellen alle eine feste px-Breite haben, ist ein fensterbreites Band. Jede Section darin erhält `section.wrapper` mit dieser Farbe und diesem Bild sowie `wrapper.fullWidth: true`, sodass das Band bis zum Fensterrand läuft und der Inhalt auf der E-Mail-Breite bleibt. Füllfarben der inneren Tabellen bleiben auf den Sections. Eine Bandfarbe bleibt von diesem Wrapper, wenn die Section ihr eigenes Hintergrundbild behält; der Eintrag dieser Section ist dann `approximated` mit einer Notiz, weil Outlook auf dem Desktop eine Wrapper-Farbe über das Bild der Section malt. Das Bild des Bandes liegt weiterhin auf dem Wrapper. Ein Band, das aus einer Spalte heraus erreicht wird, gilt nicht als fensterbreit. Seitenrahmen, die dieses Muster erfüllen — eine äußere Tabelle mit `width="100%"` um eine Tabelle fester Breite —, werden zu einem Wrapper je Section; `settings.backgroundColor` kommt weiterhin vom `<body>`.
 
 ### Gutter-Zeilen
 
@@ -262,7 +279,7 @@ Globale Template-Einstellungen werden aus dem Dokument gelesen:
 - **Externe Ressourcen** — `<link>`, externe Stylesheets, Web Fonts und Remote-Bilder werden nicht geladen. Bild-`src`-URLs bleiben unverändert.
 - **Outlook-MSO-Conditionals** — bleiben innerhalb des umgebenden Blocks als HTML erhalten (in Nicht-Outlook-Clients ohnehin inert).
 - **Formularelemente (`<form>`/`<input>`/`<button>`)** — bleiben als HTML-Fallback. Die meisten Mail-Clients blockieren Formular-Submits ohnehin; bauen Sie den CTA als Button mit Link auf eine gehostete Seite.
-- **Zeilen mit mehr als drei Zellen** — `ColumnLayout` fasst höchstens drei Spalten, eine breitere Zeile wird also auf eine zusammengefasst und gemeldet. Auch Verhältnisse außerhalb von `'2'` / `'2-1'` / `'1-2'` / `'3'` — etwa ein Sidebar-Paar im Verhältnis `1-2-1` — haben keine Entsprechung und werden als gleichmäßige Teilung importiert.
+- **Zeilen mit mehr als vier Zellen** — `ColumnLayout` fasst höchstens vier Spalten, eine breitere Zeile wird also auf eine zusammengefasst und gemeldet. Auch Verhältnisse, denen kein Layout innerhalb von 6 Prozentpunkten nahekommt — etwa `90 %` / `10 %` — haben keine Entsprechung und werden als gleichmäßige Teilung importiert.
 - **AMP for Email** — wird in Templatical derzeit nicht unterstützt.
 
 ## Konvertierte Templates prüfen

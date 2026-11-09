@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   generateId,
   createTitleBlock,
@@ -96,6 +96,16 @@ describe("block factory functions", () => {
     expect(createImageBlock({ borderRadius: 60 }).borderRadius).toBe(60);
   });
 
+  // Absent, not false: an omitted flag follows the automatic full-width rule,
+  // and storing false on every new image would turn that rule off.
+  it("leaves an image's mobile width unset, and keeps an explicit one", () => {
+    expect(createImageBlock().fluidOnMobile).toBeUndefined();
+    expect(createImageBlock({ fluidOnMobile: true }).fluidOnMobile).toBe(true);
+    expect(createImageBlock({ fluidOnMobile: false }).fluidOnMobile).toBe(
+      false,
+    );
+  });
+
   it("creates a button block with defaults", () => {
     const block = createButtonBlock();
     expect(block.type).toBe("button");
@@ -108,6 +118,20 @@ describe("block factory functions", () => {
   it("creates a button block with an explicit align", () => {
     const block = createButtonBlock({ align: "left" });
     expect(block.align).toBe("left");
+  });
+
+  // Absent, not "bold": an omitted weight renders bold, and storing the
+  // default on every new button would write it into templates that never
+  // chose a weight.
+  it("leaves a button's weight unset, and keeps an explicit one", () => {
+    expect(createButtonBlock().fontWeight).toBeUndefined();
+    expect(createButtonBlock({ fontWeight: "regular" }).fontWeight).toBe(
+      "regular",
+    );
+    expect(createButtonBlock({ fontWeight: "medium" }).fontWeight).toBe(
+      "medium",
+    );
+    expect(createButtonBlock({ fontWeight: "bold" }).fontWeight).toBe("bold");
   });
 
   it("creates a divider block with defaults", () => {
@@ -137,7 +161,9 @@ describe("block factory functions", () => {
     expect(createSectionBlock({ stackOnMobile: false }).stackOnMobile).toBe(
       false,
     );
-    expect(createSectionBlock({ stackOnMobile: true }).stackOnMobile).toBe(true);
+    expect(createSectionBlock({ stackOnMobile: true }).stackOnMobile).toBe(
+      true,
+    );
   });
 
   it("applies a wrapper (outer frame) override on a section block", () => {
@@ -253,6 +279,36 @@ describe("createBlock", () => {
 });
 
 describe("cloneBlock", () => {
+  it("copies a wrapper subtree once and remints every block ID", () => {
+    const leaf = createParagraphBlock({ content: "<p>Leaf</p>" });
+    const section = createSectionBlock({ children: [[leaf]] });
+    const source = createWrapperBlock({ children: [section] });
+    const stringify = vi.spyOn(JSON, "stringify");
+    let cloned;
+    try {
+      cloned = cloneBlock(source);
+      expect(stringify).toHaveBeenCalledTimes(1);
+    } finally {
+      stringify.mockRestore();
+    }
+    if (cloned.type !== "wrapper" || cloned.children[0].type !== "section")
+      throw new Error("unexpected clone shape");
+    const copySection = cloned.children[0];
+    const copyLeaf = copySection.children[0][0];
+    const sourceIds = [source.id, section.id, leaf.id];
+    const copyIds = [cloned.id, copySection.id, copyLeaf.id];
+    expect(new Set(copyIds).size).toBe(3);
+    for (const id of copyIds) expect(sourceIds).not.toContain(id);
+    expect({
+      ...cloned,
+      id: source.id,
+      children: [{
+        ...copySection,
+        id: section.id,
+        children: [[{ ...copyLeaf, id: leaf.id }]],
+      }],
+    }).toEqual(source);
+  });
   it("creates a deep copy with a new ID", () => {
     const original = createTitleBlock({ content: "<p>Test</p>" });
     const cloned = cloneBlock(original);
@@ -827,7 +883,12 @@ describe("layout block factories", () => {
   it("createSlotBlock returns type slot with zero padding and a uuid", () => {
     const block = createSlotBlock();
     expect(block.type).toBe("slot");
-    expect(block.styles.padding).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+    expect(block.styles.padding).toEqual({
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+    });
     expect(block.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
@@ -837,7 +898,12 @@ describe("layout block factories", () => {
     const block = createWrapperBlock();
     expect(block.type).toBe("wrapper");
     expect(block.children).toEqual([]);
-    expect(block.styles.padding).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+    expect(block.styles.padding).toEqual({
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+    });
   });
 
   it("createBlock(slot) throws", () => {
@@ -958,7 +1024,13 @@ describe("factories never share nested objects", () => {
     };
     const before = JSON.parse(JSON.stringify(blockDefaults)) as BlockDefaults;
 
-    for (const type of ["button", "section", "social", "menu", "table"] as const) {
+    for (const type of [
+      "button",
+      "section",
+      "social",
+      "menu",
+      "table",
+    ] as const) {
       const first = createBlock(type, blockDefaults);
       const second = createBlock(type, blockDefaults);
 
@@ -971,7 +1043,8 @@ describe("factories never share nested objects", () => {
     const social = createBlock("social", blockDefaults);
     if (button.type === "button") button.buttonPadding.top = 0;
     if (section.type === "section") section.wrapper!.padding!.left = 0;
-    if (social.type === "social") social.icons[0].url = "https://changed.example";
+    if (social.type === "social")
+      social.icons[0].url = "https://changed.example";
 
     expect(blockDefaults).toEqual(before);
     const next = createBlock("section", blockDefaults);

@@ -16,6 +16,7 @@ import type { TemplateContent } from "@templatical/types";
 import { renderToMjml } from "../src";
 import { renderBlock, RenderContext } from "../src";
 import { convertMergeTagsToValues } from "../src/escape";
+import { expectLinear } from "./helpers/expectLinear";
 
 /**
  * Round-trip tests: compile renderer's MJML output through mjml@5 and
@@ -44,6 +45,28 @@ function makeContent(blocks: TemplateContent["blocks"]): TemplateContent {
 }
 
 describe("title heading does not nest <p>", () => {
+  it.each([
+    ['<p title="2 > 1">Hi</p>', "Hi"],
+    ["<p title='2 > 1'>Hi</p>", "Hi"],
+    [
+      "<p title=don't>Don't <strong>miss</strong></p>",
+      "Don't <strong>miss</strong>",
+    ],
+  ])("renders title content from %s as %s", (content, expected) => {
+    const block = createTitleBlock({ content, level: 2 });
+    const mjml = renderBlock(block, ctx);
+    expect(mjml.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/)?.[1]).toBe(expected);
+  });
+
+  it("compiles a title with a quoted > to a heading containing Hi", async () => {
+    const block = createTitleBlock({
+      content: '<p title="2 > 1">Hi</p>',
+      level: 2,
+    });
+    const html = await compile(wrapBlock(renderBlock(block, ctx)));
+    expect(html).toMatch(/<h2\b[^>]*>Hi<\/h2>/);
+  });
+
   it("default title content `<p>...</p>` should not yield `<h2><p>...</p></h2>` in HTML", async () => {
     const block = createTitleBlock({
       content: "<p>Hello</p>",
@@ -606,18 +629,21 @@ describe("empty paragraph emits nothing", () => {
   // make the regex engine retry `[^>]*` at every position. The `[^<>]*` rewrite
   // fails fast at the next `<` and keeps the work linear.
   it("strips empty-paragraph tags in linear time on `<p<p<p…` input (ReDoS regression)", () => {
-    const adversarial = "<p".repeat(50_000);
-    const block = createParagraphBlock({
-      content: adversarial,
-    } as Parameters<typeof createParagraphBlock>[0]);
-    const start = Date.now();
-    const mjml = renderBlock(block, ctx);
-    const elapsed = Date.now() - start;
+    const paragraph = (n: number) =>
+      createParagraphBlock({
+        content: "<p".repeat(n),
+      } as Parameters<typeof createParagraphBlock>[0]);
     // Stripped content is identical (no `>` ever matches), so non-empty
-    // after the strip — the block emits a non-empty mj-text. We only care
-    // that it doesn't hang.
-    expect(typeof mjml).toBe("string");
-    expect(elapsed).toBeLessThan(500);
+    // after the strip — the block emits the input unchanged in an mj-text.
+    expect(
+      renderBlock(paragraph(50_000), ctx).endsWith(
+        `>${"<p".repeat(50_000)}</mj-text>`,
+      ),
+    ).toBe(true);
+    expectLinear((n) => {
+      const block = paragraph(n);
+      return () => renderBlock(block, ctx);
+    }, 2_000);
   });
 });
 
@@ -625,7 +651,8 @@ describe("blank lines between paragraphs", () => {
   // TipTap stores a blank line as `<p></p>`, which has no height in a mail
   // client. The canvas and the edit surface show it a line tall, so the email
   // must too (#930).
-  const BLANK_LINE = /First<\/p>\s*<p[^>]*>(?:&nbsp;|\u00a0)<\/p>\s*<p[^>]*>Second/;
+  const BLANK_LINE =
+    /First<\/p>\s*<p[^>]*>(?:&nbsp;|\u00a0)<\/p>\s*<p[^>]*>Second/;
 
   it("fills a blank line in a paragraph block", () => {
     const block = createParagraphBlock({

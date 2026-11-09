@@ -1,5 +1,135 @@
 # @templatical/types
 
+## 0.57.2
+
+### Patch Changes
+
+- 27eb4be: A locale operation (`updateBlockLocale`, `updateSettingsLocale`) writes only to the block's or settings' own `l10n` layer for that language. A layer inherited through the object's prototype is no longer reused and changed in place; the edit gets a fresh own layer instead.
+
+## 0.57.1
+
+### Patch Changes
+
+- 36bc74f: cloneBlock serializes a block tree once and remints IDs throughout the copy.
+  MJML table inference imports only rows owned by the outer table and keeps nested table markup inside its cell.
+  HTML layout table classification stops at the first content tag or cell with an element child.
+  Topol unsupported nodes are preserved as compact JSON.
+  Topol social imports each platform and URL pair once and notes how many repeats it dropped.
+  Chamaileon report notes quote at most 80 characters of document expressions and values, adding an ellipsis when truncated.
+  Easy Email Pro report notes quote at most 80 characters of document attribute values, adding an ellipsis when truncated.
+  Easy Email Pro makes a `$var()` replacement only while the attribute stays within 65,536 characters; a reference that would exceed that stays verbatim and counts as unresolved, and literal text is never cut.
+  BeeFree keeps a text or social-icon `font-weight` only when it is `normal`, `bold`, `bolder`, `lighter`, a CSS-wide keyword or a number from 1 to 1000, and drops a text `font-family` stack over 256 characters with an approximated note.
+- c05e2a8: Custom-block Liquid renders now have budgets: `createCustomBlockLiquid` sets `memoryLimit` to `CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` (`1e7`) and `renderLimit` to `CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` (2000 ms), both exported from `@templatical/types`, so a template such as a loop over `(1..1000000000)` fails with a Liquid limit error in the editor, `renderToMjml` and `custom-block validate` instead of exhausting memory. Data-source preview recipes render with the same limits.
+
+  `template-tools custom-block validate` rejects a repeatable `minItems` or `maxItems` above 100 (`field.items-limit`), and specimen lists never hold more than 100 items. A `dataSourcePreview` response larger than 1 MiB of decoded data is cancelled and the fetch fails.
+
+  `templatical live reload` and `live stop` act only after the server on the pidfile's port answers `GET /identity` with this directory and the pidfile's pid, and `live stop` exits it with `POST /shutdown` and sends no signal: when that request fails, it exits 2 naming the pid and keeps the pidfile. A live server started by an earlier version has no `/identity`, so the new `live reload` and `live stop` refuse its pidfile: stop that server with Ctrl-C (or the earlier version's `live stop`) before upgrading, then run `live` again. A pidfile with a non-positive pid or an out-of-range port is ignored, and `live` refuses to start over a pidfile whose process is running but doesn't answer as this workspace's server, naming the pidfile to delete if that process isn't a live server. A live preview page that stops reading receives only the latest pending update, and `openBrowser` opens only `http:` and `https:` URLs, through `rundll32.exe` on Windows rather than `cmd`.
+
+## 0.57.0
+
+### Minor Changes
+
+- 0bdfeac: Breaking changes:
+
+  - `deleteBlock` and `moveBlock` refuse a section or wrapper while another session holds a lock on any block inside it. There is no override: wait for the lock to be released, or move the unlocked blocks out first.
+  - `updateBlock` on a section refuses a `type` change or a `children` rewrite that would remove or overwrite a block another session has locked. Wait for the lock to be released.
+  - `updateBlock` on a section refuses incoming `children` whose ids are locked by another session, already used outside that section, or repeated within the incoming children. Give new children unique ids that aren't in use elsewhere.
+  - A `moveBlock` or `deleteBlock` on a wrapper with a peer-locked descendant now fails with `lock_held` before its `expect` is checked, so a stale `expect` there returns `lock_held` instead of `precondition_failed`. Handle `lock_held` as well as `precondition_failed` when retrying.
+  - `addBlock` checks a new wrapper's children for duplicate ids, so a wrapper whose child reuses an existing id, or repeats an id among its own children, fails with `block_exists`. Give every block in the wrapper a unique id before adding it.
+  - With a language selected, a section rewrite that would leave duplicate ids once existing children are restored is refused. Send a rewrite whose restored tree keeps every id unique.
+
+  Lock checks now reach descendants of wrappers as well as section columns. In the default language, a rewrite that moves a block out of its section is accepted.
+
+- a2f3ed8: Breaking changes:
+
+  - `addBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Add wrappers at the top level with `parent: null`.
+  - `moveBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Move wrappers to the top level with `parent: null`.
+  - A malformed `moveBlock.expect.parent` is refused as `invalid_operation` at the shape check instead of failing as `precondition_failed`. Send `null`, `{ sectionId, column }` or `{ wrapperId }`.
+  - `addBlock`, `moveBlock` and `updateBlock` refuse a section with `section.wrapper` inside a layout wrapper. Keep the section at the top level or remove its own wrapper before placing it inside one. `validateLayout` rejects the same nesting.
+
+  Operations can address wrapper children with `{ wrapperId }` while existing section-column addresses keep their wire shape. The engine, inverses, collaboration diffs, AI feedback and CLI apply wrapper-child edits with placement, lock and hidden-slot checks.
+
+### Patch Changes
+
+- ad58b8e: The canvas draws a button at the same height as the export (#1144). The renderer now writes `line-height="120%"` explicitly; compiled HTML is unchanged.
+- 0511bb6: `resolveLocale` copies each block once, so resolving a deeply nested template takes time in proportion to its size. Masking merge tags with a custom syntax runs each regex once per match instead of again on every tag.
+
+  The renderer writes every `<` in a custom-block stylesheet as the CSS escape `\3c `, so a stylesheet from `renderedStylesheet` or `getCustomBlockStylesheet` can't close its `<mj-style>` or add MJML elements. A stylesheet without `<` renders unchanged.
+
+## 0.56.1
+
+No changes in this release.
+
+## 0.56.0
+
+### Minor Changes
+
+- 5744da5: `displayConditions.onRequest` lets a host open its own condition builder. The callback receives a copy of the block and, when one is set, the current condition including opaque `data`. `null` cancels. `conditions` is optional. With `onRequest` set, `conditions` and `allowCustom` are ignored. `DisplayCondition.data` round-trips through the template.
+- f9de817: A section wrapper or a layout wrapper can span the recipient's window. Set `fullWidth: true` on `section.wrapper` or on a layout `wrapper` block and the renderer emits MJML's `full-width="full-width"` on that `mj-wrapper`: the band's background color and background image run edge to edge, and the section or the wrapper's children stay at `settings.width`. Omit `fullWidth`, or set it `false`, and the band stays the email width, exactly as before. A corner radius is not rendered while full width is on; the stored radius remains and comes back when full width is off.
+
+  In the editor, **Full-width background** in a section's Background panel sets this. With no wrapper yet, turning it on moves the section's own background color and image onto a new wrapper and clears them on the section. While the switch is on, that panel's color and image edit the band, and **Content background** sets the section fill. Turning it off clears the flag; a wrapper that holds only that band is removed and its color and image return to the section, unless the section already has a content fill, which keeps the wrapper so neither color is discarded. The Wrapper panel shows the same switch and the same band color and image. A layout wrapper block has the same switch on its Background panel. On the canvas, and in preview, the band reaches the edges of the pane while the content stays at the email width.
+
+  This is the band people migrating from Topol have been asking for (sdk#1105). Importers set `fullWidth` when the source states that band.
+
+- 2466654: Breaking changes:
+
+  - `ColumnLayout` gains `"4"`, `"1-3"`, `"3-1"` and `"1-2-1"`. Code that switches over every layout value, or validates `section.columns` against the previous five, must handle these four values. There is no replacement value: a section may now have four columns.
+
+  Section columns accept four more layouts: `"4"` (four equal columns, 25% each), `"1-3"` (25/75), `"3-1"` (75/25), and `"1-2-1"` (25/50/25). A four-column section stacks to one column on mobile, the same as the two- and three-column layouts. `stackOnMobile: false` keeps any of these layouts side by side.
+
+- be84dd0: Spread syntax presets with matching value and logic patterns use the built-in linear merge-tag scanner across localization and editor parsing. Different pattern sources or flags other than `g` and `y` keep custom regex matching. `@templatical/types` exports `builtInPresetOf(syntax)`, which returns the built-in preset name whose patterns a syntax uses.
+
+## 0.55.0
+
+### Minor Changes
+
+- 200ab00: Two optional block fields. Leaving either out renders exactly as before.
+
+  - **Button `fontWeight`:** `"regular"` (400), `"medium"` (500) or `"bold"` (700), rendered as `mj-button font-weight`. Without it the label stays bold. The editor's button settings offer Regular, Medium and Bold (choosing Bold clears the field), with labels in all eight locales.
+  - **Image `fluidOnMobile`:** `true` always emits MJML `fluid-on-mobile="true"` and `false` never does. Without it an image still goes full width on a phone only when it fills its column on desktop; video thumbnails are unchanged. The editor's image settings offer Automatic, Always and Never, with labels in all eight locales.
+
+  The JSON schema, the `template-tools` validator and the agent skill's block guide include both fields.
+
+- 9151730: Built-in merge-tag scanning, merge-tag span handling, and CSS rule parsing complete in linear time on malformed template input. Pixel value parsers reject long invalid whitespace suffixes without super-linear backtracking.
+  The types package exports `scanSyntaxMatches`, `scanCombinedSyntaxMatches`, and `SyntaxMatch`.
+- e784e63: `SocialPlatform` includes `xing`. Social icon blocks can use a XING icon, drawn from the same glyph as the other platforms, in the editor and in every rendered style and tone.
+
+  BeeFree, MJML, Stripo, Unlayer, Topol and Chamaileon imports map a Xing icon onto `xing`. A BeeFree icon is recognized from its id, name, alt, title or a `xing.com` link, instead of being kept as an image.
+
+## 0.54.2
+
+### Patch Changes
+
+- a72fbd8: Title blocks now unwrap paragraphs with quoted attributes correctly in the editor and rendered email. The editor sanitizes title HTML after unwrapping to close a script-injection path in the canvas. `findOpenTagEnd` now treats a quote inside an unquoted attribute value as an ordinary character, as HTML does.
+
+## 0.54.1
+
+No changes in this release.
+
+## 0.54.0
+
+No changes in this release.
+
+## 0.53.0
+
+### Minor Changes
+
+- cef9348: Language versions and translation in the template model
+
+  Breaking changes:
+
+  - TypeScript producers must set the now required `AiRequestBase.locale` and `AiRewriteRequest.locale` to the active language, or `null` in the default view, and `CollaborationRemoteChange.locale` to the first locale operation's language in a batch, excluding `setDefaultLocale`, or `null` when there is none. Code that builds these objects must set them even without localization enabled.
+  - An element id containing `.` or `/` (on a menu item, social icon, table row or table cell) now fails `validateTemplate`, and `addBlock`, `updateBlock` and `setContent` refuse to add one with `invalid_operation`. `elementIdIssues(content)` lists them; rename each.
+
+  Apart from such ids, existing templates need no migration. Keep every `@templatical/*` package on the same version.
+
+  - **Model:** `settings.locales` lists the language versions. Each block's and the settings' `l10n[locale]` layer holds translated `text` (`{ value, sourceHash }`), property overrides in `set`, and `hidden`. `resolveLocale(content, locale, options?: { missing?: "throw" | "default" })` projects one version, layouts included; an unknown version throws `unknown_locale` unless `missing: "default"`, which projects the document's default. `localeCoverage` and `sourceHash` report missing and out-of-date text.
+  - **Operations:** `addLocale`, `removeLocale`, `setDefaultLocale`, `updateBlockLocale` and `updateSettingsLocale`, with inverses from `invertOperations` and a `locale` on locks. `setDefaultLocale` keeps the former default's text as its translation. `createSetDefaultLocaleOperation(content, locale, definitions?)` records custom text fields on the operation, so it replays without definitions. `defaultLocaleGaps` lists the fields with a nonempty default that would keep the current default's value, and `localeHiddenBlocks` the hidden blocks that refuse the change.
+  - **Translation:** `TranslationProvider`, `TranslationRequest`, `TranslationResult`, `TranslationErrorCode` and `LocaleString`, with `maskTags`, `unmaskTags`, `localeStrings` and `applyLocaleStrings`. They mask merge tags, logic tags and `doNotTranslate` terms, and check them exactly on return.
+  - **Also:** `Comment.locale` and `CommentInput.locale`, and `isSafeUrlAttribute(name, value): boolean`, the URL policy that the editor's sanitizer and `template-tools strings import` share.
+
+  See [Localized templates](https://docs.templatical.com/guide/localized-templates) and [Locale operations](https://docs.templatical.com/api/operations#locale-operations).
+
 ## 0.52.1
 
 ### Patch Changes

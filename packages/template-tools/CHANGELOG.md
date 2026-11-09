@@ -1,5 +1,262 @@
 # @templatical/template-tools
 
+## 0.57.2
+
+### Patch Changes
+
+- Updated dependencies [27eb4be]
+  - @templatical/types@0.57.2
+  - @templatical/import-beefree@0.57.2
+  - @templatical/import-chamaileon@0.57.2
+  - @templatical/import-easy-email-pro@0.57.2
+  - @templatical/import-html@0.57.2
+  - @templatical/import-mjml@0.57.2
+  - @templatical/import-stripo@0.57.2
+  - @templatical/import-topol@0.57.2
+  - @templatical/import-unlayer@0.57.2
+  - @templatical/quality@0.57.2
+  - @templatical/renderer@0.57.2
+
+## 0.57.1
+
+### Patch Changes
+
+- c05e2a8: Custom-block Liquid renders now have budgets: `createCustomBlockLiquid` sets `memoryLimit` to `CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` (`1e7`) and `renderLimit` to `CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` (2000 ms), both exported from `@templatical/types`, so a template such as a loop over `(1..1000000000)` fails with a Liquid limit error in the editor, `renderToMjml` and `custom-block validate` instead of exhausting memory. Data-source preview recipes render with the same limits.
+
+  `template-tools custom-block validate` rejects a repeatable `minItems` or `maxItems` above 100 (`field.items-limit`), and specimen lists never hold more than 100 items. A `dataSourcePreview` response larger than 1 MiB of decoded data is cancelled and the fetch fails.
+
+  `templatical live reload` and `live stop` act only after the server on the pidfile's port answers `GET /identity` with this directory and the pidfile's pid, and `live stop` exits it with `POST /shutdown` and sends no signal: when that request fails, it exits 2 naming the pid and keeps the pidfile. A live server started by an earlier version has no `/identity`, so the new `live reload` and `live stop` refuse its pidfile: stop that server with Ctrl-C (or the earlier version's `live stop`) before upgrading, then run `live` again. A pidfile with a non-positive pid or an out-of-range port is ignored, and `live` refuses to start over a pidfile whose process is running but doesn't answer as this workspace's server, naming the pidfile to delete if that process isn't a live server. A live preview page that stops reading receives only the latest pending update, and `openBrowser` opens only `http:` and `https:` URLs, through `rundll32.exe` on Windows rather than `cmd`.
+
+- Updated dependencies [fb2afae]
+- Updated dependencies [81da2d1]
+- Updated dependencies [36bc74f]
+- Updated dependencies [c05e2a8]
+  - @templatical/import-beefree@0.57.1
+  - @templatical/types@0.57.1
+  - @templatical/import-mjml@0.57.1
+  - @templatical/import-html@0.57.1
+  - @templatical/import-topol@0.57.1
+  - @templatical/import-chamaileon@0.57.1
+  - @templatical/import-easy-email-pro@0.57.1
+  - @templatical/renderer@0.57.1
+  - @templatical/import-stripo@0.57.1
+  - @templatical/import-unlayer@0.57.1
+  - @templatical/quality@0.57.1
+
+## 0.57.0
+
+### Minor Changes
+
+- a2f3ed8: Breaking changes:
+
+  - `addBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Add wrappers at the top level with `parent: null`.
+  - `moveBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Move wrappers to the top level with `parent: null`.
+  - A malformed `moveBlock.expect.parent` is refused as `invalid_operation` at the shape check instead of failing as `precondition_failed`. Send `null`, `{ sectionId, column }` or `{ wrapperId }`.
+  - `addBlock`, `moveBlock` and `updateBlock` refuse a section with `section.wrapper` inside a layout wrapper. Keep the section at the top level or remove its own wrapper before placing it inside one. `validateLayout` rejects the same nesting.
+
+  Operations can address wrapper children with `{ wrapperId }` while existing section-column addresses keep their wire shape. The engine, inverses, collaboration diffs, AI feedback and CLI apply wrapper-child edits with placement, lock and hidden-slot checks.
+
+### Patch Changes
+
+- 59a17bc: The Unlayer, BeeFree and Topol importers check for a repeated warning in constant time, so a design with thousands of languages no longer slows the import quadratically. The Chamaileon importer looks up variable references in a table built once per document. The renderer escapes control characters in a block's type and id before it logs the missing-renderer warning. `templatical live` answers 400 to a request target it can't parse, where it used to exit.
+- Updated dependencies [ad58b8e]
+- Updated dependencies [0bdfeac]
+- Updated dependencies [59a17bc]
+- Updated dependencies [418a249]
+- Updated dependencies [0511bb6]
+- Updated dependencies [a2f3ed8]
+  - @templatical/types@0.57.0
+  - @templatical/renderer@0.57.0
+  - @templatical/import-beefree@0.57.0
+  - @templatical/import-chamaileon@0.57.0
+  - @templatical/import-topol@0.57.0
+  - @templatical/import-unlayer@0.57.0
+  - @templatical/quality@0.57.0
+  - @templatical/import-easy-email-pro@0.57.0
+  - @templatical/import-html@0.57.0
+  - @templatical/import-mjml@0.57.0
+  - @templatical/import-stripo@0.57.0
+
+## 0.56.1
+
+### Patch Changes
+
+- Updated dependencies [59d0859]
+  - @templatical/import-topol@0.56.1
+  - @templatical/import-beefree@0.56.1
+  - @templatical/import-chamaileon@0.56.1
+  - @templatical/import-easy-email-pro@0.56.1
+  - @templatical/import-html@0.56.1
+  - @templatical/import-mjml@0.56.1
+  - @templatical/import-stripo@0.56.1
+  - @templatical/import-unlayer@0.56.1
+  - @templatical/quality@0.56.1
+  - @templatical/renderer@0.56.1
+  - @templatical/types@0.56.1
+
+## 0.56.0
+
+### Minor Changes
+
+- 5744da5: `displayConditions.onRequest` lets a host open its own condition builder. The callback receives a copy of the block and, when one is set, the current condition including opaque `data`. `null` cancels. `conditions` is optional. With `onRequest` set, `conditions` and `allowCustom` are ignored. `DisplayCondition.data` round-trips through the template.
+- f9de817: A section wrapper or a layout wrapper can span the recipient's window. Set `fullWidth: true` on `section.wrapper` or on a layout `wrapper` block and the renderer emits MJML's `full-width="full-width"` on that `mj-wrapper`: the band's background color and background image run edge to edge, and the section or the wrapper's children stay at `settings.width`. Omit `fullWidth`, or set it `false`, and the band stays the email width, exactly as before. A corner radius is not rendered while full width is on; the stored radius remains and comes back when full width is off.
+
+  In the editor, **Full-width background** in a section's Background panel sets this. With no wrapper yet, turning it on moves the section's own background color and image onto a new wrapper and clears them on the section. While the switch is on, that panel's color and image edit the band, and **Content background** sets the section fill. Turning it off clears the flag; a wrapper that holds only that band is removed and its color and image return to the section, unless the section already has a content fill, which keeps the wrapper so neither color is discarded. The Wrapper panel shows the same switch and the same band color and image. A layout wrapper block has the same switch on its Background panel. On the canvas, and in preview, the band reaches the edges of the pane while the content stays at the email width.
+
+  This is the band people migrating from Topol have been asking for (sdk#1105). Importers set `fullWidth` when the source states that band.
+
+- 2466654: Breaking changes:
+
+  - `ColumnLayout` gains `"4"`, `"1-3"`, `"3-1"` and `"1-2-1"`. Code that switches over every layout value, or validates `section.columns` against the previous five, must handle these four values. There is no replacement value: a section may now have four columns.
+
+  Section columns accept four more layouts: `"4"` (four equal columns, 25% each), `"1-3"` (25/75), `"3-1"` (75/25), and `"1-2-1"` (25/50/25). A four-column section stacks to one column on mobile, the same as the two- and three-column layouts. `stackOnMobile: false` keeps any of these layouts side by side.
+
+### Patch Changes
+
+- Updated dependencies [5744da5]
+- Updated dependencies [f9de817]
+- Updated dependencies [2466654]
+- Updated dependencies [f9de817]
+- Updated dependencies [2466654]
+- Updated dependencies [be84dd0]
+  - @templatical/types@0.56.0
+  - @templatical/renderer@0.56.0
+  - @templatical/import-beefree@0.56.0
+  - @templatical/import-unlayer@0.56.0
+  - @templatical/import-html@0.56.0
+  - @templatical/import-mjml@0.56.0
+  - @templatical/import-topol@0.56.0
+  - @templatical/import-stripo@0.56.0
+  - @templatical/import-chamaileon@0.56.0
+  - @templatical/import-easy-email-pro@0.56.0
+  - @templatical/quality@0.56.0
+
+## 0.55.0
+
+### Minor Changes
+
+- 200ab00: Two optional block fields. Leaving either out renders exactly as before.
+
+  - **Button `fontWeight`:** `"regular"` (400), `"medium"` (500) or `"bold"` (700), rendered as `mj-button font-weight`. Without it the label stays bold. The editor's button settings offer Regular, Medium and Bold (choosing Bold clears the field), with labels in all eight locales.
+  - **Image `fluidOnMobile`:** `true` always emits MJML `fluid-on-mobile="true"` and `false` never does. Without it an image still goes full width on a phone only when it fills its column on desktop; video thumbnails are unchanged. The editor's image settings offer Automatic, Always and Never, with labels in all eight locales.
+
+  The JSON schema, the `template-tools` validator and the agent skill's block guide include both fields.
+
+- e784e63: `SocialPlatform` includes `xing`. Social icon blocks can use a XING icon, drawn from the same glyph as the other platforms, in the editor and in every rendered style and tone.
+
+  BeeFree, MJML, Stripo, Unlayer, Topol and Chamaileon imports map a Xing icon onto `xing`. A BeeFree icon is recognized from its id, name, alt, title or a `xing.com` link, instead of being kept as an image.
+
+### Patch Changes
+
+- Updated dependencies [200ab00]
+- Updated dependencies [e784e63]
+- Updated dependencies [ed7d96f]
+- Updated dependencies [200ab00]
+- Updated dependencies [9151730]
+- Updated dependencies [6cc3685]
+- Updated dependencies [e784e63]
+  - @templatical/import-beefree@0.55.0
+  - @templatical/import-stripo@0.55.0
+  - @templatical/types@0.55.0
+  - @templatical/renderer@0.55.0
+  - @templatical/quality@0.55.0
+  - @templatical/import-mjml@0.55.0
+  - @templatical/import-html@0.55.0
+  - @templatical/import-unlayer@0.55.0
+  - @templatical/import-topol@0.55.0
+  - @templatical/import-chamaileon@0.55.0
+  - @templatical/import-easy-email-pro@0.55.0
+
+## 0.54.2
+
+### Patch Changes
+
+- Updated dependencies [90aebe1]
+- Updated dependencies [a72fbd8]
+  - @templatical/renderer@0.54.2
+  - @templatical/types@0.54.2
+  - @templatical/import-html@0.54.2
+  - @templatical/import-mjml@0.54.2
+  - @templatical/import-beefree@0.54.2
+  - @templatical/import-chamaileon@0.54.2
+  - @templatical/import-easy-email-pro@0.54.2
+  - @templatical/import-stripo@0.54.2
+  - @templatical/import-topol@0.54.2
+  - @templatical/import-unlayer@0.54.2
+  - @templatical/quality@0.54.2
+
+## 0.54.1
+
+### Patch Changes
+
+- @templatical/import-beefree@0.54.1
+  - @templatical/import-chamaileon@0.54.1
+  - @templatical/import-easy-email-pro@0.54.1
+  - @templatical/import-html@0.54.1
+  - @templatical/import-mjml@0.54.1
+  - @templatical/import-stripo@0.54.1
+  - @templatical/import-topol@0.54.1
+  - @templatical/import-unlayer@0.54.1
+  - @templatical/quality@0.54.1
+  - @templatical/renderer@0.54.1
+  - @templatical/types@0.54.1
+
+## 0.54.0
+
+### Patch Changes
+
+- Updated dependencies [6c932cd]
+- Updated dependencies [1463c5f]
+- Updated dependencies [60710c1]
+  - @templatical/import-beefree@0.54.0
+  - @templatical/import-unlayer@0.54.0
+  - @templatical/import-html@0.54.0
+  - @templatical/renderer@0.54.0
+  - @templatical/import-stripo@0.54.0
+  - @templatical/import-mjml@0.54.0
+  - @templatical/import-chamaileon@0.54.0
+  - @templatical/import-easy-email-pro@0.54.0
+  - @templatical/import-topol@0.54.0
+  - @templatical/quality@0.54.0
+  - @templatical/types@0.54.0
+
+## 0.53.0
+
+### Minor Changes
+
+- cef9348: Language versions in the CLI, with `strings export` and `strings import`
+
+  Breaking changes:
+
+  - An element id containing `.` or `/` now fails `validate`; rename it.
+
+  Otherwise existing templates need no migration. Keep every `@templatical/*` package on the same version.
+
+  - `validate --locale <tag>` and `render --locale <tag>` check and render a language version, and the schema accepts `settings.locales` and `l10n`. An unknown locale exits `1` with `unknown_locale`.
+  - `strings export <template.json> --locale <tag>` exports a language's strings, the gaps by default (`--only gaps|all`, `--block <id>`), as a `strings/1` JSON file. `strings import <template.json> <strings.json>` applies the strings whose `sourceHash` and placeholders still match and reports `{ applied, rejected, skipped, file }`, with the rejection reasons `stale`, `tags_changed`, `unknown_field`, `not_translatable` and `unsafe_html`. It exits `1` when it rejects any string.
+  - `--definitions <file>` loads custom-block definitions for `validate`, `render`, `strings` and `edit`, `--do-not-translate <file>` protects terms during `strings`, and `import --default-locale <tag>` sets the default language for a source that declares none.
+  - `edit` applies the locale operations, and a refused operation names its block on stderr.
+
+  See [Strings](https://docs.templatical.com/api/template-tools#strings) and [Definitions](https://docs.templatical.com/api/template-tools#definitions).
+
+### Patch Changes
+
+- Updated dependencies [cef9348]
+- Updated dependencies [cef9348]
+- Updated dependencies [cef9348]
+- Updated dependencies [cef9348]
+  - @templatical/import-beefree@0.53.0
+  - @templatical/import-unlayer@0.53.0
+  - @templatical/import-topol@0.53.0
+  - @templatical/import-stripo@0.53.0
+  - @templatical/import-chamaileon@0.53.0
+  - @templatical/import-easy-email-pro@0.53.0
+  - @templatical/import-html@0.53.0
+  - @templatical/import-mjml@0.53.0
+  - @templatical/quality@0.53.0
+  - @templatical/renderer@0.53.0
+  - @templatical/types@0.53.0
+
 ## 0.52.1
 
 ### Patch Changes

@@ -1,7 +1,7 @@
 {
   "name": "@templatical/quality",
   "description": "Quality linting for Templatical email templates",
-  "version": "0.52.1",
+  "version": "0.57.2",
   "bugs": "https://github.com/templatical/sdk/issues",
   "dependencies": {
     "@templatical/types": "workspace:*",
@@ -9,8 +9,8 @@
   },
   "devDependencies": {
     "typescript": "^6.0.3",
-    "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
   },
   "exports": {
     ".": {

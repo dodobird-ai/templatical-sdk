@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import { parseArgs } from "../src/cli/args";
 import { setJsonMode } from "../src/cli/output";
 import { runEdit } from "../src/cli/commands/edit";
@@ -70,6 +71,30 @@ afterEach(() => {
 const read = () => JSON.parse(readFileSync(file, "utf8"));
 
 describe("edit command", () => {
+  it("moves a block into an existing wrapper and writes a schema-valid file", () => {
+    const before = read();
+    before.blocks.push({
+      id: "wrap_1",
+      type: "wrapper",
+      children: [],
+      styles: { padding: pad },
+    });
+    writeFileSync(file, `${JSON.stringify(before, null, 2)}\n`);
+    const op = JSON.stringify({
+      op: "moveBlock",
+      blockId: "title_1",
+      parent: { wrapperId: "wrap_1" },
+      after: null,
+    });
+    expect(runEdit(parseArgs(["edit", file, "--op", op]))).toBe(0);
+    expect(read().blocks.map((block: { id: string }) => block.id)).toEqual([
+      "button_1",
+      "wrap_1",
+    ]);
+    expect(read().blocks[1].children).toEqual([BASE.blocks[0]]);
+    expect(validateTemplate(read()).valid).toBe(true);
+  });
+
   it("applies a single operation and writes the file", () => {
     const op = JSON.stringify({
       op: "updateBlock",
@@ -406,4 +431,115 @@ it("keeps explicit custom text paths when edit --definitions would capture anoth
     body: "English body",
   });
   expect(read().settings).toMatchObject({ locale: "de", locales: ["en"] });
+});
+
+const HIDDEN_MESSAGES = [
+  [1, '1 block is hidden in "de". Show it before making it the default.'],
+  [2, '2 blocks are hidden in "de". Show them before making it the default.'],
+] as const;
+
+/** A template whose first `count` blocks are hidden in `de`. */
+function hiddenIn(count: number) {
+  writeFileSync(
+    file,
+    JSON.stringify({
+      ...BASE,
+      settings: { ...BASE.settings, locales: ["de"] },
+      blocks: BASE.blocks.map((block, index) => ({
+        ...block,
+        ...(index < count ? { l10n: { de: { hidden: true } } } : {}),
+      })),
+    }),
+  );
+  return readFileSync(file, "utf8");
+}
+const setDefaultArgs = (...flags: string[]) => [
+  "edit",
+  file,
+  "--op",
+  '{"op":"setDefaultLocale","locale":"de"}',
+  ...flags,
+];
+
+describe("edit refusing setDefaultLocale because blocks are hidden", () => {
+  it.each(HIDDEN_MESSAGES)(
+    "names the first of %i hidden block(s) in the message",
+    (count, message) => {
+      const before = hiddenIn(count);
+      expect(() => runEdit(parseArgs(setDefaultArgs()))).toThrow(
+        `Operation 1 (setDefaultLocale) was refused: invalid_operation — ${message} Block: "title_1".`,
+      );
+      expect(stdout).toEqual([]);
+      expect(readFileSync(file, "utf8")).toBe(before);
+    },
+  );
+
+  it.each(HIDDEN_MESSAGES)(
+    "names the first of %i hidden block(s) under --json too, with nothing on stdout",
+    (count, message) => {
+      const before = hiddenIn(count);
+      setJsonMode(true);
+      expect(() => runEdit(parseArgs(setDefaultArgs("--json")))).toThrow(
+        `Operation 1 (setDefaultLocale) was refused: invalid_operation — ${message} Block: "title_1".`,
+      );
+      expect(stdout).toEqual([]);
+      expect(readFileSync(file, "utf8")).toBe(before);
+    },
+  );
+
+  it.each(["in", "block", "Show", "de"])(
+    "names a block whose id %j is a word or a quoted value of the message",
+    (id) => {
+      writeFileSync(
+        file,
+        JSON.stringify({
+          ...BASE,
+          settings: { ...BASE.settings, locales: ["de"] },
+          blocks: BASE.blocks.map((block, index) => ({
+            ...block,
+            ...(index === 0 ? { id, l10n: { de: { hidden: true } } } : {}),
+          })),
+        }),
+      );
+      expect(() => runEdit(parseArgs(setDefaultArgs()))).toThrow(
+        `Operation 1 (setDefaultLocale) was refused: invalid_operation — ${HIDDEN_MESSAGES[0][1]} Block: "${id}".`,
+      );
+    },
+  );
+
+  it("leaves out a block id the engine doesn't name", () => {
+    const before = readFileSync(file, "utf8");
+    const ops = join(dir, "ops.json");
+    writeFileSync(
+      ops,
+      JSON.stringify([
+        { op: "updateBlock", blockId: "title_1", set: { content: "Changed" } },
+        { op: "setDefaultLocale", locale: "de" },
+      ]),
+    );
+    expect(() => runEdit(parseArgs(["edit", file, "--ops", ops]))).toThrow(
+      /^Operation 2 \(setDefaultLocale\) was refused: invalid_operation — "de" is not a language version of this template\.$/,
+    );
+    expect(readFileSync(file, "utf8")).toBe(before);
+  });
+
+  it.each([[], ["--json"]])(
+    "exits 2 with the block on stderr and nothing on stdout (%j)",
+    (...flags) => {
+      hiddenIn(2);
+      const result = spawnSync(
+        process.execPath,
+        [
+          resolve(import.meta.dirname, "../dist/bin.js"),
+          ...setDefaultArgs(...flags.flat()),
+        ],
+        { encoding: "utf8" },
+      );
+      expect(result.status).toBe(2);
+      expect(result.stderr).toBe(
+        `Operation 1 (setDefaultLocale) was refused: invalid_operation — ${HIDDEN_MESSAGES[1][1]} Block: "title_1".\n`,
+      );
+      expect(result.stdout).toBe("");
+    },
+  );
 });

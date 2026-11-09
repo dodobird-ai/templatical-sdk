@@ -303,6 +303,12 @@ interface ImageBlock extends BaseBlock {
   linkOpenInNewTab?: boolean;
   placeholderUrl?: string;
   decorative?: boolean;
+  /**
+   * Full width on a phone. Absent: fluid only when the image fills its column
+   * on desktop. `true` always emits MJML `fluid-on-mobile`; `false` never does.
+   * Video thumbnails have no equivalent.
+   */
+  fluidOnMobile?: boolean;
 }
 ```
 
@@ -321,6 +327,8 @@ interface ButtonBlock extends BaseBlock {
   fontSize: number;
   buttonPadding: SpacingValue;
   fontFamily?: string;
+  /** Label weight. `'regular'` is 400, `'medium'` is 500 and `'bold'` is 700. Omitted renders bold, which is what a button with no weight renders. */
+  fontWeight?: 'regular' | 'medium' | 'bold';
   openInNewTab?: boolean;
   width?: number | "full";
   align: "left" | "center" | "right";
@@ -354,11 +362,12 @@ interface SectionBlock extends BaseBlock {
 interface SectionWrapper {
   backgroundColor?: string;
   padding?: SpacingValue;
-  borderRadius?: BorderRadiusValue;
+  borderRadius?: BorderRadiusValue; // ignored while fullWidth is on; the stored value stays
   backgroundImage?: BackgroundImage;
+  fullWidth?: boolean; // true: band spans the recipient's window; section stays at settings.width
 }
 
-type ColumnLayout = "1" | "2" | "3" | "2-1" | "1-2";
+type ColumnLayout = "1" | "2" | "3" | "4" | "2-1" | "1-2" | "3-1" | "1-3" | "1-2-1";
 
 interface BackgroundImage {
   url: string;
@@ -449,6 +458,7 @@ type SocialPlatform =
   | "twitter"
   | "instagram"
   | "linkedin"
+  | "xing"
   | "youtube"
   | "tiktok"
   | "pinterest"
@@ -462,6 +472,7 @@ type SocialPlatform =
   | "dribbble"
   | "behance"
   | "website";
+
 
 type SocialIconStyle =
   "solid" | "outlined" | "rounded" | "square" | "circle" | "plain";
@@ -582,8 +593,9 @@ interface SlotBlock extends BaseBlock {
 interface WrapperBlock extends BaseBlock {
   type: "wrapper";
   children: Block[];
-  borderRadius?: number;
+  borderRadius?: number; // ignored while fullWidth is on; the stored value stays
   backgroundImage?: BackgroundImage;
+  fullWidth?: boolean; // true: band spans the recipient's window; children stay at settings.width
 }
 ```
 
@@ -631,6 +643,16 @@ interface DisplayCondition {
   after: string;
   group?: string;
   description?: string;
+  data?: unknown; // opaque host state; must survive JSON.stringify
+}
+```
+
+### DisplayConditionRequestContext
+
+```ts
+interface DisplayConditionRequestContext {
+  current?: DisplayCondition; // copy of the block's condition, when one is set
+  block: Block;               // copy of the block
 }
 ```
 
@@ -638,8 +660,11 @@ interface DisplayCondition {
 
 ```ts
 interface DisplayConditionsConfig {
-  conditions: DisplayCondition[];
+  conditions?: DisplayCondition[];
   allowCustom?: boolean;
+  onRequest?: (
+    context: DisplayConditionRequestContext,
+  ) => Promise<DisplayCondition | null>;
 }
 ```
 
@@ -728,7 +753,11 @@ export interface CustomBlockLiquidModule {
 export declare function createCustomBlockLiquid<
   M extends CustomBlockLiquidModule,
 >(module: M): InstanceType<M["Liquid"]>;
+export declare const CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT: 10000000;
+export declare const CUSTOM_BLOCK_LIQUID_RENDER_LIMIT: 2000;
 ```
+
+`CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` counts Liquid allocations per render, such as range elements and the strings and arrays filters build. Literal HTML in the template isn't counted, so it doesn't cap total output size. `CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` is a 2000 ms deadline that liquidjs checks before each template step, so a single slow filter can run past it without an error. Exceeding either rejects the render with a Liquid limit error. These options also apply to the editor, renderer, and template-tools custom-block engine; preview recipe rendering uses the same limits.
 
 ```ts
 import {

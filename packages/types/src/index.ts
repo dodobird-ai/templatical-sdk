@@ -44,6 +44,7 @@ export type {
 } from "./blocks";
 export {
   HEADING_LEVEL_FONT_SIZE,
+  BUTTON_LINE_HEIGHT,
   TITLE_FONT_WEIGHT,
   TITLE_LINE_HEIGHT,
   resolveTitleFontSize,
@@ -208,6 +209,7 @@ export type {
   UpdateSettingsLocaleOperation,
 } from "./operations";
 export {
+  blockIdsOf,
   applyOperations,
   createSetDefaultLocaleOperation,
   applyOperationsInPlace,
@@ -350,7 +352,11 @@ export type {
   DataSourceFetchContext,
   SelectOption,
 } from "./custom-blocks";
-export { createCustomBlockLiquid } from "./custom-block-liquid";
+export {
+  createCustomBlockLiquid,
+  CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT,
+  CUSTOM_BLOCK_LIQUID_RENDER_LIMIT,
+} from "./custom-block-liquid";
 export type { CustomBlockLiquidModule } from "./custom-block-liquid";
 
 // Block factory
@@ -437,8 +443,9 @@ export {
   replaceMergeTagSpans,
   scanMergeTagSpans,
 } from "./merge-tag-html";
-export type { SyntaxPreset, SyntaxPresetName } from "./merge-tags";
+export type { SyntaxMatch, SyntaxPreset, SyntaxPresetName } from "./merge-tags";
 export {
+  builtInPresetOf,
   containsMergeTag,
   getLogicMergeTagKeyword,
   getMergeTagLabel,
@@ -451,6 +458,8 @@ export {
   resolveHtmlLogicMergeTagLabels,
   resolveHtmlMergeTagLabels,
   resolveSyntax,
+  scanCombinedSyntaxMatches,
+  scanSyntaxMatches,
   substituteHtmlMergeTagSamples,
   substituteTextMergeTagSamples,
   SYNTAX_PRESETS,
@@ -468,6 +477,7 @@ export type {
   ColorsConfig,
   CustomFont,
   DisplayCondition,
+  DisplayConditionRequestContext,
   DisplayConditionsConfig,
   ExportResult,
   FontsConfig,

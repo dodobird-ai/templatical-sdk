@@ -1,5 +1,127 @@
 # @templatical/import-topol
 
+## 0.57.2
+
+### Patch Changes
+
+- Updated dependencies [27eb4be]
+  - @templatical/types@0.57.2
+
+## 0.57.1
+
+### Patch Changes
+
+- 36bc74f: cloneBlock serializes a block tree once and remints IDs throughout the copy.
+  MJML table inference imports only rows owned by the outer table and keeps nested table markup inside its cell.
+  HTML layout table classification stops at the first content tag or cell with an element child.
+  Topol unsupported nodes are preserved as compact JSON.
+  Topol social imports each platform and URL pair once and notes how many repeats it dropped.
+  Chamaileon report notes quote at most 80 characters of document expressions and values, adding an ellipsis when truncated.
+  Easy Email Pro report notes quote at most 80 characters of document attribute values, adding an ellipsis when truncated.
+  Easy Email Pro makes a `$var()` replacement only while the attribute stays within 65,536 characters; a reference that would exceed that stays verbatim and counts as unresolved, and literal text is never cut.
+  BeeFree keeps a text or social-icon `font-weight` only when it is `normal`, `bold`, `bolder`, `lighter`, a CSS-wide keyword or a number from 1 to 1000, and drops a text `font-family` stack over 256 characters with an approximated note.
+- Updated dependencies [36bc74f]
+- Updated dependencies [c05e2a8]
+  - @templatical/types@0.57.1
+
+## 0.57.0
+
+### Patch Changes
+
+- 59a17bc: The Unlayer, BeeFree and Topol importers check for a repeated warning in constant time, so a design with thousands of languages no longer slows the import quadratically. The Chamaileon importer looks up variable references in a table built once per document. The renderer escapes control characters in a block's type and id before it logs the missing-renderer warning. `templatical live` answers 400 to a request target it can't parse, where it used to exit.
+- Updated dependencies [ad58b8e]
+- Updated dependencies [0bdfeac]
+- Updated dependencies [0511bb6]
+- Updated dependencies [a2f3ed8]
+  - @templatical/types@0.57.0
+
+## 0.56.1
+
+### Patch Changes
+
+- 59d0859: `convertTopolTemplate()` accepts designs whose sections sit under `mj-body` and converts them like `mj-container` designs, including the container's `background-color`. When a design has neither, the empty-design warning names both tags.
+- @templatical/types@0.56.1
+
+## 0.56.0
+
+### Minor Changes
+
+- 2466654: Breaking changes:
+
+  - Imported sections can now have `columns: "4"`, `"1-3"`, `"3-1"` or `"1-2-1"`. A four-cell row from HTML, Unlayer or Stripo that used to flatten into one column now keeps four columns. Callers that read `section.columns` or count `children` must handle these values and four child arrays.
+  - The over-limit warning now says Templatical supports up to four columns, and folding importers fold rows of five or more columns onto `"4"` instead of `"3"`. Callers that match the old warning text or expect three columns after a fold must update.
+
+  Importers map source rows onto the four new section layouts. Four equal columns become `"4"`, 25/75 becomes `"1-3"`, 75/25 becomes `"3-1"`, and 25/50/25 becomes `"1-2-1"`. A ratio that is not exact snaps to the nearest of the nine layouts and keeps that importer's existing note. Stripo rows keep the equal layout for their column count. Unequal px widths, on a plugin frame or a compiled column, are reported approximated, and a column with no readable width is named in that note when the readable widths differ. Rows with more than four columns still flatten or fold into the last column, and the warning says Templatical supports up to four columns.
+
+- f9de817: Breaking changes:
+
+  - An imported full-width section whose only background is the source band now carries that colour and image on `section.wrapper` (`backgroundColor`, `backgroundImage`, with `fullWidth: true`) instead of `section.styles.backgroundColor` and `section.backgroundImage`. Code that reads an imported section's background must also read `section.wrapper`.
+  - When an imported section keeps its own background image, the Chamaileon, Stripo, HTML and Unlayer importers no longer apply the source band colour, because Outlook desktop paints a wrapper colour over that image. There is no replacement colour. Chamaileon, Stripo and HTML report the section `approximated` with a note; Unlayer names the dropped colour in `report.warnings`. The BeeFree importer keeps a distinct container colour on the wrapper, and Topol, MJML and Easy Email Pro move the colour together with the image.
+
+  Importers map a source full-width background band onto `section.wrapper` with `fullWidth: true`, so the colour and image run to the window edge and the content stays at the email width.
+
+  BeeFree row container backgrounds, Unlayer row backgrounds (`backgroundImage.fullWidth` not `false`), Chamaileon `fullwidth` bands, Topol and MJML and Easy Email Pro `full-width="full-width"`, Stripo stripes around an inner body, and an HTML 100% table wrapped around a fixed-width table all set that flag. A full-width section whose only background is the band moves that background onto the wrapper and leaves the section background unset. Content-area backgrounds stay on the section. When the section keeps its own background image, the band colour is left off the wrapper and the import notes it, because Outlook desktop paints a wrapper colour over that image; the band image still goes on the wrapper. A Stripo stripe with no inner body keeps its colour on the section.
+
+### Patch Changes
+
+- Updated dependencies [5744da5]
+- Updated dependencies [f9de817]
+- Updated dependencies [2466654]
+- Updated dependencies [be84dd0]
+  - @templatical/types@0.56.0
+
+## 0.55.0
+
+### Minor Changes
+
+- e784e63: `SocialPlatform` includes `xing`. Social icon blocks can use a XING icon, drawn from the same glyph as the other platforms, in the editor and in every rendered style and tone.
+
+  BeeFree, MJML, Stripo, Unlayer, Topol and Chamaileon imports map a Xing icon onto `xing`. A BeeFree icon is recognized from its id, name, alt, title or a `xing.com` link, instead of being kept as an image.
+
+### Patch Changes
+
+- Updated dependencies [200ab00]
+- Updated dependencies [9151730]
+- Updated dependencies [e784e63]
+  - @templatical/types@0.55.0
+
+## 0.54.2
+
+### Patch Changes
+
+- Updated dependencies [a72fbd8]
+  - @templatical/types@0.54.2
+
+## 0.54.1
+
+### Patch Changes
+
+- @templatical/types@0.54.1
+
+## 0.54.0
+
+### Patch Changes
+
+- @templatical/types@0.54.0
+
+## 0.53.0
+
+### Minor Changes
+
+- cef9348: Importers keep the source's languages
+
+  - Every importer takes `defaultLocale?: string` and sets `settings.locale` from the language the source declares (`<html lang>`, `<mjml lang>`, Beefree's `language.value`, Topol's primary `langs` entry), else from `defaultLocale`, else `"en"`. Unlayer JSON declares no default language, so pass `defaultLocale`.
+  - Beefree module `translations`, Unlayer `values._languages` and Topol `translations` become language versions.
+  - Each language or key an importer drops, and each subject, title or description left to the host, gets a `report.warnings` entry.
+  - Unlayer converts Lexical `textJson` and `paragraph` content to paragraph blocks instead of the HTML fallback.
+
+  The mappings follow the vendors' documented JSON, checked 2026-10-28; real multilingual exports weren't available to test against. Check an import with `template-tools validate imported.json --locale <tag>`, and see the [Beefree](https://docs.templatical.com/guide/migration-from-beefree#languages), [Unlayer](https://docs.templatical.com/guide/migration-from-unlayer#languages) and [Topol](https://docs.templatical.com/guide/migration-from-topol#languages) guides.
+
+### Patch Changes
+
+- Updated dependencies [cef9348]
+  - @templatical/types@0.53.0
+
 ## 0.52.1
 
 ### Patch Changes

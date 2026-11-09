@@ -15,6 +15,7 @@ import type {
   BlockDefaults,
   CustomBlockDefinition,
   DisplayCondition,
+  DisplayConditionRequestContext,
   LocaleCoverage,
   LogicPair,
   LogicTag,
@@ -43,8 +44,13 @@ import type { OnRequestMedia } from "./index";
 export const TRANSLATIONS_KEY: InjectionKey<Translations> =
   Symbol("translations");
 
-export const LOCALE_CHIP_OPENERS_KEY: InjectionKey<Map<string, () => void>> =
-  Symbol("localeChipOpeners");
+/** The states a block's status popover can explain for a localization finding. */
+export type LocaleChipTarget = "missing" | "stale" | "tags-differ";
+
+/** Opens a block's status popover, on a finding's own state when given. */
+export const LOCALE_CHIP_OPENERS_KEY: InjectionKey<
+  Map<string, (target?: LocaleChipTarget) => void>
+> = Symbol("localeChipOpeners");
 
 export const LOCALIZATION_KEY: InjectionKey<
   { locales: string[]; doNotTranslate?: string[] } | undefined
@@ -276,6 +282,10 @@ export const MERGE_TAG_SAMPLE_MODE_KEY: InjectionKey<Ref<boolean>> =
 export const USE_MERGE_TAG_SAMPLES_KEY: InjectionKey<ComputedRef<boolean>> =
   Symbol("useMergeTagSamples");
 
+/** Whether this block-rendering surface permits edits to the live template. */
+export const READ_ONLY_SURFACE_KEY: InjectionKey<ComputedRef<boolean>> =
+  Symbol("readOnlySurface");
+
 /**
  * The `resolvePreview` seam — resolved content plus its loading and failure
  * state. Provided by `useEditorCore` so every preview surface shares one
@@ -382,6 +392,13 @@ export const DISPLAY_CONDITIONS_KEY: InjectionKey<DisplayCondition[]> =
 export const ALLOW_CUSTOM_CONDITIONS_KEY: InjectionKey<boolean> = Symbol(
   "allowCustomConditions",
 );
+
+export const ON_REQUEST_DISPLAY_CONDITION_KEY: InjectionKey<
+  | ((
+      context: DisplayConditionRequestContext,
+    ) => Promise<DisplayCondition | null>)
+  | null
+> = Symbol("onRequestDisplayCondition");
 
 export const CAPABILITIES_KEY: InjectionKey<EditorCapabilities> =
   Symbol("capabilities");

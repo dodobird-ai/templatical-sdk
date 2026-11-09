@@ -3,7 +3,10 @@ import {
   backgroundShorthandColor,
   parseAlignment,
   parseBackgroundShorthand,
+  boxSideValue,
+  isTransparentColor,
   parseBorderShorthand,
+  parseBorderSide,
   parseColor,
   parseFontWeight,
   parsePaddingShorthand,
@@ -15,6 +18,7 @@ import {
   readPaddingFromStyles,
   serializeStyleAttribute,
 } from "../style-parser";
+import { expectLinear } from "./expectLinear";
 
 describe("parseStyleAttribute", () => {
   it("parses semicolon-separated declarations into a record", () => {
@@ -57,6 +61,18 @@ describe("serializeStyleAttribute", () => {
 });
 
 describe("parsePxValue", () => {
+  it("rejects a long invalid whitespace suffix linearly", () => {
+    expect(parsePxValue("1" + " ".repeat(80_000) + "x")).toBe(0);
+    expect(parsePxValue("12 px ")).toBe(12);
+    expectLinear(
+      (n) => {
+        const value = "1" + " ".repeat(n) + "x";
+        return () => parsePxValue(value);
+      },
+      250,
+      8_000,
+    );
+  });
   it("parses px-suffixed values", () => {
     expect(parsePxValue("12px")).toBe(12);
     expect(parsePxValue("12.6px")).toBe(13);
@@ -167,6 +183,20 @@ describe("parsePaddingShorthand", () => {
       left: 0,
     });
   });
+
+  // CSS drops a padding with a negative length, judged before rounding:
+  // -0.4px rounds to -0. A literal -0 is 0.
+  it("reads a shorthand with a negative side as no padding", () => {
+    for (const value of ["-10px 0", "10px -0.4px", "5px 5px 5px -1px"]) {
+      expect(parsePaddingShorthand(value)).toEqual({
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+      });
+    }
+    expect(parsePaddingShorthand("10px -0px").top).toBe(10);
+  });
 });
 
 describe("readPaddingFromStyles", () => {
@@ -179,6 +209,17 @@ describe("readPaddingFromStyles", () => {
     expect(r).toEqual({ top: 12, right: 5, bottom: 5, left: 8 });
   });
 
+  it("drops a negative longhand, so the shorthand applies to that side", () => {
+    expect(
+      readPaddingFromStyles({
+        padding: "6px",
+        "padding-top": "-30px",
+        "padding-bottom": "-0.4px",
+        "padding-left": "-0px",
+      }),
+    ).toEqual({ top: 6, right: 6, bottom: 6, left: 0 });
+  });
+
   it("falls back to shorthand when no longhand", () => {
     expect(readPaddingFromStyles({ padding: "10px" })).toEqual({
       top: 10,
@@ -186,6 +227,32 @@ describe("readPaddingFromStyles", () => {
       bottom: 10,
       left: 10,
     });
+  });
+
+  it("keeps a zero longhand in any CSS length unit over the shorthand", () => {
+    expect(
+      readPaddingFromStyles({
+        padding: "10px 0",
+        "padding-top": "0em",
+        "padding-bottom": "0EM",
+      }),
+    ).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  });
+
+  it("keeps an explicit zero longhand over the shorthand", () => {
+    expect(
+      readPaddingFromStyles({
+        padding: "10px",
+        "padding-top": "0",
+        "padding-bottom": "0px",
+      }),
+    ).toEqual({ top: 0, right: 10, bottom: 0, left: 10 });
+  });
+
+  it("falls back to the shorthand for a longhand that doesn't parse", () => {
+    expect(
+      readPaddingFromStyles({ padding: "10px", "padding-top": "auto" }),
+    ).toEqual({ top: 10, right: 10, bottom: 10, left: 10 });
   });
 });
 
@@ -220,6 +287,7 @@ describe("parseBorderShorthand", () => {
       width: 1,
       style: "solid",
       color: "#cccccc",
+      drawn: true,
     });
   });
 
@@ -228,6 +296,7 @@ describe("parseBorderShorthand", () => {
       width: 2,
       style: "dashed",
       color: "#ff0000",
+      drawn: true,
     });
   });
 
@@ -236,7 +305,47 @@ describe("parseBorderShorthand", () => {
       width: 0,
       style: "solid",
       color: "#000000",
+      drawn: true,
     });
+  });
+
+  it("keeps a colour function's spaces together", () => {
+    expect(parseBorderShorthand("2px dotted rgba(10, 20, 30, 0.5)")).toEqual({
+      width: 2,
+      style: "dotted",
+      color: "#0a141e",
+      drawn: true,
+    });
+  });
+
+  it("is not drawn at a stated 0 width, with no style, or in a transparent colour", () => {
+    for (const value of [
+      "0",
+      "0px solid #cccccc",
+      "none",
+      "1px hidden #cccccc",
+      "1px solid transparent",
+      "1px solid rgba(0, 0, 0, 0)",
+    ]) {
+      expect([value, parseBorderShorthand(value).drawn]).toEqual([
+        value,
+        false,
+      ]);
+    }
+  });
+
+  it("reads a zero width in any CSS length unit, but not an unknown one", () => {
+    for (const value of ["0em", "0rem solid #cccccc", "solid 0svh #cccccc"]) {
+      expect([value, parseBorderShorthand(value).drawn]).toEqual([
+        value,
+        false,
+      ]);
+    }
+    expect(parseBorderShorthand("0x solid #cccccc").drawn).toBe(true);
+  });
+
+  it("takes no room with a none or hidden style", () => {
+    expect(parseBorderShorthand("3px none #cccccc").width).toBe(0);
   });
 
   it("ignores unrecognized tokens", () => {
@@ -244,7 +353,81 @@ describe("parseBorderShorthand", () => {
       width: 1,
       style: "solid",
       color: "#000000",
+      drawn: true,
     });
+  });
+});
+
+describe("parseBorderSide", () => {
+  it("applies longhands over the shorthand's parts", () => {
+    expect(
+      parseBorderSide("1px solid transparent", { color: "#cccccc" }),
+    ).toEqual({ width: 1, style: "solid", color: "#cccccc", drawn: true });
+    expect(
+      parseBorderSide("2px dashed #cccccc", { width: "0", style: undefined }),
+    ).toEqual({ width: 0, style: "dashed", color: "#cccccc", drawn: false });
+  });
+
+  it("reads longhands without a shorthand", () => {
+    expect(
+      parseBorderSide(undefined, {
+        width: "3px",
+        style: "dotted",
+        color: "rgba(0, 0, 0, 0)",
+      }),
+    ).toEqual({ width: 3, style: "dotted", color: "#000000", drawn: false });
+  });
+});
+
+describe("boxSideValue", () => {
+  it("reads the top and bottom of a one- to four-value box", () => {
+    expect(
+      ["1px", "1px 2px", "1px 2px 3px", "1px 2px 3px 4px"].map((value) => [
+        boxSideValue(value, "top"),
+        boxSideValue(value, "bottom"),
+      ]),
+    ).toEqual([
+      ["1px", "1px"],
+      ["1px", "1px"],
+      ["1px", "3px"],
+      ["1px", "3px"],
+    ]);
+  });
+
+  it("keeps a colour function together and is undefined when unset", () => {
+    expect(boxSideValue("rgba(0, 0, 0, 0) #ccc red", "bottom")).toBe("red");
+    expect(boxSideValue(undefined, "top")).toBeUndefined();
+    expect(boxSideValue("  ", "top")).toBeUndefined();
+  });
+});
+
+describe("isTransparentColor", () => {
+  it("is true for a colour with no opacity", () => {
+    for (const value of [
+      "transparent",
+      "TRANSPARENT",
+      "#0000",
+      "#ffffff00",
+      "rgba(0, 0, 0, 0)",
+      "rgb(0 0 0 / 0%)",
+      "hsla(0, 0%, 100%, 0)",
+    ]) {
+      expect([value, isTransparentColor(value)]).toEqual([value, true]);
+    }
+  });
+
+  it("is false for a colour that paints", () => {
+    for (const value of [
+      undefined,
+      "",
+      "#000",
+      "#ffffff80",
+      "rgba(0, 0, 0, 0.5)",
+      "rgb(0 0 0 / 1%)",
+      "red",
+    ]) {
+      expect([value, isTransparentColor(value)]).toEqual([value, false]);
+    }
   });
 });
 
@@ -596,10 +779,11 @@ describe("readCssBackground url() scanning", () => {
     readCssBackground({ "background-image": value }, "Section", 600);
 
   it("reads a repeated unclosed url( in linear time", () => {
-    const value = "url(" + "url(!".repeat(20_000);
-    const started = performance.now();
-    expect(read(value)).toBeNull();
-    expect(performance.now() - started).toBeLessThan(1000);
+    expect(read("url(" + "url(!".repeat(20_000))).toBeNull();
+    expectLinear((n) => {
+      const value = "url(" + "url(!".repeat(n);
+      return () => read(value);
+    }, 1_000);
   });
 
   it.each(['url("a.png', 'url("a.png" x)', 'url(a"b)', "url(a.png"])(

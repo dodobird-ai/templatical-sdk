@@ -303,6 +303,12 @@ interface ImageBlock extends BaseBlock {
   linkOpenInNewTab?: boolean;
   placeholderUrl?: string;
   decorative?: boolean;
+  /**
+   * Volle Breite auf dem Smartphone. Ohne Angabe nur dann fluid, wenn das Bild
+   * seine Spalte auf dem Desktop füllt. `true` setzt immer MJML
+   * `fluid-on-mobile`; `false` nie. Video-Thumbnails haben kein Gegenstück.
+   */
+  fluidOnMobile?: boolean;
 }
 ```
 
@@ -321,6 +327,8 @@ interface ButtonBlock extends BaseBlock {
   fontSize: number;
   buttonPadding: SpacingValue;
   fontFamily?: string;
+  /** Schriftstärke der Beschriftung. `'regular'` ist 400, `'medium'` ist 500 und `'bold'` ist 700. Weggelassen wird fett gerendert, so wie eine Schaltfläche ohne Stärke. */
+  fontWeight?: 'regular' | 'medium' | 'bold';
   openInNewTab?: boolean;
   width?: number | "full";
   align: "left" | "center" | "right";
@@ -354,11 +362,12 @@ interface SectionBlock extends BaseBlock {
 interface SectionWrapper {
   backgroundColor?: string;
   padding?: SpacingValue;
-  borderRadius?: BorderRadiusValue;
+  borderRadius?: BorderRadiusValue; // gilt nicht, solange fullWidth an ist; der gespeicherte Wert bleibt
   backgroundImage?: BackgroundImage;
+  fullWidth?: boolean; // true: das Band reicht über das Fenster des Empfängers; die Sektion bleibt bei settings.width
 }
 
-type ColumnLayout = "1" | "2" | "3" | "2-1" | "1-2";
+type ColumnLayout = "1" | "2" | "3" | "4" | "2-1" | "1-2" | "3-1" | "1-3" | "1-2-1";
 
 interface BackgroundImage {
   url: string;
@@ -449,6 +458,7 @@ type SocialPlatform =
   | "twitter"
   | "instagram"
   | "linkedin"
+  | "xing"
   | "youtube"
   | "tiktok"
   | "pinterest"
@@ -462,6 +472,7 @@ type SocialPlatform =
   | "dribbble"
   | "behance"
   | "website";
+
 
 type SocialIconStyle =
   "solid" | "outlined" | "rounded" | "square" | "circle" | "plain";
@@ -582,8 +593,9 @@ interface SlotBlock extends BaseBlock {
 interface WrapperBlock extends BaseBlock {
   type: "wrapper";
   children: Block[];
-  borderRadius?: number;
+  borderRadius?: number; // gilt nicht, solange fullWidth an ist; der gespeicherte Wert bleibt
   backgroundImage?: BackgroundImage;
+  fullWidth?: boolean; // true: das Band reicht über das Fenster des Empfängers; die Kinder bleiben bei settings.width
 }
 ```
 
@@ -631,6 +643,16 @@ interface DisplayCondition {
   after: string;
   group?: string;
   description?: string;
+  data?: unknown; // opaker Host-Zustand; muss JSON.stringify überstehen
+}
+```
+
+### DisplayConditionRequestContext
+
+```ts
+interface DisplayConditionRequestContext {
+  current?: DisplayCondition; // Kopie der Bedingung des Blocks, falls gesetzt
+  block: Block;               // Kopie des Blocks
 }
 ```
 
@@ -638,8 +660,11 @@ interface DisplayCondition {
 
 ```ts
 interface DisplayConditionsConfig {
-  conditions: DisplayCondition[];
+  conditions?: DisplayCondition[];
   allowCustom?: boolean;
+  onRequest?: (
+    context: DisplayConditionRequestContext,
+  ) => Promise<DisplayCondition | null>;
 }
 ```
 
@@ -728,7 +753,11 @@ export interface CustomBlockLiquidModule {
 export declare function createCustomBlockLiquid<
   M extends CustomBlockLiquidModule,
 >(module: M): InstanceType<M["Liquid"]>;
+export declare const CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT: 10000000;
+export declare const CUSTOM_BLOCK_LIQUID_RENDER_LIMIT: 2000;
 ```
+
+`CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` zählt Liquid-Allokationen pro Rendering, etwa Range-Elemente und die Strings und Arrays, die Filter erzeugen. Literales HTML im Template wird nicht angerechnet, das Limit begrenzt also nicht die gesamte Ausgabegröße. `CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` ist eine Frist von 2000 ms, die liquidjs vor jedem Template-Schritt prüft; ein einzelner langsamer Filter kann sie daher ohne Fehler überschreiten. Bei Überschreitung wird das Rendering mit einem Liquid-Limitfehler abgelehnt. Diese Optionen gelten auch für die Custom-Block-Engine in Editor, Renderer und template-tools; das Rendern von Vorschau-Rezepten verwendet dieselben Grenzen.
 
 ```ts
 import {

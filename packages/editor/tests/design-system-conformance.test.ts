@@ -181,6 +181,7 @@ describe("design system conformance", () => {
       "--tpl-dark-text": "utils/blockComponentResolver.ts",
       "--tpl-dark-button-bg": "utils/blockComponentResolver.ts",
       "--tpl-dark-button-text": "utils/blockComponentResolver.ts",
+      "--tpl-email-frame-width": "utils/blockComponentResolver.ts",
     };
 
     /** Every `--tpl-*` property `css` declares or registers, comments aside. */

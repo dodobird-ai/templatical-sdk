@@ -1,7 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { findOpenTagEnd, getTagAttrValue } from "../src/html-scan";
+import { expectLinear } from "./helpers/expectLinear";
 
 describe("findOpenTagEnd", () => {
+  it("treats a quote inside an unquoted value as an ordinary character", () => {
+    const html = "<p title=don't>Don't <strong>miss</strong></p>";
+    expect(findOpenTagEnd(html, 2)).toBe(html.indexOf(">"));
+  });
+
+  it("opens a quoted value after = and whitespace", () => {
+    const html = '<p title = "2 > 1">x</p>';
+    expect(findOpenTagEnd(html, 2)).toBe(html.indexOf(">x"));
+  });
+
+  it("ends an unquoted value at whitespace, so a later quoted value still counts", () => {
+    const html = '<p a=b c="d>e">x</p>';
+    expect(findOpenTagEnd(html, 2)).toBe(html.indexOf(">x"));
+  });
+
+  it("does not open a quote for a quote that follows an unquoted value's =", () => {
+    const html = "<p href=a='x>y'</p>";
+    expect(findOpenTagEnd(html, 2)).toBe(html.indexOf(">"));
+  });
+
   it("returns the index of the `>` that closes the open tag", () => {
     const html = '<span data-merge-tag="{{a}}">L</span>';
     const end = findOpenTagEnd(html, 5);
@@ -157,11 +178,13 @@ describe("getTagAttrValue", () => {
   it("runs in linear time over many attributes ending in an unterminated quote", () => {
     // The shape a backtracking regex chokes on: thousands of candidate
     // positions for the attribute name, and a value whose quote never closes.
-    const adversarial =
-      ' class="x"'.repeat(20_000) + ' data-merge-tag="unterminated';
-    const start = Date.now();
-    expect(getTagAttrValue(adversarial, "data-merge-tag")).toBe(null);
-    expect(Date.now() - start).toBeLessThan(500);
+    const adversarial = (n: number) =>
+      ' class="x"'.repeat(n) + ' data-merge-tag="unterminated';
+    expect(getTagAttrValue(adversarial(20_000), "data-merge-tag")).toBe(null);
+    expectLinear((n) => {
+      const attrs = adversarial(n);
+      return () => getTagAttrValue(attrs, "data-merge-tag");
+    }, 2_000);
   });
 
   it("pairs quotes the way an HTML parser does", () => {

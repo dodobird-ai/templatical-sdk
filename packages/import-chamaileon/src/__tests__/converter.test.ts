@@ -131,23 +131,25 @@ describe("convertChamaileonTemplate end to end", () => {
     expect(two?.children).toHaveLength(2);
   });
 
-  it("folds a 4-col section onto columns 3 as approximated", () => {
+  it("keeps a 4-col section of equal quarters", () => {
     const { content, report } = convertChamaileonTemplate(NEWSLETTER);
-    const folded = sectionsOf(content.blocks).find(
-      (section) => section.columns === "3",
+    const quarters = sectionsOf(content.blocks).find(
+      (section) => section.columns === "4",
     );
-    expect(folded?.columns).toBe("3");
-    expect(folded?.children).toHaveLength(3);
-    expect(folded?.children[2]).toHaveLength(2);
+    expect(quarters?.columns).toBe("4");
+    expect(quarters?.children).toHaveLength(4);
+    expect(quarters?.children.every((column) => column.length === 1)).toBe(
+      true,
+    );
 
-    const entry = report.entries.find(
-      (e) =>
-        e.sourceTag === "fullwidth" &&
-        e.status === "approximated" &&
-        (e.note ?? "").includes("150px"),
-    );
-    expect(entry?.templaticalBlockType).toBe("section");
-    expect(entry?.status).toBe("approximated");
+    expect(
+      report.entries.some(
+        (e) =>
+          e.sourceTag === "fullwidth" &&
+          e.status === "approximated" &&
+          (e.note ?? "").includes("150px"),
+      ),
+    ).toBe(false);
   });
 
   it("does not produce a nested type: section for a nested multicolumn", () => {
@@ -265,7 +267,122 @@ describe("convertChamaileonTemplate resolved-variable count", () => {
   });
 });
 
+describe("convertChamaileonTemplate variable references", () => {
+  const pageColour = (variables: unknown) =>
+    convertChamaileonTemplate({
+      variables,
+      body: {
+        eid: "root",
+        type: "body",
+        style: { bodyWidth: 600, backgroundColor: { reference: "Page" } },
+        children: [],
+      },
+    } as ChamaileonDocument).content.settings.backgroundColor;
+
+  it("reads the document's variables afresh on every conversion", () => {
+    const variables = [{ name: "Page", value: "#111111" }];
+    const unset = pageColour([]);
+    expect(pageColour(variables)).toBe("#111111");
+
+    variables[0].name = "Renamed";
+    variables.push({ name: "Page", value: "#222222" });
+    expect(pageColour(variables)).toBe("#222222");
+
+    variables.splice(1, 1);
+    expect(pageColour(variables)).toBe(unset);
+    expect(unset).not.toBe("#111111");
+  });
+
+  it("treats a variables value that is not a list as no variables", () => {
+    expect(pageColour({ Page: "#111111" })).toBe(pageColour([]));
+  });
+});
+
 describe("convertChamaileonTemplate loops", () => {
+  it("quotes at most 80 expression characters in every descendant note", () => {
+    const expression = "x".repeat(81);
+    const { report } = convertChamaileonTemplate({
+      body: {
+        type: "body",
+        children: [
+          {
+            type: "block-level-loop",
+            attrs: { expression },
+            children: [
+              {
+                type: "fullwidth",
+                children: [
+                  { type: "text", attrs: { text: "<p>A</p>" } },
+                  { type: "text", attrs: { text: "<p>B</p>" } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(report.entries.map((entry) => entry.note)).toEqual([
+      `block-level-loop ${"x".repeat(80)}…`,
+      `block-level-loop ${"x".repeat(80)}…`,
+      `block-level-loop ${"x".repeat(80)}…`,
+    ]);
+    expect(report.entries.map((entry) => entry.status)).toEqual([
+      "approximated",
+      "approximated",
+      "approximated",
+    ]);
+  });
+
+  it("falls back to HTML for a node whose type is a number", () => {
+    const { report } = convertChamaileonTemplate(
+      JSON.stringify({ body: { type: "body", children: [{ type: 42 }] } }),
+    );
+    expect(report.entries.map((entry) => [entry.status, entry.note])).toEqual([
+      [
+        "html-fallback",
+        "42 has no Templatical block equivalent; the original node is preserved as JSON.",
+      ],
+    ]);
+  });
+
+  it("names only the type when a loop has no expression", () => {
+    const { report } = convertChamaileonTemplate({
+      body: {
+        type: "body",
+        children: [
+          { type: "block-level-loop", children: [] },
+          {
+            type: "block-level-loop",
+            children: [
+              {
+                type: "fullwidth",
+                children: [{ type: "text", attrs: { text: "<p>A</p>" } }],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(report.entries.map((entry) => [entry.status, entry.note])).toEqual([
+      ["skipped", "block-level-loop"],
+      ["approximated", "block-level-loop"],
+      ["approximated", "block-level-loop"],
+    ]);
+  });
+
+  it("keeps an exactly 80-character expression in a skipped note", () => {
+    const expression = "z".repeat(80);
+    const { report } = convertChamaileonTemplate({
+      body: {
+        type: "body",
+        children: [
+          { type: "block-level-loop", attrs: { expression }, children: [] },
+        ],
+      },
+    });
+    expect(report.entries[0].note).toBe(`block-level-loop ${expression}`);
+  });
+
   it("converts a loop's fullwidth child and marks produced entries approximated", () => {
     const { content, report } = convertChamaileonTemplate({
       body: {

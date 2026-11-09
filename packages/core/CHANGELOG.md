@@ -1,5 +1,129 @@
 # @templatical/core
 
+## 0.57.2
+
+### Patch Changes
+
+- Updated dependencies [27eb4be]
+  - @templatical/types@0.57.2
+
+## 0.57.1
+
+### Patch Changes
+
+- Updated dependencies [36bc74f]
+- Updated dependencies [c05e2a8]
+  - @templatical/types@0.57.1
+
+## 0.57.0
+
+### Minor Changes
+
+- 0bdfeac: Breaking changes:
+
+  - `deleteBlock` and `moveBlock` refuse a section or wrapper while another session holds a lock on any block inside it. There is no override: wait for the lock to be released, or move the unlocked blocks out first.
+  - `updateBlock` on a section refuses a `type` change or a `children` rewrite that would remove or overwrite a block another session has locked. Wait for the lock to be released.
+  - `updateBlock` on a section refuses incoming `children` whose ids are locked by another session, already used outside that section, or repeated within the incoming children. Give new children unique ids that aren't in use elsewhere.
+  - A `moveBlock` or `deleteBlock` on a wrapper with a peer-locked descendant now fails with `lock_held` before its `expect` is checked, so a stale `expect` there returns `lock_held` instead of `precondition_failed`. Handle `lock_held` as well as `precondition_failed` when retrying.
+  - `addBlock` checks a new wrapper's children for duplicate ids, so a wrapper whose child reuses an existing id, or repeats an id among its own children, fails with `block_exists`. Give every block in the wrapper a unique id before adding it.
+  - With a language selected, a section rewrite that would leave duplicate ids once existing children are restored is refused. Send a rewrite whose restored tree keeps every id unique.
+
+  Lock checks now reach descendants of wrappers as well as section columns. In the default language, a rewrite that moves a block out of its section is accepted.
+
+- a2f3ed8: Breaking changes:
+
+  - `addBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Add wrappers at the top level with `parent: null`.
+  - `moveBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Move wrappers to the top level with `parent: null`.
+  - A malformed `moveBlock.expect.parent` is refused as `invalid_operation` at the shape check instead of failing as `precondition_failed`. Send `null`, `{ sectionId, column }` or `{ wrapperId }`.
+  - `addBlock`, `moveBlock` and `updateBlock` refuse a section with `section.wrapper` inside a layout wrapper. Keep the section at the top level or remove its own wrapper before placing it inside one. `validateLayout` rejects the same nesting.
+
+  Operations can address wrapper children with `{ wrapperId }` while existing section-column addresses keep their wire shape. The engine, inverses, collaboration diffs, AI feedback and CLI apply wrapper-child edits with placement, lock and hidden-slot checks.
+
+### Patch Changes
+
+- f1ad606: Preview surfaces are read-only: the canvas in preview mode and the test-email and saved-block previews no longer start inline edits or write table cells, so resolved preview content can't overwrite the template.
+
+  On the canvas, a link with `target="_blank"` drops `opener` from its `rel` and gains `noopener`. Stored content and the exported email keep the link as authored.
+
+  Cloud comments follow a template switch: the editor leaves the previous template's realtime channel and joins the new one, and ignores a comment broadcast for another template. A failed socket connection is retried on the next connect.
+
+- a2f3ed8: Localized operations preserve other language layers when an existing block moves into a newly added wrapper. Mixed section and wrapper parent objects resolve to the section column, matching the operation engine.
+- Updated dependencies [ad58b8e]
+- Updated dependencies [0bdfeac]
+- Updated dependencies [0511bb6]
+- Updated dependencies [a2f3ed8]
+  - @templatical/types@0.57.0
+
+## 0.56.1
+
+### Patch Changes
+
+- @templatical/types@0.56.1
+
+## 0.56.0
+
+### Patch Changes
+
+- Updated dependencies [5744da5]
+- Updated dependencies [f9de817]
+- Updated dependencies [2466654]
+- Updated dependencies [be84dd0]
+  - @templatical/types@0.56.0
+
+## 0.55.0
+
+### Patch Changes
+
+- Updated dependencies [200ab00]
+- Updated dependencies [9151730]
+- Updated dependencies [e784e63]
+  - @templatical/types@0.55.0
+
+## 0.54.2
+
+### Patch Changes
+
+- Updated dependencies [a72fbd8]
+  - @templatical/types@0.54.2
+
+## 0.54.1
+
+### Patch Changes
+
+- @templatical/types@0.54.1
+
+## 0.54.0
+
+### Patch Changes
+
+- @templatical/types@0.54.0
+
+## 0.53.0
+
+### Minor Changes
+
+- cef9348: Language versions in editing, collaboration and AI edits
+
+  Breaking changes:
+
+  - A collaboration backend must refuse a batch that contains a `setContent` with `409` and `precondition_failed` when its `baseRevision` isn't the current revision; other batches still apply to the current content. Check a repeated `batchId` first, so a retried snapshot that already landed answers with its revision. Without the rule, a snapshot undo can overwrite a batch the backend committed but the editor hasn't received yet. The playground's reference backend implements it.
+  - With language versions in use, a collaboration backend you built must apply the locale operations (`addLocale`, `removeLocale`, `setDefaultLocale`, `updateBlockLocale`, `updateSettingsLocale`) and the lock `locale`. Until it does, it rejects those operations as `invalid_operation`, and one that ignores the lock `locale` serializes edits per block.
+
+  Existing templates need no migration. Keep every `@templatical/*` package on the same version.
+
+  - Edits in a language view go into that language's layer, collaboration diffs emit locale operations, and locks apply per block and language. `setDefaultLocale` conflicts with every other session's lock.
+  - Under collaboration, undo or redo of a whole-template change (`setContent`, `setDefaultLocale`) is refused with `precondition_failed` once this editor has received another session's batch after it.
+  - `onLocaleChange` reports the language shown whenever it changes, and `editor.createSetDefaultLocaleOperation(locale)` builds a default-language change that carries the registered custom text fields.
+  - `mapLocalizedOperations` maps AI edits of a language view into translations, property overrides and shared structure changes.
+  - `CollaborationApplyOptions.origin` and `.turn` are optional: a batch without `origin` is the session's own edit, with its own undo step.
+
+  See [Collaboration](https://docs.templatical.com/backend/collaboration#applying-a-batch).
+
+### Patch Changes
+
+- Updated dependencies [cef9348]
+  - @templatical/types@0.53.0
+
 ## 0.52.1
 
 ### Patch Changes

@@ -15,6 +15,438 @@ Installing or upgrading is covered in [Installation](/getting-started/installati
 
 ::: v-pre
 
+## 0.57.2
+
+<time datetime="2026-11-09">2026-11-09</time>
+
+### Fixes and improvements
+
+**A locale operation (`updateBlockLocale`, `updateSettingsLocale`) writes only to the block's or settings' own `l10n` layer for that language. A layer inherited through the object's prototype is no longer reused and changed in place; the edit gets a fresh own layer instead.**
+
+`@templatical/types`
+
+## 0.57.1
+
+<time datetime="2026-11-08">2026-11-08</time>
+
+### Fixes and improvements
+
+**cloneBlock serializes a block tree once and remints IDs throughout the copy.**
+
+`@templatical/import-beefree` · `@templatical/import-chamaileon` · `@templatical/import-easy-email-pro` · `@templatical/import-html` · `@templatical/import-mjml` · `@templatical/import-topol` · `@templatical/types`
+
+MJML table inference imports only rows owned by the outer table and keeps nested table markup inside its cell.
+HTML layout table classification stops at the first content tag or cell with an element child.
+Topol unsupported nodes are preserved as compact JSON.
+Topol social imports each platform and URL pair once and notes how many repeats it dropped.
+Chamaileon report notes quote at most 80 characters of document expressions and values, adding an ellipsis when truncated.
+Easy Email Pro report notes quote at most 80 characters of document attribute values, adding an ellipsis when truncated.
+Easy Email Pro makes a `$var()` replacement only while the attribute stays within 65,536 characters; a reference that would exceed that stays verbatim and counts as unresolved, and literal text is never cut.
+BeeFree keeps a text or social-icon `font-weight` only when it is `normal`, `bold`, `bolder`, `lighter`, a CSS-wide keyword or a number from 1 to 1000, and drops a text `font-family` stack over 256 characters with an approximated note.
+
+**The shipped eval set's domain-mismatch case checks link text with `>[^<>]*(?:www\.|://)` instead of `>(?:[^<]*)(?:www\.|://)`. It matches the same text, and checking a turn whose output holds a long run of `>` no longer takes quadratic time.**
+
+`@templatical/ai-kit`
+
+**BeeFree multi-column rows now convert outer column edges and matching top or bottom sides into section borders; painted column backgrounds, inner borders, and overlapping row borders still warn.**
+
+`@templatical/import-beefree`
+
+**Custom-block Liquid renders now have budgets: `createCustomBlockLiquid` sets `memoryLimit` to `CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` (`1e7`) and `renderLimit` to `CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` (2000 ms), both exported from `@templatical/types`, so a template such as a loop over `(1..1000000000)` fails with a Liquid limit error in the editor, `renderToMjml` and `custom-block validate` instead of exhausting memory. Data-source preview recipes render with the same limits.**
+
+`@templatical/editor` · `@templatical/renderer` · `@templatical/template-tools` · `@templatical/types`
+
+`template-tools custom-block validate` rejects a repeatable `minItems` or `maxItems` above 100 (`field.items-limit`), and specimen lists never hold more than 100 items. A `dataSourcePreview` response larger than 1 MiB of decoded data is cancelled and the fetch fails.
+
+`templatical live reload` and `live stop` act only after the server on the pidfile's port answers `GET /identity` with this directory and the pidfile's pid, and `live stop` exits it with `POST /shutdown` and sends no signal: when that request fails, it exits 2 naming the pid and keeps the pidfile. A live server started by an earlier version has no `/identity`, so the new `live reload` and `live stop` refuse its pidfile: stop that server with Ctrl-C (or the earlier version's `live stop`) before upgrading, then run `live` again. A pidfile with a non-positive pid or an out-of-range port is ignored, and `live` refuses to start over a pidfile whose process is running but doesn't answer as this workspace's server, naming the pidfile to delete if that process isn't a live server. A live preview page that stops reading receives only the latest pending update, and `openBrowser` opens only `http:` and `https:` URLs, through `rundll32.exe` on Windows rather than `cmd`.
+
+**Preserve explicit zero and shorthand padding on BeeFree buttons, with longhands taking precedence. Let an entirely bold label override any button style weight; import missing or unreadable weights as regular otherwise, and note lost partial bold formatting.**
+
+`@templatical/import-beefree`
+
+## 0.57.0
+
+<time datetime="2026-11-08">2026-11-08</time>
+
+### Features
+
+**Breaking changes:**
+
+`@templatical/core` · `@templatical/types`
+
+- `deleteBlock` and `moveBlock` refuse a section or wrapper while another session holds a lock on any block inside it. There is no override: wait for the lock to be released, or move the unlocked blocks out first.
+- `updateBlock` on a section refuses a `type` change or a `children` rewrite that would remove or overwrite a block another session has locked. Wait for the lock to be released.
+- `updateBlock` on a section refuses incoming `children` whose ids are locked by another session, already used outside that section, or repeated within the incoming children. Give new children unique ids that aren't in use elsewhere.
+- A `moveBlock` or `deleteBlock` on a wrapper with a peer-locked descendant now fails with `lock_held` before its `expect` is checked, so a stale `expect` there returns `lock_held` instead of `precondition_failed`. Handle `lock_held` as well as `precondition_failed` when retrying.
+- `addBlock` checks a new wrapper's children for duplicate ids, so a wrapper whose child reuses an existing id, or repeats an id among its own children, fails with `block_exists`. Give every block in the wrapper a unique id before adding it.
+- With a language selected, a section rewrite that would leave duplicate ids once existing children are restored is refused. Send a rewrite whose restored tree keeps every id unique.
+
+Lock checks now reach descendants of wrappers as well as section columns. In the default language, a rewrite that moves a block out of its section is accepted.
+
+**Add Danish editor and media library translations and localized recipient-facing content defaults.**
+
+`@templatical/editor` · `@templatical/media-library`
+
+**Breaking changes:**
+
+`@templatical/ai-kit` · `@templatical/core` · `@templatical/template-tools` · `@templatical/types`
+
+- `addBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Add wrappers at the top level with `parent: null`.
+- `moveBlock` no longer accepts a wrapper with a `{ sectionId, column }` parent. Move wrappers to the top level with `parent: null`.
+- A malformed `moveBlock.expect.parent` is refused as `invalid_operation` at the shape check instead of failing as `precondition_failed`. Send `null`, `{ sectionId, column }` or `{ wrapperId }`.
+- `addBlock`, `moveBlock` and `updateBlock` refuse a section with `section.wrapper` inside a layout wrapper. Keep the section at the top level or remove its own wrapper before placing it inside one. `validateLayout` rejects the same nesting.
+
+Operations can address wrapper children with `{ wrapperId }` while existing section-column addresses keep their wire shape. The engine, inverses, collaboration diffs, AI feedback and CLI apply wrapper-child edits with placement, lock and hidden-slot checks.
+
+**Breaking changes:**
+
+`@templatical/ai-kit`
+
+- Editing sessions refuse a locale layer (in `addBlock`, `setContent` or `updateBlockLocale`) that sets a block's `type` or changes its `customType`, including when `setDefaultLocale` promotes the layer and `removeLocale` removes the old default in the same batch. A block's type and custom schema are the same in every language: to use another type, `deleteBlock` the block and `addBlock` one of the new type, then translate its fields in that block's layer.
+- A locale layer's `set.children` may keep a `custom`, `slot`, or `wrapper` block only when the base content already has a block with the same `id` and `type`, and a `custom` block also keeps its `customType`; it cannot introduce one. To localize such a block, put it in the base content first with the same `id`, `type` and `customType` (outside the session, or with `addBlock` when its type isn't in `forbiddenBlockTypes`), then change its translatable fields in the layer.
+- A block in a locale layer's `set.children` keeps the type of the block with the same `id` in the content; a German child can't turn a base paragraph into a title. For a title in one language only, put a title with an `id` the base content doesn't use in that locale's `set.children`.
+- A template whose `settings.locales` isn't a list of strings is refused. Send `settings.locales` as an array of locale tags, or omit it.
+- A malformed locale layer is refused as invalid: a block or settings layer that isn't an object, or one whose `set` or `text` isn't an object. Send `{ set?: {…}, text?: {…} }` objects, or omit the layer.
+- When the content already holds a layer breaking these rules, a batch that leaves that layer in place is refused, even if it doesn't touch that block. Delete the block that holds the layer, or replace the affected content with `setContent`. A malformed layer is refused even then, and a running session can't repair it: fix or remove the layer outside the session, then call `createEditingSession` again with the repaired content.
+
+These rules apply to locale layers only. `setContent` can still change an existing block's base type under the same `id`, for example from paragraph to title.
+
+### Fixes and improvements
+
+**`resolveLocale` copies each block once, so resolving a deeply nested template takes time in proportion to its size. Masking merge tags with a custom syntax runs each regex once per match instead of again on every tag.**
+
+`@templatical/renderer` · `@templatical/types`
+
+The renderer writes every `<` in a custom-block stylesheet as the CSS escape `\3c `, so a stylesheet from `renderedStylesheet` or `getCustomBlockStylesheet` can't close its `<mj-style>` or add MJML elements. A stylesheet without `<` renders unchanged.
+
+**`link.localhost-or-staging` matches `links.nonProductionHosts` globs in linear time, so a very long URL host no longer stalls the linter, and compatibility rules group CSS declarations and clients without copying arrays. The Easy Email Pro importer decodes HTML entities by looking at most six characters ahead of each `&`.**
+
+`@templatical/import-easy-email-pro` · `@templatical/quality`
+
+**The Unlayer, BeeFree and Topol importers check for a repeated warning in constant time, so a design with thousands of languages no longer slows the import quadratically. The Chamaileon importer looks up variable references in a table built once per document. The renderer escapes control characters in a block's type and id before it logs the missing-renderer warning. `templatical live` answers 400 to a request target it can't parse, where it used to exit.**
+
+`@templatical/import-beefree` · `@templatical/import-chamaileon` · `@templatical/import-topol` · `@templatical/import-unlayer` · `@templatical/renderer` · `@templatical/template-tools`
+
+**Localized operations preserve other language layers when an existing block moves into a newly added wrapper. Mixed section and wrapper parent objects resolve to the section column, matching the operation engine.**
+
+`@templatical/core`
+
+**The canvas draws a button at the same height as the export (#1144). The renderer now writes `line-height="120%"` explicitly; compiled HTML is unchanged.**
+
+`@templatical/editor` · `@templatical/import-beefree` · `@templatical/renderer` · `@templatical/types`
+
+**`translateFields` sends the model short field aliases**
+
+`@templatical/ai-kit`
+
+The model now sees each field as `f1`, `f2`, … instead of its long id, which shortens its answer. The returned `TranslationResult` still carries the real field ids in request order; the `TranslationRequest` and `TranslationResult` contract and the HTTP wire are unchanged.
+
+**Fix the header switching to its compact layout while the save status shows. "Unsaved" and "Saved" appear on every edit and save; in an editor just wide enough for the full header, their words compacted the whole header until the status cleared, about 5 seconds with `templates.autoSave`. The badge keeps a fixed slot (its icon) in the header's fit measurement and shows its words only where the full header has room for them. Without room it shows the icon alone, a different one per state (dot, check, alert), and keeps the words as its tooltip and for screen readers. In the compact header the badge is always the icon alone.**
+
+`@templatical/editor`
+
+Fix the AI and Comments panels opening and closing without a slide: the AI panel appeared and disappeared in place, and Comments jumped. The panel, the properties panel it pushes aside and the canvas move together on one timing, the new `--tpl-panel-transition` token (240ms). Override it with `--tpl-user-panel-transition`. Under `prefers-reduced-motion: reduce` none of the three animates.
+
+**An editing session checks locale layers in time proportional to the template size. Each locale is resolved only for the blocks that carry its layer, so a template with thousands of locales no longer makes every batch resolve the whole template once per locale.**
+
+`@templatical/ai-kit`
+
+**Preview surfaces are read-only: the canvas in preview mode and the test-email and saved-block previews no longer start inline edits or write table cells, so resolved preview content can't overwrite the template.**
+
+`@templatical/core` · `@templatical/editor`
+
+On the canvas, a link with `target="_blank"` drops `opener` from its `rel` and gains `noopener`. Stored content and the exported email keep the link as authored.
+
+Cloud comments follow a template switch: the editor leaves the previous template's realtime channel and joins the new one, and ignores a comment broadcast for another template. A failed socket connection is retried on the next connect.
+
+## 0.56.1
+
+<time datetime="2026-11-06">2026-11-06</time>
+
+### Fixes and improvements
+
+**`convertTopolTemplate()` accepts designs whose sections sit under `mj-body` and converts them like `mj-container` designs, including the container's `background-color`. When a design has neither, the empty-design warning names both tags.**
+
+`@templatical/import-topol`
+
+## 0.56.0
+
+<time datetime="2026-11-06">2026-11-06</time>
+
+### Features
+
+**Breaking changes:**
+
+`@templatical/ai-kit` · `@templatical/editor` · `@templatical/import-beefree` · `@templatical/import-chamaileon` · `@templatical/import-easy-email-pro` · `@templatical/import-html` · `@templatical/import-mjml` · `@templatical/import-stripo` · `@templatical/import-topol` · `@templatical/import-unlayer` · `@templatical/quality` · `@templatical/renderer` · `@templatical/template-tools` · `@templatical/types`
+
+- Imported sections can now have `columns: "4"`, `"1-3"`, `"3-1"` or `"1-2-1"`. A four-cell row from HTML, Unlayer or Stripo that used to flatten into one column now keeps four columns. Callers that read `section.columns` or count `children` must handle these values and four child arrays.
+- The over-limit warning now says Templatical supports up to four columns, and folding importers fold rows of five or more columns onto `"4"` instead of `"3"`. Callers that match the old warning text or expect three columns after a fold must update.
+
+Importers map source rows onto the four new section layouts. Four equal columns become `"4"`, 25/75 becomes `"1-3"`, 75/25 becomes `"3-1"`, and 25/50/25 becomes `"1-2-1"`. A ratio that is not exact snaps to the nearest of the nine layouts and keeps that importer's existing note. Stripo rows keep the equal layout for their column count. Unequal px widths, on a plugin frame or a compiled column, are reported approximated, and a column with no readable width is named in that note when the readable widths differ. Rows with more than four columns still flatten or fold into the last column, and the warning says Templatical supports up to four columns.
+
+**`displayConditions.onRequest` lets a host open its own condition builder. The callback receives a copy of the block and, when one is set, the current condition including opaque `data`. `null` cancels. `conditions` is optional. With `onRequest` set, `conditions` and `allowCustom` are ignored. `DisplayCondition.data` round-trips through the template.**
+
+`@templatical/ai-kit` · `@templatical/editor` · `@templatical/template-tools` · `@templatical/types`
+
+**Spread syntax presets with matching value and logic patterns use the built-in linear merge-tag scanner across localization and editor parsing. Different pattern sources or flags other than `g` and `y` keep custom regex matching. `@templatical/types` exports `builtInPresetOf(syntax)`, which returns the built-in preset name whose patterns a syntax uses.**
+
+`@templatical/editor` · `@templatical/types`
+
+**A section wrapper or a layout wrapper can span the recipient's window. Set `fullWidth: true` on `section.wrapper` or on a layout `wrapper` block and the renderer emits MJML's `full-width="full-width"` on that `mj-wrapper`: the band's background color and background image run edge to edge, and the section or the wrapper's children stay at `settings.width`. Omit `fullWidth`, or set it `false`, and the band stays the email width, exactly as before. A corner radius is not rendered while full width is on; the stored radius remains and comes back when full width is off.**
+
+`@templatical/ai-kit` · `@templatical/editor` · `@templatical/renderer` · `@templatical/template-tools` · `@templatical/types`
+
+In the editor, **Full-width background** in a section's Background panel sets this. With no wrapper yet, turning it on moves the section's own background color and image onto a new wrapper and clears them on the section. While the switch is on, that panel's color and image edit the band, and **Content background** sets the section fill. Turning it off clears the flag; a wrapper that holds only that band is removed and its color and image return to the section, unless the section already has a content fill, which keeps the wrapper so neither color is discarded. The Wrapper panel shows the same switch and the same band color and image. A layout wrapper block has the same switch on its Background panel. On the canvas, and in preview, the band reaches the edges of the pane while the content stays at the email width.
+
+This is the band people migrating from Topol have been asking for (sdk#1105). Importers set `fullWidth` when the source states that band.
+
+**Breaking changes:**
+
+`@templatical/import-beefree` · `@templatical/import-chamaileon` · `@templatical/import-easy-email-pro` · `@templatical/import-html` · `@templatical/import-mjml` · `@templatical/import-stripo` · `@templatical/import-topol` · `@templatical/import-unlayer`
+
+- An imported full-width section whose only background is the source band now carries that colour and image on `section.wrapper` (`backgroundColor`, `backgroundImage`, with `fullWidth: true`) instead of `section.styles.backgroundColor` and `section.backgroundImage`. Code that reads an imported section's background must also read `section.wrapper`.
+- When an imported section keeps its own background image, the Chamaileon, Stripo, HTML and Unlayer importers no longer apply the source band colour, because Outlook desktop paints a wrapper colour over that image. There is no replacement colour. Chamaileon, Stripo and HTML report the section `approximated` with a note; Unlayer names the dropped colour in `report.warnings`. The BeeFree importer keeps a distinct container colour on the wrapper, and Topol, MJML and Easy Email Pro move the colour together with the image.
+
+Importers map a source full-width background band onto `section.wrapper` with `fullWidth: true`, so the colour and image run to the window edge and the content stays at the email width.
+
+BeeFree row container backgrounds, Unlayer row backgrounds (`backgroundImage.fullWidth` not `false`), Chamaileon `fullwidth` bands, Topol and MJML and Easy Email Pro `full-width="full-width"`, Stripo stripes around an inner body, and an HTML 100% table wrapped around a fixed-width table all set that flag. A full-width section whose only background is the band moves that background onto the wrapper and leaves the section background unset. Content-area backgrounds stay on the section. When the section keeps its own background image, the band colour is left off the wrapper and the import notes it, because Outlook desktop paints a wrapper colour over that image; the band image still goes on the wrapper. A Stripo stripe with no inner body keeps its colour on the section.
+
+## 0.55.0
+
+<time datetime="2026-11-05">2026-11-05</time>
+
+### Features
+
+**A real-design audit of the BeeFree importer found it converts every design but loses fidelity and, in one case, breaks Twig at send time. This release closes the gaps it found.**
+
+`@templatical/import-beefree`
+
+- **Merge tags.** HTML character references inside `{{ }}`, `{% %}` and `{# #}` are decoded, so `&#39;`, `&quot;` and `&gt;` no longer reach Twig or Liquid (`&nbsp;` inside a token becomes a plain space). A double quote inside a token in an HTML attribute stays encoded as `&quot;`. References outside a token stay encoded. BeeFree's `<code data-bee-type="mergetag">` wrapper is removed so the token keeps its formatting and no longer renders monospace. A chip that holds only a space becomes one plain space; a leading space before a single token in a chip is dropped.
+- **Text.** Line-height (a percentage becomes a unitless ratio), letter-spacing and per-link colour are kept, and module text styles also apply to lists, headings and divs. The module font size is written on each paragraph, list and heading element so the line box matches. A paragraph module keeps `computedStyle.paragraphSpacing` (zero when absent), a blank paragraph stays one empty line, and a list imports BeeFree's list box inline (zero margins, indent from `liIndent`).
+- **Headings.** The heading level is the title level whose size is nearest the BeeFree font size, with the exact size on the text. A level more than 1px off is reported approximated.
+- **Layout.** A single-column row keeps its column padding, background and border on the section; a multi-column row adds each column's padding to its modules and warns when a column background or border is dropped. A fully transparent column background is unset, so it does not replace the row background and does not warn. A row's container background becomes a band as wide as the email. Hide-on-mobile and hide-on-desktop set visibility, `rowColStackOnMobile: false` keeps 2- and 3-column sections side by side, and a row border maps to the section border. Column ratios with no exact layout and row widths that differ from the email width are named in the warnings.
+- **Buttons.** A label line-height above 120% of the font size is split into top and bottom padding. `width: 100%` becomes full width, a px width stays pixels and a drawn border is kept. Font weight maps to the nearest `fontWeight` (`regular`, `medium`, `bold`). A letter-spacing or a percentage width other than 100% is not carried: the button is reported approximated with one short note.
+- **Images.** An image in a multi-column section that the renderer would widen on mobile imports with `fluidOnMobile: false`, because BeeFree does not stretch it.
+- **Social and fonts.** A social icon whose id is a UUID is recognised from its name or link host, and an unknown network is kept as an image or a link. A link or image with a rejected scheme is dropped; a recognised icon then uses `#`. Social icons keep alignment, spacing, size and a circle, rounded or square set. `convertBeeFreeTemplate` returns `customFonts` (`{ name, url }[]`) from web fonts that have a URL, and warns only when a used font has no URL and is not a system stack.
+
+**Two optional block fields. Leaving either out renders exactly as before.**
+
+`@templatical/ai-kit` · `@templatical/editor` · `@templatical/renderer` · `@templatical/template-tools` · `@templatical/types`
+
+- **Button `fontWeight`:** `"regular"` (400), `"medium"` (500) or `"bold"` (700), rendered as `mj-button font-weight`. Without it the label stays bold. The editor's button settings offer Regular, Medium and Bold (choosing Bold clears the field), with labels in all eight locales.
+- **Image `fluidOnMobile`:** `true` always emits MJML `fluid-on-mobile="true"` and `false` never does. Without it an image still goes full width on a phone only when it fills its column on desktop; video thumbnails are unchanged. The editor's image settings offer Automatic, Always and Never, with labels in all eight locales.
+
+The JSON schema, the `template-tools` validator and the agent skill's block guide include both fields.
+
+**Built-in merge-tag scanning, merge-tag span handling, and CSS rule parsing complete in linear time on malformed template input. Pixel value parsers reject long invalid whitespace suffixes without super-linear backtracking.**
+
+`@templatical/ai-kit` · `@templatical/editor` · `@templatical/import-html` · `@templatical/import-mjml` · `@templatical/import-stripo` · `@templatical/quality` · `@templatical/types`
+
+The types package exports `scanSyntaxMatches`, `scanCombinedSyntaxMatches`, and `SyntaxMatch`.
+
+**`SocialPlatform` includes `xing`. Social icon blocks can use a XING icon, drawn from the same glyph as the other platforms, in the editor and in every rendered style and tone.**
+
+`@templatical/ai-kit` · `@templatical/editor` · `@templatical/import-beefree` · `@templatical/import-chamaileon` · `@templatical/import-mjml` · `@templatical/import-stripo` · `@templatical/import-topol` · `@templatical/import-unlayer` · `@templatical/renderer` · `@templatical/template-tools` · `@templatical/types`
+
+BeeFree, MJML, Stripo, Unlayer, Topol and Chamaileon imports map a Xing icon onto `xing`. A BeeFree icon is recognized from its id, name, alt, title or a `xing.com` link, instead of being kept as an image.
+
+### Fixes and improvements
+
+**Lint auto-fixes now rewrite single-quoted attributes without adding attributes. Double-quoted values are copied as written, including entities, and a rewritten anchor tag is lowercase. Link and alignment fixes skip markup inside comments, link fixes use the same attribute decoding and HTML whitespace rules as detection, and alignment fixes split declarations on decoded CSS characters, so `&#59;` separates declarations, and keep the character references in the declarations they keep.**
+
+`@templatical/quality`
+
+**A 7/12 or 5/12 BeeFree column row imports as an even two-column section. When a snapped column is narrower than its grid share, the shortfall comes back from the padding that faces the next column, so a one-line footer stays one line.**
+
+`@templatical/import-beefree`
+
+**Two importer corrections.**
+
+`@templatical/import-beefree` · `@templatical/import-stripo`
+
+- **Beefree.** When a 7/12 or 5/12 row snaps to an even split, the padding returned to a column no longer changes what a module displays. A 240px image keeps its width, a lone icon, divider, video and button keep theirs, and text still gets the padding back. Column padding a snapped column keeps, including padding only on its outer edge, still narrows the room an image is measured in, so an image as wide as that room is full width.
+- **Stripo.** A social icon is identified by the file name of its `src`, not by the host or folders of the URL, so `https://xing.com.evil.example/icons/other.png` stays a website link. A URL with no file name, such as `https://xing.com.evil.example?file=other.png`, stays a website link too; the query and hash are not the file name. An icon whose name matches no network becomes a website icon, and that social block is reported approximated.
+
+## 0.54.2
+
+<time datetime="2026-11-04">2026-11-04</time>
+
+### Fixes and improvements
+
+**Template values in MJML attributes are escaped before rendering. Body background colours containing markup use a transparent fallback so the compiled HTML does not carry that markup. CSS-valued attributes (background colours, border radius, background size, position and repeat) also drop `;`, `{`, `}` and line breaks, so a value stays one CSS declaration.**
+
+`@templatical/renderer`
+
+**Title blocks now unwrap paragraphs with quoted attributes correctly in the editor and rendered email. The editor sanitizes title HTML after unwrapping to close a script-injection path in the canvas. `findOpenTagEnd` now treats a quote inside an unquoted attribute value as an ordinary character, as HTML does.**
+
+`@templatical/editor` · `@templatical/renderer` · `@templatical/types`
+
+**In preview mode the canvas hides lint issue badges, like the rest of the block chrome.**
+
+`@templatical/editor`
+
+## 0.54.1
+
+<time datetime="2026-11-03">2026-11-03</time>
+
+### Fixes and improvements
+
+**The text formatting toolbar stays behind the Insert Link dialog after a merge-tag or logic-tag picker has been opened and closed.**
+
+`@templatical/editor`
+
+## 0.54.0
+
+<time datetime="2026-11-03">2026-11-03</time>
+
+### Features
+
+**`convertBeeFreeTemplate()` imports images at the width BeeFree shows them, keeps spacing dividers invisible, and converts the Icons module, addons and empty modules.**
+
+`@templatical/import-beefree`
+
+- **Image width (#1069).** An `autowidth` image is sized like a `fixedwidth` one, from `computedStyle.width` (its file's width capped at the column), and is `"full"` only when that reaches the image's room. A 111px `autowidth` logo in an 800px template imported at full width; it now imports at `111`. A `computedStyle.width` written as a number (`187.5`, in older exports) is read too, and `computedStyle.class` `fullwidth` imports as `"full"`. A percentage under `100%` becomes that share of the room in px, reported `approximated` with a `note`.
+- **Dividers that draw no line (#1070).** A divider whose `border-top` is 0 wide, `none`, `hidden` or transparent (`transparent`, or an alpha of 0 such as `rgba(0, 0, 0, 0)`) becomes a `spacer` whose height is its top and bottom padding plus a transparent border's width (a negative padding counts as 0, as CSS drops it), reported `converted` with a `note` naming the height. One that adds up to 0px produces no block and is reported `skipped`. These imported as visible lines: `0px solid transparent` as a 1px black line, `10px solid transparent` as a 10px black bar.
+- **Icons module (#1071).** `mailup-bee-newsletter-modules-icons` with one icon and no text becomes an `image` at `computedStyle.iconHeight`. Any other Icons module becomes an HTML table with the icons, their text and links, reported `html-fallback` with the `note` `Icons module rebuilt as an HTML table.` Both replace an empty `<!-- Unsupported BeeFree module -->` comment.
+- **Addons (#1071).** `mailup-bee-newsletter-modules-addon` converts as the module whose payload it carries (`image`, `html`, `heading`, `paragraph`, `text`, `list`, `button`, `divider`, `menu` or `iconsList`). An image addon links to `image.href` only; GIPHY's `image.url` is the GIF's page and isn't imported.
+- **Empty modules.** `mailup-bee-newsletter-modules-empty`, and an Icons module with no icons, produce no block and are reported `skipped` with `templaticalBlockType: null`.
+
+Rules and tables: the [BeeFree migration guide](https://docs.templatical.com/guide/migration-from-beefree). Check an imported template with `template-tools validate imported.json`.
+
+### Fixes and improvements
+
+**The Unlayer and HTML importers import a divider as the line it draws, so one that draws nothing no longer becomes a black line.**
+
+`@templatical/import-html` · `@templatical/import-unlayer`
+
+- **Unlayer.** A divider whose `border.borderTopWidth` is 0, whose `borderTopStyle` is `none` or `hidden`, or whose `borderTopColor` is transparent (`transparent`, or an alpha of 0 such as `rgba(0, 0, 0, 0)`) becomes a `spacer`. Its height is the top and bottom `containerPadding` plus a transparent border's width, and it's reported `converted` with a `note` naming the height. One that adds up to 0px produces no block and is reported `skipped`. Until this release, `0px solid transparent` imported as a 1px black line and `10px solid transparent` as a 10px black bar.
+- **HTML.** An `<hr>`'s line is its top border, or its `border-bottom` when the top draws nothing: `border: 0; border-bottom: 1px solid #cccccc` now imports as a 1px `#cccccc` divider. With no border that draws, its `background` or `background-color` draws the line when it has a `height`: `border: 0; height: 1px; background: #cccccc` now imports as a 1px `#cccccc` divider. Until this release, both imported as 1px black lines. An `<hr>` that draws nothing becomes a `spacer` of its vertical margins, padding, `height` and transparent border widths, or is skipped at 0px. An `<hr>` with no border styles still imports as a 1px solid black line.
+- **Negative padding.** CSS drops a padding with a negative length, and both importers now do too, for every block: a padding shorthand with a negative side is no padding, and an HTML padding longhand that's negative leaves the shorthand's value for that side. The sign is read before rounding, so `-0.4px` counts as negative. An `<hr>`'s negative `height` counts as 0.
+
+Rules and tables: [Unlayer](https://docs.templatical.com/guide/migration-from-unlayer#undrawn-dividers) and [HTML](https://docs.templatical.com/guide/migration-from-html#hr-lines) migration guides.
+
+**Compiling `renderToMjml()` output with mjml no longer throws `TypeError: Cannot read properties of undefined (reading 'indexOf')` when a paragraph or title holds a character reference in a `style` attribute.**
+
+`@templatical/renderer`
+
+MJML inlines the renderer's rich-text stylesheet with juice, which splits the style attribute of each `<p>`, `<ul>`, `<ol>` and `<li>` on `;` before decoding references, so the `;` ending `&apos;`, `&quot;`, `&#39;` or `&nbsp;` broke the compile. Imported content carries these: BeeFree's text HTML (`font-family: Monda, &apos;Courier New&apos;`) and import-mjml's output for a single-quoted font. The paragraph and title renderers now write those references as the characters they stand for inside `style` attributes, a quote as the one the attribute isn't delimited with (CSS reads either). `&amp;`, `&lt;` and `&gt;` stay encoded. Check with `template-tools render --html` on an imported template.
+
+## 0.53.0
+
+<time datetime="2026-11-03">2026-11-03</time>
+
+### Features
+
+**Importers keep the source's languages**
+
+`@templatical/import-beefree` · `@templatical/import-chamaileon` · `@templatical/import-easy-email-pro` · `@templatical/import-html` · `@templatical/import-mjml` · `@templatical/import-stripo` · `@templatical/import-topol` · `@templatical/import-unlayer`
+
+- Every importer takes `defaultLocale?: string` and sets `settings.locale` from the language the source declares (`<html lang>`, `<mjml lang>`, Beefree's `language.value`, Topol's primary `langs` entry), else from `defaultLocale`, else `"en"`. Unlayer JSON declares no default language, so pass `defaultLocale`.
+- Beefree module `translations`, Unlayer `values._languages` and Topol `translations` become language versions.
+- Each language or key an importer drops, and each subject, title or description left to the host, gets a `report.warnings` entry.
+- Unlayer converts Lexical `textJson` and `paragraph` content to paragraph blocks instead of the HTML fallback.
+
+The mappings follow the vendors' documented JSON, checked 2026-10-28; real multilingual exports weren't available to test against. Check an import with `template-tools validate imported.json --locale <tag>`, and see the [Beefree](https://docs.templatical.com/guide/migration-from-beefree#languages), [Unlayer](https://docs.templatical.com/guide/migration-from-unlayer#languages) and [Topol](https://docs.templatical.com/guide/migration-from-topol#languages) guides.
+
+**Language versions and translation in the editor**
+
+`@templatical/editor`
+
+- `init({ localization: { locales, doNotTranslate? } })` turns on the **Languages** menu: add a language, make one the default or remove it. A language bar shows the version being edited, its missing and out-of-date counts, and **Translate {count} fields**, **Translate everything again…** and **Back to {default}**.
+- A status badge on each block shows hidden, missing, out-of-date, differing merge tags or changed properties, with Translate, Keep, Use default and Reset actions; a localization finding in Issues jumps to it. The settings panel marks translated or overridden fields, each with its own reset.
+- `init({ translation })` takes a `TranslationProvider`. Translate sends the gaps or every eligible field, masks merge tags, logic tags and `doNotTranslate` terms, applies what passes the exact check as one undo step and reports the rest. `doNotTranslate` takes at most 500 terms of 1–100 characters, and a field over the 20,000-unit request cap isn't sent.
+- AI chat, Fix with AI, Rewrite and Write alt text edit the active language.
+- Comments record the language they were written in and filter by it. A layout's language versions follow the selected language in preview, export and test email.
+- `getLocale()` and `setLocale(locale)` read and switch the shown language (`setLocale` throws `SdkError` with code `unknown_locale` for a version the template lacks), `onLocaleChange` reports it, and `toMjml({ locale })` / `toHtml({ locale })` render a version without changing the view.
+
+Additive and opt-in: existing templates need no migration. Keep every `@templatical/*` package on the same version. See [Localized templates](https://docs.templatical.com/guide/localized-templates) and [Translation](https://docs.templatical.com/backend/translation).
+
+**Language versions and translation in the template model**
+
+`@templatical/types`
+
+Breaking changes:
+
+- TypeScript producers must set the now required `AiRequestBase.locale` and `AiRewriteRequest.locale` to the active language, or `null` in the default view, and `CollaborationRemoteChange.locale` to the first locale operation's language in a batch, excluding `setDefaultLocale`, or `null` when there is none. Code that builds these objects must set them even without localization enabled.
+- An element id containing `.` or `/` (on a menu item, social icon, table row or table cell) now fails `validateTemplate`, and `addBlock`, `updateBlock` and `setContent` refuse to add one with `invalid_operation`. `elementIdIssues(content)` lists them; rename each.
+
+Apart from such ids, existing templates need no migration. Keep every `@templatical/*` package on the same version.
+
+- **Model:** `settings.locales` lists the language versions. Each block's and the settings' `l10n[locale]` layer holds translated `text` (`{ value, sourceHash }`), property overrides in `set`, and `hidden`. `resolveLocale(content, locale, options?: { missing?: "throw" | "default" })` projects one version, layouts included; an unknown version throws `unknown_locale` unless `missing: "default"`, which projects the document's default. `localeCoverage` and `sourceHash` report missing and out-of-date text.
+- **Operations:** `addLocale`, `removeLocale`, `setDefaultLocale`, `updateBlockLocale` and `updateSettingsLocale`, with inverses from `invertOperations` and a `locale` on locks. `setDefaultLocale` keeps the former default's text as its translation. `createSetDefaultLocaleOperation(content, locale, definitions?)` records custom text fields on the operation, so it replays without definitions. `defaultLocaleGaps` lists the fields with a nonempty default that would keep the current default's value, and `localeHiddenBlocks` the hidden blocks that refuse the change.
+- **Translation:** `TranslationProvider`, `TranslationRequest`, `TranslationResult`, `TranslationErrorCode` and `LocaleString`, with `maskTags`, `unmaskTags`, `localeStrings` and `applyLocaleStrings`. They mask merge tags, logic tags and `doNotTranslate` terms, and check them exactly on return.
+- **Also:** `Comment.locale` and `CommentInput.locale`, and `isSafeUrlAttribute(name, value): boolean`, the URL policy that the editor's sanitizer and `template-tools strings import` share.
+
+See [Localized templates](https://docs.templatical.com/guide/localized-templates) and [Locale operations](https://docs.templatical.com/api/operations#locale-operations).
+
+**Language versions in editing, collaboration and AI edits**
+
+`@templatical/core`
+
+Breaking changes:
+
+- A collaboration backend must refuse a batch that contains a `setContent` with `409` and `precondition_failed` when its `baseRevision` isn't the current revision; other batches still apply to the current content. Check a repeated `batchId` first, so a retried snapshot that already landed answers with its revision. Without the rule, a snapshot undo can overwrite a batch the backend committed but the editor hasn't received yet. The playground's reference backend implements it.
+- With language versions in use, a collaboration backend you built must apply the locale operations (`addLocale`, `removeLocale`, `setDefaultLocale`, `updateBlockLocale`, `updateSettingsLocale`) and the lock `locale`. Until it does, it rejects those operations as `invalid_operation`, and one that ignores the lock `locale` serializes edits per block.
+
+Existing templates need no migration. Keep every `@templatical/*` package on the same version.
+
+- Edits in a language view go into that language's layer, collaboration diffs emit locale operations, and locks apply per block and language. `setDefaultLocale` conflicts with every other session's lock.
+- Under collaboration, undo or redo of a whole-template change (`setContent`, `setDefaultLocale`) is refused with `precondition_failed` once this editor has received another session's batch after it.
+- `onLocaleChange` reports the language shown whenever it changes, and `editor.createSetDefaultLocaleOperation(locale)` builds a default-language change that carries the registered custom text fields.
+- `mapLocalizedOperations` maps AI edits of a language view into translations, property overrides and shared structure changes.
+- `CollaborationApplyOptions.origin` and `.turn` are optional: a batch without `origin` is the session's own edit, with its own undo step.
+
+See [Collaboration](https://docs.templatical.com/backend/collaboration#applying-a-batch).
+
+**Language versions in the CLI, with `strings export` and `strings import`**
+
+`@templatical/template-tools`
+
+Breaking changes:
+
+- An element id containing `.` or `/` now fails `validate`; rename it.
+
+Otherwise existing templates need no migration. Keep every `@templatical/*` package on the same version.
+
+- `validate --locale <tag>` and `render --locale <tag>` check and render a language version, and the schema accepts `settings.locales` and `l10n`. An unknown locale exits `1` with `unknown_locale`.
+- `strings export <template.json> --locale <tag>` exports a language's strings, the gaps by default (`--only gaps|all`, `--block <id>`), as a `strings/1` JSON file. `strings import <template.json> <strings.json>` applies the strings whose `sourceHash` and placeholders still match and reports `{ applied, rejected, skipped, file }`, with the rejection reasons `stale`, `tags_changed`, `unknown_field`, `not_translatable` and `unsafe_html`. It exits `1` when it rejects any string.
+- `--definitions <file>` loads custom-block definitions for `validate`, `render`, `strings` and `edit`, `--do-not-translate <file>` protects terms during `strings`, and `import --default-locale <tag>` sets the default language for a source that declares none.
+- `edit` applies the locale operations, and a refused operation names its block on stderr.
+
+See [Strings](https://docs.templatical.com/api/template-tools#strings) and [Definitions](https://docs.templatical.com/api/template-tools#definitions).
+
+**Localization checks for language versions**
+
+`@templatical/quality`
+
+`contentLocale` lints a translated language version, and `localization.untranslated`, `localization.stale` and `localization.merge-tags-differ` report missing text, outdated `sourceHash` values and changed merge tags. `lintTemplate` includes the `localization` category; pass `customBlocks` to check custom `text` and `textarea` translations.
+
+Additive and opt-in: existing templates need no migration. Keep every `@templatical/*` package on the same version. See [the `localization` options](https://docs.templatical.com/quality/options#localization).
+
+**Rendering a language version**
+
+`@templatical/renderer`
+
+`renderToMjml(content, { locale })` renders a language version's text, property overrides, hidden blocks and settings, and sets MJML `lang` and `dir`. A `layout` passed alongside follows the same language and falls back to its own default. Localized custom blocks render through `renderCustomBlock` instead of the cached default-language HTML.
+
+Additive and opt-in: existing templates need no migration. Keep every `@templatical/*` package on the same version. See [Rendering a language](https://docs.templatical.com/guide/localized-templates#rendering-a-language).
+
+**Translation over your own backend**
+
+`@templatical/ai-kit`
+
+Breaking changes:
+
+- TypeScript producers must set the now required `AiRequestBase.locale` and `AiRewriteRequest.locale` to the active language, or `null` in the default view, and `CollaborationRemoteChange.locale` to the first locale operation's language in a batch, excluding `setDefaultLocale`, or `null` when there is none. Code that builds these objects must set them even without localization enabled.
+
+Otherwise existing templates need no migration. Keep every `@templatical/*` package on the same version.
+
+- `createHttpTranslationProvider` and the `translate` wire route (`POST /templates/{template}/translate`), with `readTranslationRequest`, `translateFields`, `createMockTranslationProvider` and `runTranslationConformance`.
+- `translateFields` requires every requested field id once with its placeholders intact, makes one repair attempt for failed fields and returns the fields that pass.
+- AI requests and prompts carry the active language as `locale`, and `checkRewrite` requires the input's exact merge- and logic-tag multiset.
+
+See [Translation](https://docs.templatical.com/backend/translation).
+
 ## 0.52.1
 
 <time datetime="2026-11-02">2026-11-02</time>

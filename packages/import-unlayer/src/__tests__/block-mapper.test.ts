@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { convertContent } from "../block-mapper";
 import type { UnlayerContent, UnlayerContentValues } from "../types";
+import { expectLinear } from "./expectLinear";
 
 function makeContent(
   type: string,
@@ -103,19 +104,17 @@ describe("convertContent", () => {
     // for `</p>`. Adversarial input with many `<p>a` chunks but no `</p>`
     // used to stall the regex. The manual scanner is strictly linear.
     it("wraps paragraph content in linear time on `<p>a<p>a<p>a…` input (ReDoS regression)", () => {
-      const adversarial = "<p>a".repeat(10_000);
-      const start = Date.now();
-      const { block } = convertContent(
+      const wrap = (chunks: number) =>
         makeContent("text", {
-          text: adversarial,
+          text: "<p>a".repeat(chunks),
           // Provide a non-default text style so the wrapping branch runs.
           color: "#123456",
-        }),
-        [],
-      );
-      const elapsed = Date.now() - start;
-      expect(block.type).toBe("paragraph");
-      expect(elapsed).toBeLessThan(500);
+        });
+      expect(convertContent(wrap(10_000), []).block.type).toBe("paragraph");
+      expectLinear((n) => {
+        const content = wrap(n);
+        return () => convertContent(content, []);
+      }, 1_000);
     });
   });
 
@@ -489,19 +488,16 @@ describe("convertContent", () => {
     });
 
     it("strips button label in linear time on adversarial `<<<<…` input (ReDoS regression)", () => {
-      const adversarial = "<".repeat(50_000) + "Buy";
-      const start = Date.now();
-      const { block } = convertContent(
-        makeContent("button", { text: adversarial }),
-        [],
-      );
-      const elapsed = Date.now() - start;
-      if (block.type === "button") {
-        // Every `<` opens a tag that never closes — the stripper bails at
-        // the first unterminated tag and discards the rest. Result is empty.
-        expect(block.text).toBe("");
-      }
-      expect(elapsed).toBeLessThan(500);
+      const button = (opens: number) =>
+        makeContent("button", { text: "<".repeat(opens) + "Buy" });
+      const { block } = convertContent(button(50_000), []);
+      // Every `<` opens a tag that never closes — the stripper bails at
+      // the first unterminated tag and discards the rest. Result is empty.
+      expect(block).toMatchObject({ type: "button", text: "" });
+      expectLinear((n) => {
+        const content = button(n);
+        return () => convertContent(content, []);
+      }, 2_000);
     });
   });
 
@@ -775,6 +771,27 @@ describe("convertContent", () => {
       expect(warnings[0]).toContain("MySpace");
       expect(entry.status).toBe("converted");
     });
+
+    it("maps a Xing icon by name", () => {
+      const warnings: string[] = [];
+      const { block } = convertContent(
+        makeContent("social", {
+          icons: {
+            icons: [
+              { name: "Xing", url: "https://www.xing.com/pages/example" },
+            ],
+          },
+        }),
+        warnings,
+      );
+
+      expect(warnings).toEqual([]);
+      expect(block.type).toBe("social");
+      if (block.type !== "social") throw new Error("expected a social block");
+      expect(block.icons).toHaveLength(1);
+      expect(block.icons[0].platform).toBe("xing");
+      expect(block.icons[0].url).toBe("https://www.xing.com/pages/example");
+    });
   });
 
   describe("video", () => {
@@ -835,6 +852,112 @@ describe("convertContent", () => {
       expect(block.type).toBe("html");
       expect(entry.status).toBe("html-fallback");
       expect(entry.note).toContain("custom-foobar");
+    });
+  });
+
+  // A divider that draws no line only spaces content: its padding, and a
+  // transparent border's width, take up room.
+  describe("divider that draws no line", () => {
+    function undrawn(
+      border: UnlayerContentValues["border"],
+      containerPadding = "15px 10px",
+    ) {
+      return convertContent(
+        makeContent("divider", { border, containerPadding, width: "100%" }),
+        [],
+        { columnWidth: 600 },
+      );
+    }
+
+    function spacerHeight(border: UnlayerContentValues["border"]): number {
+      const { block } = undrawn(border);
+      if (block.type !== "spacer") throw new Error("expected a spacer");
+      return block.height;
+    }
+
+    const solid = (borderTopWidth: string, borderTopColor: string) => ({
+      borderTopWidth,
+      borderTopStyle: "solid",
+      borderTopColor,
+    });
+
+    it("imports a 0px border as a spacer as tall as the padding", () => {
+      const { block, entry } = undrawn(solid("0px", "transparent"));
+      expect(block.type).toBe("spacer");
+      if (block.type !== "spacer") return;
+      expect(block.height).toBe(30);
+      expect(block.styles.padding).toEqual({
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+      });
+      expect(entry).toEqual({
+        unlayerContentType: "divider",
+        templaticalBlockType: "spacer",
+        status: "converted",
+        note: "The divider draws no line; imported as a 30px spacer.",
+      });
+    });
+
+    it("adds a transparent border's width to the height", () => {
+      expect(spacerHeight(solid("10px", "transparent"))).toBe(40);
+      expect(spacerHeight(solid("1px", "rgba(0, 0, 0, 0)"))).toBe(31);
+      expect(spacerHeight(solid("2px", "#ffffff00"))).toBe(32);
+    });
+
+    it("leaves out a 0px, none or hidden border's width", () => {
+      expect(spacerHeight(solid("0px", "#BBBBBB"))).toBe(30);
+      expect(
+        spacerHeight({
+          borderTopWidth: "3px",
+          borderTopStyle: "none",
+          borderTopColor: "#BBBBBB",
+        }),
+      ).toBe(30);
+      expect(
+        spacerHeight({
+          borderTopWidth: "3px",
+          borderTopStyle: "hidden",
+          borderTopColor: "#BBBBBB",
+        }),
+      ).toBe(30);
+    });
+
+    // CSS drops a negative padding, so it takes no room and takes none away.
+    it("leaves out a negative padding", () => {
+      expect(
+        spacerHeight({
+          borderTopWidth: "20px",
+          borderTopStyle: "solid",
+          borderTopColor: "transparent",
+        }),
+      ).toBe(50);
+      const { block } = undrawn(solid("0px", "transparent"), "-10px 0px");
+      expect(block.type === "spacer" && block.height).toBe(0);
+      const mixed = convertContent(
+        makeContent("divider", {
+          border: solid("20px", "transparent"),
+          containerPadding: "-10px 0px 0px",
+        }),
+        [],
+        { columnWidth: 600 },
+      ).block;
+      expect(mixed.type === "spacer" && mixed.height).toBe(20);
+    });
+
+    it("keeps a divider whose border is drawn", () => {
+      for (const border of [
+        solid("1px", "#BBBBBB"),
+        solid("1px", "rgba(0, 0, 0, 0.5)"),
+        undefined,
+      ]) {
+        const { block, entry } = undrawn(border);
+        expect([block.type, entry.status]).toEqual(["divider", "converted"]);
+      }
+      const { block } = undrawn(solid("1px", "rgba(0, 0, 0, 0.5)"));
+      if (block.type !== "divider") throw new Error("expected a divider");
+      expect([block.thickness, block.color]).toEqual([1, "rgba(0, 0, 0, 0.5)"]);
     });
   });
 

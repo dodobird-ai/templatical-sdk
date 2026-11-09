@@ -25,10 +25,10 @@ import {
   createWrapperBlock,
   createParagraphBlock,
   createDefaultTemplateContent,
-} from '@templatical/editor';
+} from "@templatical/editor";
 
 const layout = createDefaultTemplateContent();
-layout.settings.backgroundColor = '#f3f4f6';
+layout.settings.backgroundColor = "#f3f4f6";
 layout.blocks = [
   createParagraphBlock({
     content:
@@ -36,7 +36,7 @@ layout.blocks = [
   }),
   createWrapperBlock({
     styles: {
-      backgroundColor: '#ffffff',
+      backgroundColor: "#ffffff",
       padding: { top: 24, right: 24, bottom: 24, left: 24 },
     },
     borderRadius: 12,
@@ -49,7 +49,7 @@ layout.blocks = [
 ];
 
 const editor = await init({
-  container: '#editor',
+  container: "#editor",
   layout,
   sectionWrapper: false,
 });
@@ -88,7 +88,9 @@ mj-body                         ← grey mat (layout.settings.backgroundColor)
 
 **`slot`** is where authored `content.blocks` land. Exactly one in the layout tree. Legal as a top-level `layout.blocks` child or as a `wrapper.children` child. Illegal in a section column, in a nested wrapper, and in editor content. The palette omits it. A `slot` that reaches `renderToMjml` without `layout` throws.
 
-**`wrapper`** is the layout card: `styles.backgroundColor` / `styles.padding` / `borderRadius` / `backgroundImage` map to `mj-wrapper`. In Outlook on Windows, a band's background color paints over the background image of a section inside it — set the image on the band, or leave the band without a color. The editor's linter doesn't see the layout, so it can't warn about this. Layout-only. Refused in editor content (`setContent` / `load` / `addBlock` / `createBlock('wrapper')`). Authors still use `section.wrapper` as the per-section shorthand.
+**`wrapper`** is the layout card: `styles.backgroundColor` / `styles.padding` / `borderRadius` / `backgroundImage` / `fullWidth` map to `mj-wrapper`. `fullWidth: true` spans the recipient's window while the children stay at `settings.width`; a corner radius is ignored while it is on. Absent or false keeps the band at the email width. In Outlook on Windows, a band's background color paints over the background image of a section inside it — set the image on the band, or leave the band without a color. The editor's linter doesn't see the layout, so it can't warn about this. Layout-only. Refused in editor content (`setContent` / `load` / `addBlock` / `createBlock('wrapper')`). Authors still use `section.wrapper` as the per-section shorthand. The same **Full-width background** switch is on the wrapper block's Background panel.
+
+Headless `applyOperations` and `template-tools edit` can address existing wrapper children with `parent: { wrapperId: string }`; sections without `section.wrapper` may be direct wrapper children. Sections with `section.wrapper` must stay at the top level: `addBlock`, `moveBlock`, and `updateBlock` refuse to nest them in a wrapper. This edits a layout tree outside the visual editor. The visual editor still refuses authored wrappers. Run `validateLayout` on a layout after applying operations; it also rejects nested section wrappers. `setContent` itself checks shape only.
 
 Layout factories and helpers (`createSlotBlock`, `createWrapperBlock`, `createParagraphBlock`, `createDefaultTemplateContent`, `applyLayout`, `validateLayout`, `isSlot`, `isWrapper`, `layoutWrapsSlot`) are exported from `@templatical/editor`. Headless rendering can import `applyLayout` from `@templatical/types` without the editor.
 
@@ -98,6 +100,7 @@ Layout factories and helpers (`createSlotBlock`, `createWrapperBlock`, `createPa
 [Templatical] layout: must contain exactly one slot block
 [Templatical] layout: slot must be a top-level or wrapper child, not nested in a section
 [Templatical] layout: a wrapper cannot contain a wrapper
+[Templatical] layout: a wrapper cannot contain a section with its own wrapper (section.wrapper)
 ```
 
 `setContent` / `load` / `addBlock` refuse `slot` and `wrapper` in content.
@@ -175,20 +178,9 @@ You can copy the content settings onto the layout and override `backgroundColor`
 
 ## Headless use
 
-```ts
-import { renderToMjml } from '@templatical/renderer';
-import { applyLayout, resolveLocale } from '@templatical/types';
+This complete TypeScript example needs `@templatical/renderer` and `@templatical/types`. It builds a template and a layout that each have a German version, then composes and renders both. It prints `true true 2 de`: the default render holds the layout's `Legal notice` and the German render its `Impressum`, the composed default has two blocks (the template's title in the slot, then the footer), and the German composition's `settings.locale` is `de`.
 
-const mjml = await renderToMjml(content, { layout });
-const composed = applyLayout(layout, content);
-
-// One language version of a localized template, as renderToMjml composes it:
-const germanMjml = await renderToMjml(content, { layout, locale: 'de' });
-const german = applyLayout(
-  resolveLocale(layout, 'de', { missing: 'default' }),
-  resolveLocale(content, 'de'),
-);
-```
+<<< @/snippets/layout-headless.ts
 
 Preview, `toMjml`, and `toHtml` compose first, then optionally `resolvePreview`:
 

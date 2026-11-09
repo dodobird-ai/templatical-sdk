@@ -1,5 +1,85 @@
 # @templatical/media-library
 
+## 0.57.2
+
+### Patch Changes
+
+- Updated dependencies [27eb4be]
+  - @templatical/types@0.57.2
+
+## 0.57.1
+
+### Patch Changes
+
+- Updated dependencies [36bc74f]
+- Updated dependencies [c05e2a8]
+  - @templatical/types@0.57.1
+
+## 0.57.0
+
+### Minor Changes
+
+- 3e1b6a3: Add Danish editor and media library translations and localized recipient-facing content defaults.
+
+### Patch Changes
+
+- Updated dependencies [ad58b8e]
+- Updated dependencies [0bdfeac]
+- Updated dependencies [0511bb6]
+- Updated dependencies [a2f3ed8]
+  - @templatical/types@0.57.0
+
+## 0.56.1
+
+### Patch Changes
+
+- @templatical/types@0.56.1
+
+## 0.56.0
+
+### Patch Changes
+
+- Updated dependencies [5744da5]
+- Updated dependencies [f9de817]
+- Updated dependencies [2466654]
+- Updated dependencies [be84dd0]
+  - @templatical/types@0.56.0
+
+## 0.55.0
+
+### Patch Changes
+
+- Updated dependencies [200ab00]
+- Updated dependencies [9151730]
+- Updated dependencies [e784e63]
+  - @templatical/types@0.55.0
+
+## 0.54.2
+
+### Patch Changes
+
+- Updated dependencies [a72fbd8]
+  - @templatical/types@0.54.2
+
+## 0.54.1
+
+### Patch Changes
+
+- @templatical/types@0.54.1
+
+## 0.54.0
+
+### Patch Changes
+
+- @templatical/types@0.54.0
+
+## 0.53.0
+
+### Patch Changes
+
+- Updated dependencies [cef9348]
+  - @templatical/types@0.53.0
+
 ## 0.52.1
 
 ### Patch Changes

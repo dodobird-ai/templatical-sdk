@@ -23,6 +23,7 @@ import {
   evalTurnWith,
   runAiEvalSet,
 } from "../src/testing";
+import { expectLinear } from "./helpers/expectLinear";
 import { scriptedModel } from "./helpers/scripted-model";
 import type { AiEvalAltCheck, AiEvalCase, AiEvalCheck } from "../src/testing";
 
@@ -706,6 +707,14 @@ describe("multimodal and lint evals", () => {
       html: '<p><a href="https://acme.example/shop">WWW.acme.example</a></p>',
       valid: false,
     },
+    {
+      html: '<p><a href="https://acme.example/shop">Shop > www.acme.example</a></p>',
+      valid: false,
+    },
+    {
+      html: '<p><a href="https://acme.example/shop">https://acme.example</a></p>',
+      valid: false,
+    },
   ])(
     "checks the actual anchor href across quote styles: $html",
     ({ html, valid }) => {
@@ -724,6 +733,27 @@ describe("multimodal and lint evals", () => {
       expect(reason === null).toBe(valid);
     },
   );
+
+  it("checks link text in linear time on a long run of >", () => {
+    const c = caseNamed("fix domain-mismatch");
+    if (c.kind !== "fix") throw new Error("Expected fix case");
+    const original = AI_EVAL_TEMPLATES[c.template];
+    const check = (n: number) => {
+      const html = `<p><a href="https://acme.example/shop">Shop${">".repeat(n)}</a></p>`;
+      const content = applyOperations(original, [
+        { op: "updateBlock", blockId: "domain-link", set: { content: html } },
+      ]);
+      return () =>
+        checkEvalCase(
+          c,
+          original,
+          { content, reply: "Fixed.", applied: true },
+          () => [],
+        );
+    };
+    expect(check(50_000)()).toBe(null);
+    expectLinear(check, 2_000);
+  });
 
   it.each([
     { label: "", valid: false },

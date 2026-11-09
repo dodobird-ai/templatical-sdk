@@ -77,7 +77,7 @@ Die Funktion gibt ein `ImportResult` zurück mit:
 | `converted` | Ohne Verlust auf einen Templatical-Block abgebildet. |
 | `approximated` | Abgebildet, mit Clamp oder Flatten — `note` sagt, was sich geändert hat. |
 | `html-fallback` | Kein Block-Äquivalent; das Original-Markup ist ein `HtmlBlock`. |
-| `skipped` | Keine Ausgabe (Formulare und alles, was der Konverter ablehnt). |
+| `skipped` | Keine Ausgabe (Formulare, ein [Divider ohne Linie](#undrawn-dividers), der keinen Platz einnimmt, und alles, was der Konverter ablehnt). |
 
 Das Design-JSON, das Unlayers gehosteter Editor und `editor.saveDesign()` erzeugen, ist die Eingabe. Ein kompiliertes HTML-Export ist ein anderes Envelope — [`@templatical/import-html`](/de/guide/migration-from-html).
 
@@ -113,7 +113,7 @@ Unlayer-Inhaltstypen werden auf Templatical-Entsprechungen abgebildet:
 | Heading | `title` | Konvertiert |
 | Image | `image` | Konvertiert (angenähert, wenn ein `maxWidth` unter 100% zu px wird; siehe [Bildbreite](#image-width)) |
 | Button | `button` | Konvertiert |
-| Divider | `divider` | Konvertiert (angenähert, wenn ein Divider mit Teilbreite links oder rechts ausgerichtet ist) |
+| Divider | `divider`, oder `spacer`, wenn er [keine Linie zeichnet](#undrawn-dividers) | Konvertiert (angenähert, wenn ein Divider mit Teilbreite links oder rechts ausgerichtet ist; übersprungen, wenn er keine Linie zeichnet und keinen Platz einnimmt) |
 | Spacer | `spacer` | Konvertiert |
 | Html | `html` | Konvertiert |
 | Menu | `menu` | Angenähert (Stile können abweichen) |
@@ -159,6 +159,18 @@ Eine px-Breite wird mit der Spannweite der Linie verglichen: der Breite ihrer Sp
 
 Templatical zentriert jeden Divider. Ein Divider mit Teilbreite, den Unlayer links oder rechts ausrichtet (`textAlign`), ist angenähert; seine `note` nennt die Ausrichtung.
 
+### Divider ohne Linie {#undrawn-dividers}
+
+Ein Divider zeichnet keine Linie, wenn `border.borderTopWidth` 0 ist, `borderTopStyle` `none` oder `hidden` ist oder `borderTopColor` transparent ist: `transparent` oder eine Farbe mit Alpha 0 wie `rgba(0, 0, 0, 0)` oder `#ffffff00`. Ein solcher Divider fügt nur Abstand ein.
+
+| Unlayer-Divider | Ergebnis | Status |
+|---|---|---|
+| zeichnet eine Linie | `divider`, nach den Regeln oben | Konvertiert |
+| zeichnet keine Linie, Padding und transparenter Rahmen ergeben mehr als 0px | `spacer` | Konvertiert, mit einer `note`, die die Höhe nennt |
+| zeichnet keine Linie und nimmt keinen Platz ein | kein Block | Übersprungen |
+
+Die `height` des Spacers ist das obere plus das untere `containerPadding` plus die Breite eines transparenten Rahmens. Ein `containerPadding` mit einer negativen Seite zählt als kein Padding, weil CSS es verwirft. Ein Rahmen mit `none` oder `hidden` nimmt keinen Platz ein, seine Breite zählt also nicht. Ein Spacer rendert kein Padding, deshalb ist sein eigenes Padding 0. Ein Divider ganz ohne `border` wird als durchgezogene schwarze Linie von 1px importiert.
+
 ## Konvertierung des Spaltenlayouts
 
 Unlayer organisiert Inhalte in Reihen mit Spalten, deren Breiten aus einem `cells`-Gewichtungsarray stammen. Diese werden auf Templaticals `SectionBlock` mit dem passenden `ColumnLayout` abgebildet:
@@ -170,21 +182,25 @@ Unlayer organisiert Inhalte in Reihen mit Spalten, deren Breiten aus einem `cell
 | `[1, 1, 1]` (gleiche Drittel) | `'3'` |
 | `[1, 2]` | `'1-2'` |
 | `[2, 1]` | `'2-1'` |
-| 4+ Zellen | auf eine einzelne Spalte reduziert, mit Warnung |
+| `[1, 3]` | `'1-3'` |
+| `[3, 1]` | `'3-1'` |
+| `[1, 2, 1]` | `'1-2-1'` |
+| `[1, 1, 1, 1]` (gleiche Viertel) | `'4'` |
+| 5+ Zellen | auf eine einzelne Spalte reduziert, mit Warnung |
 
-Zellverhältnisse, die keinem Standardlayout entsprechen, werden auf das nächstliegende verfügbare abgebildet.
+Zellverhältnisse, die keinem Layout oben entsprechen, werden auf das nächstliegende mit derselben Spaltenzahl abgebildet. Vier Zellen bleiben vier Spalten; ungleiche Viererverhältnisse (zum Beispiel `[6, 2, 2, 2]`) werden in `report.warnings` genannt, da Layout `4` aus vier gleichen Vierteln besteht. Sonst warnt Unlayer nicht, wenn das Verhältnis diesem Layout nur nahekommt.
 
 ### Section-Hintergrund
 
 | Unlayer-Reihenwerte | `section.styles.backgroundColor` |
 |---|---|
 | `columnsBackgroundColor` gesetzt | `columnsBackgroundColor` |
-| nur `backgroundColor` gesetzt | `backgroundColor` |
+| nur `backgroundColor` gesetzt | ungesetzt; die Farbe liegt auf dem fensterbreiten Wrapper |
 
-Setzt eine Reihe beide auf unterschiedliche Farben, übernimmt die Section `columnsBackgroundColor`, und `report.warnings` nennt das verworfene `backgroundColor`.
+Setzt eine Reihe `backgroundColor`, wird diese Farbe zu `section.wrapper.backgroundColor` mit `wrapper.fullWidth: true`, auch wenn sie mit `columnsBackgroundColor` übereinstimmt. Die Section behält `columnsBackgroundColor`. Ohne Inhaltsfarbe bleibt der Section-Hintergrund ungesetzt, sodass der Streifen durch die Inhaltsbox scheint.
 
 ::: tip
-`columnsBackgroundColor` füllt die Inhaltsbreite, also die Fläche, die eine Section einfärbt. `backgroundColor` füllt den Streifen außerhalb davon, und eine Templatical-Section hat keinen Streifen über die volle Breite.
+`columnsBackgroundColor` füllt die Inhaltsbreite, also die Fläche, die eine Section einfärbt. `backgroundColor` füllt den Streifen außerhalb davon und liegt auf `section.wrapper` mit `fullWidth: true`, sodass der Streifen bis zum Fensterrand läuft.
 :::
 
 ### Hintergrundbild der Section
@@ -194,8 +210,9 @@ Das `backgroundImage` einer Reihe wird zum `backgroundImage` der Section:
 | `backgroundImage.fullWidth` | Ergebnis |
 |---|---|
 | `false` (die Inhaltsfläche) | Das Bild der Section, exakt. |
-| `true`, `columnsBackgroundColor` nicht gesetzt | Das Bild der Section, in Inhaltsbreite gezeichnet; `report.warnings` vermerkt das. |
-| `true`, `columnsBackgroundColor` gesetzt | Verworfen, da in Unlayer die Inhaltsfarbe es innerhalb der Inhaltsbreite verdeckt; `report.warnings` nennt es. |
+| weggelassen oder `true` | `wrapper.backgroundImage` mit `wrapper.fullWidth: true`. Die Section behält `columnsBackgroundColor` oder bleibt ungesetzt, wenn diese Farbe fehlt. |
+
+Eine Streifenfarbe bleibt vom Wrapper, wenn die Section ein Bild der Inhaltsfläche behält (`fullWidth: false`): Outlook für Desktop malt eine Wrapper-Farbe über dieses Bild, und `report.warnings` nennt die verworfene Farbe.
 
 `size` `cover` und `contain` werden übernommen, `custom` ist das Bild in Originalgröße (`auto`). Die neun `position`-Schlüsselwörter werden auf den passenden Rasterpunkt abgebildet. Bei einer `custom`-Position rastet ein Prozentwert in `customPosition` auf das nächste von links, Mitte und rechts (oben, Mitte und unten) ein, eine Länge auf den linken bzw. oberen Rand. `repeat-x` und `repeat-y` werden zu `repeat`. Die Flags `cover` und `center` älterer Designs werden gelesen, wenn `size` und `position` fehlen: `cover` wird zu `cover` (`false` zu `auto`), `center` zu oben mittig (`false` zu links oben). Jeder Wert ohne exaktes Schlüsselwort fügt `report.warnings` eine Zeile hinzu.
 

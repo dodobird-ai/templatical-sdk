@@ -968,7 +968,7 @@ unmount();
 | `resolveImageUrl`    | `(src: string) => string \| null \| Promise<string \| null>`      | No       | Display-only resolver for image `src` values, and for the background image URLs of sections, section wrappers and layout wrapper bands (never for a merge-tag URL): maps a canonical src to a preview URL for the canvas. Content and `toMjml()` output keep the canonical value. Return `null` to use the src as-is. Called once per committed src (debounced), cached per src. See [Images](/guide/images#display-only-url-resolution)                                                                                                                                                  |
 | `mergeTags`          | `MergeTagsConfig`                                                 | No       | Merge tag configuration. Each tag may carry an optional `sample` — an example value previews render in its place. `showRawValue: false` keeps the raw token out of the authoring UI. See [Merge Tags](/guide/merge-tags)                                                                                                                                                                                                                                                                                                       |
 | `resolvePreview`     | `ResolvePreview`                                                  | No       | Resolves the template for preview surfaces — typically evaluating logic tags against real data on your backend. Display-only: never in `getContent()`, a send or an export. See [Preview Rendering](/guide/preview-rendering)                                                                                                                                                                                                                                                                                                  |
-| `displayConditions`  | `DisplayConditionsConfig`                                         | No       | Display condition configuration. See [Display Conditions](/guide/display-conditions)                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `displayConditions`  | `DisplayConditionsConfig`                                         | No       | Display condition configuration. `onRequest` replaces the built-in list with the host's builder. See [Display Conditions](/guide/display-conditions)                                                                                                                                                                                                                                                                                                                                                                        |
 | `logicTags`          | `LogicTagsConfig`                                                 | No       | Logic tag configuration — template-language control flow (conditionals, loops) inserted inline in rich text and text inputs. See [Logic Tags](/guide/logic-tags)                                                                                                                                                                                                                                                                                                                                                               |
 | `customBlocks`       | `CustomBlockDefinition[]`                                         | No       | Custom block type definitions. See [Custom Blocks](/guide/custom-blocks)                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `savedBlocks`        | `SavedBlocksProvider`                                             | No       | Storage backend for saved blocks — reusable block groups users save and re-insert. The editor provides the UI; you provide persistence. The same object also carries the `onCreated`, `onUpdated` and `onDeleted` events. Omit to disable the feature entirely. Use `createLocalStorageSavedBlocksProvider()` for a zero-backend option. See [Saved Blocks](/backend/saved-blocks)                                                                                                                                             |
@@ -987,7 +987,7 @@ unmount();
 | `localization` | `{ locales: string[]; doNotTranslate?: string[] }` | No | Enables template language versions. Omitted: no language UI; existing layers survive. Upgrade renderer, validator and collaboration backend first. See [Localized templates](/guide/localized-templates). `doNotTranslate` accepts at most 500 terms, each 1–100 characters after trimming; matching terms survive Translate byte for byte. Invalid lists reject with `SdkError`: `localization.doNotTranslate must be an array of at most 500 terms, each 1–100 characters.` See [masking](/backend/translation#provider-contract). |
 | `translation` | `TranslationProvider` | No | Translates eligible fields in an enabled non-default language view; requires `localization`. Omitted: no Translate UI. Independent of `ai`. A value that isn't an object with a `translate` function rejects `init()` with `SdkError`: `translation must be an object with a translate function.` See [Translation](/backend/translation). |
 | `onLocaleChange` | `(locale: string) => void` | No | Called with the language the canvas shows (`getLocale()`) whenever it changes: selecting a version, falling back to the default, and a new default while the default is shown (Make default, its undo or redo, another session's `setDefaultLocale`, or a loaded or restored template whose default differs). Promoting the version on screen doesn't call it. Active language is view state and is not saved. |
-| `locale`             | `string`                                                          | No       | Locale code (e.g. `'en'`, `'de'`, `'pt-BR'`, `'es'`, `'ca'`, `'fr'`, `'nl'`, `'ja'`). Defaults to `'en'`                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `locale`             | `string`                                                          | No       | Locale code (e.g. `'en'`, `'de'`, `'pt-BR'`, `'es'`, `'ca'`, `'fr'`, `'nl'`, `'ja'`, `'da'`). Defaults to `'en'`                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `branding`           | `boolean`                                                         | No       | Show the "Powered by Templatical" footer. Defaults to `true`. Set to `false` to hide it                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `smallScreenNotice`  | `boolean`                                                         | No       | Show a "use a larger screen" notice instead of the editor on viewports narrower than ~768px. Defaults to `true`. The drag-and-drop editor is a desktop-class tool and can't lay out usably on a phone. Set to `false` to render the editor at any width if you handle small screens yourself                                                                                                                                                                                                                                   |
 | `lint`               | `LintOptions`                                                     | No       | Template linter configuration. `@templatical/quality` is an optional dependency of the editor and installs by default. Leaving it out is supported: the editor works without it and hides the Issues tab. Unset, linting starts at editor mount. `disabled: true` skips the import entirely and hides the sidebar tab and inline badges. See [Quality options](/quality/options)                                                                                                                                                                                                                                                     |
@@ -1703,16 +1703,31 @@ A batch is a list of operations. It applies in order, each operation seeing the 
 
 Positions name a sibling, never an index, so an operation means the same thing after someone else's change lands first.
 
-- `parent` is `null` for the top level, or `{"sectionId": "…", "column": 0}` for a column of a section. `column` is a 0-based index into the section's `children`.
+- `parent` is `null` for the top level, `{"sectionId": "…", "column": 0}` for a section column, or `{"wrapperId": "…"}` for a wrapper’s direct `children` list. `column` is a 0-based section child index. The section shape retains its existing wire bytes. A valid `sectionId`/`column` pair takes precedence over an extra `wrapperId`, including in `moveBlock.expect.parent`.
 - `after` is the id of the block to land after, or `null` to land first. For `moveBlock`, the siblings are those of the target container with the moved block taken out.
 - `parent` and `after` are required on `addBlock` and `moveBlock`, even when they are `null`.
 
+<!-- wrapper-example:start -->
+
+Given `A.children = [S]` and `S.children = [[X]]`, this operation moves `X` directly after `S` in `A.children`:
+
+```json
+{
+  "op": "moveBlock",
+  "blockId": "X",
+  "parent": { "wrapperId": "A" },
+  "after": "S"
+}
+```
+
+<!-- wrapper-example:end -->
+
 ### Sections and columns
 
-- A section sits only at the top level. Adding or moving a section into a column is refused, and so is a new section with a section among its children.
+- A section sits at the top level or directly inside a wrapper. A section in a column is refused. A wrapper sits only at the top level; wrappers in columns or wrappers are refused. Moving a block into itself or its descendants is refused. `setContent` checks shape only, not these nesting rules.
 - `deleteBlock` on a section deletes its blocks with it.
 - `updateBlock` replaces each key in `set` whole, a `styles` object included, and removes the keys in `unset`. `id`, `type` and `children` can't be set or unset, and neither can a section's `columns` be unset.
-- `set: {"columns": …}` on a section resizes its `children` to the layout's column count: `"1"` has one column, `"3"` has three, and every other layout (`"2"`, `"2-1"`, `"1-2"`) has two. Growing appends empty columns. Shrinking drops trailing columns only when they are empty, so move their blocks out first.
+- `set: {"columns": …}` on a section resizes its `children` to the layout's column count: `"1"` has one column, `"3"` and `"1-2-1"` have three, `"4"` has four, and every other layout (`"2"`, `"2-1"`, `"1-2"`, `"1-3"`, `"3-1"`) has two. Growing appends empty columns. Shrinking drops trailing columns only when they are empty, so move their blocks out first.
 - A new block needs a non-empty string `id` and a string `type`, and every id in it, a new section's children included, must be new to the template.
 
 ### Preconditions
@@ -1728,11 +1743,12 @@ Any operation but `addBlock` and `setContent` can carry `expect`, which must hol
 
 A backend passes the locks it holds and the acting session: `applyOperations(content, ops, { locks, session })`, with `locks` as `[{ blockId, sessionId }]`.
 
-- `updateBlock`, `moveBlock` and `deleteBlock` on a block another session holds are refused with `lock_held`. Moving or deleting a section also checks every block inside it.
+- `updateBlock`, `moveBlock` and `deleteBlock` on a block another session holds are refused with `lock_held`. Moving or deleting a section or wrapper also checks every descendant, including nested sections and wrapper children. `addBlock` checks no locks; `updateBlock` checks only its own id.
 - `setContent` is refused with `locked_by_others` while any other session holds a lock.
 - With `session` set to `null` (a server-side change), every lock belongs to someone else.
 
 <!-- locale-operations:start -->
+
 ## Locale operations
 
 `addLocale`, `removeLocale`, `setDefaultLocale`, `updateBlockLocale` and `updateSettingsLocale` manage language versions in the SDK's shared tree. Upgrade the renderer, validator and collaboration backend before storing localized content.
@@ -1746,13 +1762,13 @@ The following batch starts with paragraph `b1` containing `<p>Original</p>`, def
 {"op":"removeLocale","locale":"de","expect":{"blocks":{"b1":{"text":{"content":{"value":"<p>Hallo</p>","sourceHash":"f898b751"}},"hidden":true}},"settings":{"set":{"direction":"rtl"}}}}
 ```
 
-| Operation | Contract |
-|---|---|
-| `addLocale` | `locale: string`; `position?: number` inserts into `settings.locales`, defaulting to the end. Position must be an integer from 0 through the current length. The default (`settings.locale ?? "en"`) and existing versions are refused case-insensitively. |
-| `removeLocale` | `locale: string`; `expect?: { blocks: Record<string, BlockLocaleLayer>; settings?: SettingsLocaleLayer }` compares every layer exactly. `blocks` holds layers by block id; an absent id means no layer. The separate `settings` member holds the settings layer; absent means none. `expect: { blocks: {} }` requires no block or settings layers, including for a block named `"settings"`. Removes the locale and all its block and settings layers, including blocks inside columns. |
-| `setDefaultLocale` | `locale: string`; an exact tag already in `settings.locales`. Promotes its text and property overrides to the base; the former default takes its list position and gets a layer for changed values and nonempty translatable text, including gaps. Missing fields keep their base values and a current text copy for the former default. Conflicts with every other session’s lock (`locked_by_others`). |
-| `updateBlockLocale` | `blockId: string`; `locale: string`; `text?: Record<string, LocalizedText>`; `set?: Record<string, unknown>`; `unset?: string[]`; `hidden?: boolean`; `expect?: LocaleLayerExpect`. At least one change member must be present. |
-| `updateSettingsLocale` | `locale: string`; `text?: Record<string, LocalizedText>`; `set?: Record<string, unknown>`; `unset?: string[]`; `expect?: Omit<LocaleLayerExpect, "hidden">`. At least one change member must be present. No hidden state or locks. |
+| Operation              | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `addLocale`            | `locale: string`; `position?: number` inserts into `settings.locales`, defaulting to the end. Position must be an integer from 0 through the current length. The default (`settings.locale ?? "en"`) and existing versions are refused case-insensitively.                                                                                                                                                                                                                              |
+| `removeLocale`         | `locale: string`; `expect?: { blocks: Record<string, BlockLocaleLayer>; settings?: SettingsLocaleLayer }` compares every layer exactly. `blocks` holds layers by block id; an absent id means no layer. The separate `settings` member holds the settings layer; absent means none. `expect: { blocks: {} }` requires no block or settings layers, including for a block named `"settings"`. Removes the locale and all its block and settings layers, including blocks inside columns. |
+| `setDefaultLocale`     | `locale: string`; an exact tag already in `settings.locales`. Promotes its text and property overrides to the base; the former default takes its list position and gets a layer for changed values and nonempty translatable text, including gaps. Missing fields keep their base values and a current text copy for the former default. Conflicts with every other session’s lock (`locked_by_others`).                                                                                |
+| `updateBlockLocale`    | `blockId: string`; `locale: string`; `text?: Record<string, LocalizedText>`; `set?: Record<string, unknown>`; `unset?: string[]`; `hidden?: boolean`; `expect?: LocaleLayerExpect`. At least one change member must be present.                                                                                                                                                                                                                                                         |
+| `updateSettingsLocale` | `locale: string`; `text?: Record<string, LocalizedText>`; `set?: Record<string, unknown>`; `unset?: string[]`; `expect?: Omit<LocaleLayerExpect, "hidden">`. At least one change member must be present. No hidden state or locks.                                                                                                                                                                                                                                                      |
 
 `locale` must satisfy `isLocaleTag`: `/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/`. Tags outside that pattern, including `x-acme` and `i-klingon`, are refused. Every operation except adding a language requires its exact tag in `settings.locales`; invalid tags and unknown versions produce `invalid_operation`.
 
@@ -1774,7 +1790,7 @@ Other languages' current text is re-stamped against the new base. Stale text kee
 
 `localeHiddenBlocks(content, locale): string[]` lists, depth first, the ids of blocks whose own `l10n[locale].hidden` is `true`; it also looks inside hidden blocks, so a hidden child of a hidden section is listed separately and needs its own `hidden: false`. It returns `[]` for the default or an unknown locale. `defaultLocaleGaps(content, locale, definitions?): string[]` lists translatable field ids with a nonempty default that keep the old base because the version has neither text nor an applicable property override. Stale text is promoted and is not a gap; neither is an empty default, as in `localeCoverage`. Both helpers are pure; pass custom-block definitions to count their text fields.
 
-An unknown version or the current default is `invalid_operation`: `"<locale>" is not a language version of this template.` Hidden blocks refuse with `invalid_operation`, the first hidden `blockId`, and `<count> blocks are hidden in "<locale>". Show them before making it the default.` Any other session's lock refuses it with `locked_by_others`, as for `setContent`; `onRemoteChange.locale` is `null` for this operation. The checks run in that order: the tag, the version, hidden blocks, then locks, so hidden blocks win over a lock. AI batches in a language view refuse it.
+An unknown version or the current default is `invalid_operation`: `"<locale>" is not a language version of this template.` Hidden blocks refuse with `invalid_operation`, the first hidden `blockId`, and a message that counts them, for the version `de`: `1 block is hidden in "de". Show it before making it the default.` or `2 blocks are hidden in "de". Show them before making it the default.` Any other session's lock refuses it with `locked_by_others`, as for `setContent`; `onRemoteChange.locale` is `null` for this operation. The checks run in that order: the tag, the version, hidden blocks, then locks, so hidden blocks win over a lock. AI batches in a language view refuse it.
 
 `invertOperations` uses `setContent` to restore the exact prior content, including hashes, the promoted layer and cached HTML. Undo therefore has the same whole-template lock rule. A snapshot can't expect what it overwrites, so under collaboration the editor also records the content each such undo or redo step applies to, and skips the step (`undoSkipped`, `precondition_failed`) once this editor has received another session's batch after it, locked or not. A batch the backend committed but hasn't delivered yet is caught by the backend: it refuses a batch with a `setContent` whose `baseRevision` isn't the current revision ([Collaboration](/backend/collaboration#submit)). The undo of a `setContent` works the same way. Without other sessions' batches, undo and redo restore the content exactly. Submit the explicit operation through collaboration; a snapshot diff emits `setContent` for a default change.
 
@@ -1806,15 +1822,15 @@ Run `pnpm --filter @templatical/types exec vitest run tests/operations.test.ts t
 
 A refused batch throws an `OperationError` with `code` and `opIndex`, the 0-based index of the refused operation.
 
-| Code | When | Templatical Cloud answers |
-|---|---|---|
-| `block_exists` | A new block's id, or an id inside it, is already in the template | 409 |
-| `block_missing` | The block, or the parent section, isn't there | 409 |
-| `anchor_missing` | The `after` block isn't in the target container | 409 |
-| `precondition_failed` | `expect` doesn't hold | 409 |
-| `lock_held` | Another session holds the block | 409 |
-| `locked_by_others` | Another session holds a lock, for `setContent` or a change of the default language | 409 |
-| `invalid_operation` | The operation is malformed or can never apply | 422 |
+| Code                  | When                                                                               | Templatical Cloud answers |
+| --------------------- | ---------------------------------------------------------------------------------- | ------------------------- |
+| `block_exists`        | A new block's id, or an id inside it, is already in the template                   | 409                       |
+| `block_missing`       | The block, parent section, or parent wrapper isn't there                           | 409                       |
+| `anchor_missing`      | The `after` block isn't in the target container                                    | 409                       |
+| `precondition_failed` | `expect` doesn't hold                                                              | 409                       |
+| `lock_held`           | Another session holds the block                                                    | 409                       |
+| `locked_by_others`    | Another session holds a lock, for `setContent` or a change of the default language | 409                       |
+| `invalid_operation`   | The operation is malformed or can never apply                                      | 422                       |
 
 ### Which error wins
 
@@ -1824,8 +1840,8 @@ When one operation breaks several rules, the first failing check decides:
 2. The blocks it names (`block_missing`, `block_exists`).
 3. Locks (`lock_held`, `locked_by_others`).
 4. Preconditions (`precondition_failed`).
-5. Placement (`invalid_operation`): a section into a column, a block after itself.
-6. The target container: `block_missing` for a missing parent section; `invalid_operation` for a parent that isn't a section or a column out of range.
+5. Placement (`invalid_operation`): a section into a column, a wrapper into a column or wrapper, a move into its own descendants, or a block after itself.
+6. The target container: `block_missing` for a missing parent section or wrapper; `invalid_operation` for the wrong container type or a column out of range.
 7. The anchor (`anchor_missing`).
 8. The change itself (`invalid_operation`): a layout that would drop columns that still hold blocks.
 
@@ -1838,15 +1854,15 @@ import {
   applyOperations,
   OperationError,
   type Operation,
-} from '@templatical/types';
+} from "@templatical/types";
 
 const ops: Operation[] = [
-  { op: 'updateBlock', blockId: 'b1', set: { content: '<p>Hello</p>' } },
+  { op: "updateBlock", blockId: "b1", set: { content: "<p>Hello</p>" } },
 ];
 
 try {
   const next = applyOperations(template.content, ops, {
-    locks: [{ blockId: 'b4', sessionId: 'f7c1…' }],
+    locks: [{ blockId: "b4", sessionId: "f7c1…" }],
     session: requestSessionId,
   });
   // store `next`
@@ -1993,7 +2009,7 @@ const mjml = await renderToMjml(content, {
 });
 ```
 
-The exact filenames the renderer expects are `{dir}/{platform}.png`, where `dir` is a `style` of `solid | outlined | rounded | square | circle | plain`, followed by `-dark` or `-light` for those colors (a brand-colored icon has no suffix), and `platform` is one of `facebook | twitter | instagram | linkedin | youtube | tiktok | pinterest | email | whatsapp | telegram | discord | snapchat | reddit | github | dribbble | behance | website`. The shipped 144×144 PNGs are a reasonable starting point if you want to mirror them.
+The exact filenames the renderer expects are `{dir}/{platform}.png`, where `dir` is a `style` of `solid | outlined | rounded | square | circle | plain`, followed by `-dark` or `-light` for those colors (a brand-colored icon has no suffix), and `platform` is one of `facebook | twitter | instagram | linkedin | xing | youtube | tiktok | pinterest | email | whatsapp | telegram | discord | snapchat | reddit | github | dribbble | behance | website`. The shipped 144×144 PNGs are a reasonable starting point if you want to mirror them.
 
 The package also exports `DEFAULT_SOCIAL_ICONS_BASE_URL` if you want to compose URLs against the same default:
 
@@ -2097,7 +2113,7 @@ In a [hero section](/guide/sections-and-columns#hero), the content has no column
 
 ### `fluidOnMobileAttr(block, context)` {#fluid-on-mobile-attr}
 
-Returns `' fluid-on-mobile="true"'` for an image that fills its column on desktop, and `''` otherwise. An image fills its column when its `width` is `'full'`, or a pixel width at or above `context.contentWidth` less the block's side padding and border. See [Width on phones](/guide/images#width-on-phones).
+Returns `' fluid-on-mobile="true"'` or `''`. An image's `fluidOnMobile: true` always returns the attribute and `false` always returns `''`. When the field is omitted, the attribute is set only for an image that fills its column on desktop: `width` `'full'`, or a pixel width at or above `context.contentWidth` less the block's side padding and border. A video thumbnail has no field and uses that rule. See [Width on phones](/guide/images#width-on-phones).
 
 The built-in image and video renderers use it. A `blockRenderers` override that emits its own `mj-image` calls it too; without the attribute, the image keeps its desktop width on a phone:
 
@@ -2232,12 +2248,13 @@ Both commands work on a language version, never on the template’s default lang
 Use the same syntax, definitions and protected terms on both commands. The masking and exact placeholder check are the [translation contract](/backend/translation#provider-contract): `<x id="n"/>` in text and `__xn__` in HTML attributes, sharing one id sequence per field. Import checks placeholders, restores the original bytes, then rejects unsafe markup as `unsafe_html`:
 
 - **`html` strings:** allowed tags are `p`, `strong`, `b`, `em`, `i`, `u`, `s`, `a`, `br`, `span` (including merge/logic chips). Any `on*` attribute is refused, and so is a string that ends inside a tag. A comment, CDATA section, declaration or processing instruction is refused unless the field’s default contains the same one byte for byte; browsers end a CDATA section in HTML at its first `>`.
+- **`style` attributes in `html` strings:** every `style` value in the string, on any element, must equal a `style` value in the field’s default, byte for byte and as written: different spacing, case or character references make a different value. A new or changed value is refused as `unsafe_html`, because a style can fetch a remote file or overlay the email. A translation that moves a default style to another element, drops it, or has no styles passes. The comparison is of the text as written: the editor's Translate decodes character references first, so it accepts `AT&#38;T` for a default `AT&amp;T`, which import refuses; see the [translation contract](/backend/translation#provider-contract).
 - **URL attributes in `html` strings** follow the editor sanitizer (`sanitizeHtml`). Only `href`, `xlink:href`, `background`, `poster` and `src`, from `HTML_URL_ATTRIBUTES`, are checked as URLs. Character references are decoded, tab, LF and CR are removed, leading control characters and spaces are stripped, and trailing whitespace is removed, as a browser does. These attributes may be empty, relative, a `#` fragment, or use `http:`, `https:`, `mailto:`, `tel:`, `ftp:`, `ftps:`, `sms:`, `xmpp:` or `cid:`. Only `src` may also be a `data:image/` URL of type `png`, `jpeg`, `jpg`, `gif`, `webp` or `svg+xml` followed by `;` (for example `data:image/png;base64,…`). Any other scheme is refused, including `javascript:`, `vbscript:`, `data:` and `file:`. `srcdoc`, `ping`, `formaction` and `action`, from `HTML_FORBIDDEN_ATTRIBUTES`, are always refused, even when empty or using `https:`. Tags and `on*` handlers are checked separately.
-- **`text`-format strings,** custom-block `text` and `textarea` fields included: every tag, comment, CDATA section and declaration must also be in the field’s default, byte for byte. A string that ends inside a tag counts as a tag.
+- **`text`-format strings,** custom-block `text` and `textarea` fields included: every tag, comment, CDATA section and declaration must also be in the field’s default, byte for byte. A string that ends inside a tag counts as a tag. A `<` directly before a letter reads as markup, so `a<b` is refused unless the default contains that markup byte for byte. Write `a < b` with a space for a comparison. The human output then prints `A "<" directly before a letter reads as markup. Write "a < b" with a space.` under the refused entry; the `--json` rejection keeps the shape `{ id, reason }`.
 
 Import rejection reasons are `stale` (the current default’s hash changed), `tags_changed` (placeholders or restored tags/terms differ), `unknown_field`, `not_translatable` and `unsafe_html`. Accepted strings are validated and written even when others are rejected. Rejections leave those fields’ stored values intact. Import exits `0` when nothing is rejected, `1` otherwise. Export exits `0`; an unknown locale exits `1` with `unknown_locale` on stderr, and the default language exits `1` with a message on stderr, both without a result document. Missing arguments, unreadable/invalid strings files, a strings file from another default language or invalid definitions/term files exit `2`.
 
-Without `--out`, export prints the strings file itself, including with `--json`. With `--out <file> --json`, its result is `{ file, sourceLocale, targetLocale, count }`. Import’s `--json` result is `{ applied, rejected: [{ id, reason }], file }`, where `applied` counts fields. Check the exit code and each rejection, then run `validate template.json --locale de --json` to check remaining missing/stale values.
+Without `--out`, export prints the strings file itself, including with `--json`. With `--out <file> --json`, its result is `{ file, sourceLocale, targetLocale, count }`. Import’s `--json` result is `{ applied, rejected: [{ id, reason }], skipped: [{ id, reason }], file }`, where `applied` counts fields. `skipped` lists every entry without `text`: `reason` is `"stale"` when its field is out of date and `"missing"` otherwise. Human output prints one `Skipped <id>: <reason>` line per entry. A skipped entry leaves its field unchanged and doesn't change the exit code. Check the exit code and each rejection, then run `validate template.json --locale de --json` to check remaining missing/stale values.
 
 ### Definitions
 
@@ -2252,7 +2269,7 @@ npx -y @templatical/template-tools edit emails/welcome.json \
 
 One operation via `--op '<json>'`, or a batch via `--ops <file>` pointing at a JSON array of the same shape — never both. The operations are the vocabulary the editor, collaboration backends and Templatical Cloud share — `addBlock`, `moveBlock`, `deleteBlock`, `updateBlock`, `updateSettings` and `setContent` — described in the [Operations reference](/api/operations). An operation in the old `{ "operation", "data" }` form is refused with a pointer to the new one.
 
-A batch is applied in order and all or nothing: the first operation that is refused stops the whole batch, nothing is written, and the error names the operation, its code and the reason (`Operation 2 (updateBlock) was refused: block_missing — …`). Even once every operation in a batch succeeds, the result is re-validated structurally before anything is written — a sequence that produces an invalid document is refused and the file is left untouched. On success, `edit` overwrites `<file>` in place; there's no `--out`.
+A batch is applied in order and all or nothing: the first operation that is refused stops the whole batch, nothing is written, and the error names the operation, its code and the reason (`Operation 2 (updateBlock) was refused: block_missing — …`). When the engine names a block, such as the first block hidden in a language that can't become the default, the message ends with `Block: "<id>".` unless the reason already contains that id in double quotes. A refusal exits `2`, with the message on stderr in both modes and nothing on stdout, also with `--json`. Even once every operation in a batch succeeds, the result is re-validated structurally before anything is written — a sequence that produces an invalid document is refused and the file is left untouched. On success, `edit` overwrites `<file>` in place; there's no `--out`.
 
 Pass `--definitions definitions.json` when promoting a language with custom `text` or `textarea` fields. `edit` captures their paths in `setDefaultLocale.customTextFields`, so the former default retains current copies of untranslated custom fields. Existing metadata is retained, and each operation uses the preceding operations' result. The result is validated with those definitions before writing.
 
@@ -2272,7 +2289,7 @@ Run `import --list-formats` (optionally with `--json`) to see which converter pa
 
 Starts a local server that opens the real Templatical editor (loaded from the CDN) in your browser and keeps one working template file in `.templatical/` synced to it over Server-Sent Events. `live reload` pushes your latest edit to the open page and leaves notes on blocks in place. It exits `1` and pushes nothing when the working file is missing or isn't valid JSON. `live reload --consume-annotations` clears those notes after the reload has read the working file. `live stop` shuts the server down. `[--file <f>]` picks the working file, `[--port <n>]` picks the port (default `4747`, falling back to a random free one if it's busy), `[--cwd <d>]` resolves both against a directory other than the current one, and `--no-open` skips launching a browser automatically. This is the protocol the [Agent Skill](/guide/agent-skill)'s live mode is built on — see that page for how an agent drives it turn by turn; the CLI command here only starts and stops the server.
 
-`live --custom-block <file>` serves a custom block definition instead of a template: the canvas shows the block once per specimen state (defaults, empty, long text, repeatables at their limits, booleans flipped), and `--host <file>` appends that specimen to one of your templates. Each state's block keeps its id across reloads, so a note left on it still points at it. `--fetch` adds a "fetched" state at the top, filled by running the definition's `dataSourcePreview` recipe with the field defaults, overridden by `--values` (a JSON object). It runs on start and again on every `live reload`, whose output reports it; a failed request shows its error in that state's place. Without `--fetch`, the preview never calls your endpoint. `--custom-block` and `--file` are exclusive, and `--host` applies only with `--custom-block`. `live reload` exits `1` and pushes nothing when the definition or the host template is missing or invalid. One server runs per directory: starting one for a different file or mode while another runs is a usage error naming the running one, so run `live stop` first.
+`live --custom-block <file>` serves a custom block definition instead of a template: the canvas shows the block once per specimen state (defaults, empty, long text, repeatables at their limits, booleans flipped), and `--host <file>` appends that specimen to one of your templates. Each state's block keeps its id across reloads, so a note left on it still points at it. `--fetch` adds a "fetched" state at the top, filled by running the definition's `dataSourcePreview` recipe with the field defaults, overridden by `--values` (a JSON object). It runs on start and again on every `live reload`, whose output reports it; a failed request shows its error in that state's place. Without `--fetch`, the preview never calls your endpoint. `--custom-block` and `--file` are exclusive, and `--host` applies only with `--custom-block`. `live reload` exits `1` and pushes nothing when the definition or the host template is missing or invalid. One server runs per directory: starting one for a different file or mode while another runs is a usage error naming the running one, so run `live stop` first. `live reload` and `live stop` act only when the server on the pidfile's port answers `GET /identity` with this directory and the pidfile's pid; any other pidfile is a usage error. A server that doesn't answer within 3 s is reported separately, since a busy bridge can recover: try again. `live` replaces a pidfile whose process has exited, and refuses one whose process is still running but doesn't answer that way: stop that process if it is a live server, otherwise delete `.templatical/live-server.pid`. `live stop` asks that server to exit with `POST /shutdown` and sends no signal: if that request fails, it exits `2` naming the pid and leaves the pidfile, so you stop the process yourself.
 
 The bridge answers only requests whose `Host` header is `localhost`, `127.0.0.1` or `[::1]` on its own port, in both modes. A tunnel or proxy that rewrites the hostname gets a `403`. A write that carries another site's `Origin` also gets a `403`, and a `POST` without `content-type: application/json` gets a `415`.
 
@@ -2282,7 +2299,7 @@ The bridge answers only requests whose `Host` header is `localhost`, `127.0.0.1`
 npx -y @templatical/template-tools custom-block validate .templatical/custom-blocks/testimonial.json
 ```
 
-Checks a custom block working file: the definition against `custom-block-schema.json` and bounds that can't all hold (a minimum above its maximum, a default list outside `minItems`–`maxItems`), its Liquid `template` against its `fields` (undefined variables, unused fields, loops over a field that isn't a repeatable, item keys a repeatable doesn't define, tags that load another file, and a template that fails while rendering), the `dataSourcePreview` recipe, email-client safety over every specimen state's HTML and the `stylesheet` (flex and grid layout, positioning, `<script>`, `<svg>`, form controls, `var()`, `@import`, a background image with no fallback colour, missing `alt` or `width` on images), accessibility warnings (vague link text, a link with no text or label, a layout table without `role="presentation"`, low contrast between inline colours), and that the stylesheet reaches `<mj-head>`. With `mjml` installed it also compiles the rendered MJML and reports compile errors as warnings; without it, that check is skipped with a note. Exits `1` on any `error`-severity issue. `--json` emits `{ valid, issues }`, each issue `{ ruleId, severity, message, path? }`.
+Checks a custom block working file: the definition against `custom-block-schema.json`, the 100-item ceiling for `minItems` and `maxItems`, and bounds that can't all hold (a minimum above its maximum, a default list outside `minItems`–`maxItems`), its Liquid `template` against its `fields` (undefined variables, unused fields, loops over a field that isn't a repeatable, item keys a repeatable doesn't define, tags that load another file, and a template that fails while rendering), the `dataSourcePreview` recipe, email-client safety over every specimen state's HTML and the `stylesheet` (flex and grid layout, positioning, `<script>`, `<svg>`, form controls, `var()`, `@import`, a background image with no fallback colour, missing `alt` or `width` on images), accessibility warnings (vague link text, a link with no text or label, a layout table without `role="presentation"`, low contrast between inline colours), and that the stylesheet reaches `<mj-head>`. With `mjml` installed it also compiles the rendered MJML and reports compile errors as warnings; without it, that check is skipped with a note. Exits `1` on any `error`-severity issue. `--json` emits `{ valid, issues }`, each issue `{ ruleId, severity, message, path? }`.
 
 The working file is a [`CustomBlockDefinition`](/guide/custom-blocks#customblockdefinition) without `dataSource` (a function), plus an optional `dataSourcePreview` recipe. A recipe's URL keeps its scheme and host literal (Liquid only after the first `/`, `?` or `#`), every field value it interpolates is URL-encoded, field values reach only `url` and `body`, and `${env:NAME}` resolves only in header values. Neither a recipe nor the `template` may use `{% include %}`, `{% render %}` or `{% layout %}`, since there is no other template file for them to load.
 
@@ -2300,7 +2317,7 @@ Renders the specimen — the block once per state — to MJML, or to HTML with `
 npx -y @templatical/template-tools custom-block fetch .templatical/custom-blocks/product.json --values '{"productId":"123"}' --json
 ```
 
-Runs the definition's `dataSourcePreview` recipe from Node with the field defaults, overridden by `--values` (a JSON object), and prints the mapped values plus `unmapped`, the `map` entries the response didn't contain. Header values resolve `${env:NAME}` from the environment, and mapped values and errors are redacted if they echo a secret. Redirects are not followed. A recipe `custom-block validate` rejects is refused before any request. Exits `1` when the request fails.
+Runs the definition's `dataSourcePreview` recipe from Node with the field defaults, overridden by `--values` (a JSON object), and prints the mapped values plus `unmapped`, the `map` entries the response didn't contain. Header values resolve `${env:NAME}` from the environment, and mapped values and errors are redacted if they echo a secret. `MAX_RECIPE_RESPONSE_BYTES` is 1,048,576 bytes (1 MiB) of decoded response data, including error responses; a larger response is cancelled and the fetch fails. Redirects are not followed. A recipe `custom-block validate` rejects is refused before any request. Exits `1` when the request fails.
 
 ### `list`
 
@@ -2989,6 +3006,12 @@ interface ImageBlock extends BaseBlock {
   linkOpenInNewTab?: boolean;
   placeholderUrl?: string;
   decorative?: boolean;
+  /**
+   * Full width on a phone. Absent: fluid only when the image fills its column
+   * on desktop. `true` always emits MJML `fluid-on-mobile`; `false` never does.
+   * Video thumbnails have no equivalent.
+   */
+  fluidOnMobile?: boolean;
 }
 ```
 
@@ -3007,6 +3030,8 @@ interface ButtonBlock extends BaseBlock {
   fontSize: number;
   buttonPadding: SpacingValue;
   fontFamily?: string;
+  /** Label weight. `'regular'` is 400, `'medium'` is 500 and `'bold'` is 700. Omitted renders bold, which is what a button with no weight renders. */
+  fontWeight?: 'regular' | 'medium' | 'bold';
   openInNewTab?: boolean;
   width?: number | "full";
   align: "left" | "center" | "right";
@@ -3040,11 +3065,12 @@ interface SectionBlock extends BaseBlock {
 interface SectionWrapper {
   backgroundColor?: string;
   padding?: SpacingValue;
-  borderRadius?: BorderRadiusValue;
+  borderRadius?: BorderRadiusValue; // ignored while fullWidth is on; the stored value stays
   backgroundImage?: BackgroundImage;
+  fullWidth?: boolean; // true: band spans the recipient's window; section stays at settings.width
 }
 
-type ColumnLayout = "1" | "2" | "3" | "2-1" | "1-2";
+type ColumnLayout = "1" | "2" | "3" | "4" | "2-1" | "1-2" | "3-1" | "1-3" | "1-2-1";
 
 interface BackgroundImage {
   url: string;
@@ -3135,6 +3161,7 @@ type SocialPlatform =
   | "twitter"
   | "instagram"
   | "linkedin"
+  | "xing"
   | "youtube"
   | "tiktok"
   | "pinterest"
@@ -3148,6 +3175,7 @@ type SocialPlatform =
   | "dribbble"
   | "behance"
   | "website";
+
 
 type SocialIconStyle =
   "solid" | "outlined" | "rounded" | "square" | "circle" | "plain";
@@ -3268,8 +3296,9 @@ interface SlotBlock extends BaseBlock {
 interface WrapperBlock extends BaseBlock {
   type: "wrapper";
   children: Block[];
-  borderRadius?: number;
+  borderRadius?: number; // ignored while fullWidth is on; the stored value stays
   backgroundImage?: BackgroundImage;
+  fullWidth?: boolean; // true: band spans the recipient's window; children stay at settings.width
 }
 ```
 
@@ -3317,6 +3346,16 @@ interface DisplayCondition {
   after: string;
   group?: string;
   description?: string;
+  data?: unknown; // opaque host state; must survive JSON.stringify
+}
+```
+
+### DisplayConditionRequestContext
+
+```ts
+interface DisplayConditionRequestContext {
+  current?: DisplayCondition; // copy of the block's condition, when one is set
+  block: Block;               // copy of the block
 }
 ```
 
@@ -3324,8 +3363,11 @@ interface DisplayCondition {
 
 ```ts
 interface DisplayConditionsConfig {
-  conditions: DisplayCondition[];
+  conditions?: DisplayCondition[];
   allowCustom?: boolean;
+  onRequest?: (
+    context: DisplayConditionRequestContext,
+  ) => Promise<DisplayCondition | null>;
 }
 ```
 
@@ -3414,7 +3456,11 @@ export interface CustomBlockLiquidModule {
 export declare function createCustomBlockLiquid<
   M extends CustomBlockLiquidModule,
 >(module: M): InstanceType<M["Liquid"]>;
+export declare const CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT: 10000000;
+export declare const CUSTOM_BLOCK_LIQUID_RENDER_LIMIT: 2000;
 ```
+
+`CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` counts Liquid allocations per render, such as range elements and the strings and arrays filters build. Literal HTML in the template isn't counted, so it doesn't cap total output size. `CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` is a 2000 ms deadline that liquidjs checks before each template step, so a single slow filter can run past it without an error. Exceeding either rejects the render with a Liquid limit error. These options also apply to the editor, renderer, and template-tools custom-block engine; preview recipe rendering uses the same limits.
 
 ```ts
 import {
@@ -4001,58 +4047,111 @@ Source: https://docs.templatical.com/backend/collaboration
 
 Give the editor a collaboration provider and several people can edit one template at once. Every edit reaches your backend as a batch of [operations](/api/operations), your backend puts the batches in one order, and every editor applies them in that order. Selecting a block locks it, so two people never type into the same block, and everyone sees who else has the template open.
 
-```ts
-import { init } from '@templatical/editor';
+The paths, event names and `X-Session-Id` header in this example are its own transport. The contract is the provider methods, described in [The contract](#the-contract).
 
-let sessionId = '';
+```ts
+import { init } from "@templatical/editor";
+import "@templatical/editor/style.css";
+
+let sessionId = "";
 const lockUrl = (templateId: string, blockId: string, locale?: string | null) =>
   `/api/templates/${templateId}/locks/${blockId}` +
-  (locale ? `?locale=${encodeURIComponent(locale)}` : '');
+  (locale ? `?locale=${encodeURIComponent(locale)}` : "");
+
+// A refused request rejects with its HTTP status as `statusCode` and the
+// response's `code`, `holder` and `holders`.
+async function api(url: string, options: RequestInit = {}) {
+  const response = await fetch(url, options);
+  const body = await response.json().catch(() => ({}));
+  if (response.ok) return body;
+  throw Object.assign(new Error(body.message ?? `HTTP ${response.status}`), {
+    statusCode: response.status,
+    code: body.code,
+    holder: body.holder,
+    holders: body.holders,
+  });
+}
+
+// Server-sent events carry the other sessions' changes, one subscription per
+// template.
+const subscriptions = new Map<string, EventSource>();
 
 const editor = await init({
-  container: '#editor',
-  user: { id: 'u_7', name: 'Ada Lovelace' },
-  templates: myTemplatesProvider, // `load` returns the template's `revision`
+  container: "#editor",
+  user: { id: "u_7", name: "Ada Lovelace" },
+  templates: {
+    // `load` returns the template's content and its `revision`.
+    load: (id) => api(`/api/templates/${id}`),
+    create: false,
+    save: false,
+  },
   collaboration: {
-    join: (templateId, session, handlers) => {
+    join: async (templateId, session, handlers) => {
       sessionId = session.sessionId;
-      return myRealtime.join(templateId, session, handlers);
+      subscriptions.get(templateId)?.close();
+      const events = new EventSource(
+        `/api/templates/${templateId}/events?sessionId=${sessionId}`,
+      );
+      subscriptions.set(templateId, events);
+      const on = (name: string, handle: (data: any) => void) =>
+        events.addEventListener(name, (event) =>
+          handle(JSON.parse((event as MessageEvent<string>).data)),
+        );
+      on("batch", (batch) => handlers.onBatch(batch));
+      on("resync", ({ revision, actor }) => handlers.onResync(revision, actor));
+      on("lock", (lock) => handlers.onLock(lock));
+      on("unlock", ({ blockId, sessionId, locale }) =>
+        handlers.onUnlock(blockId, sessionId, locale),
+      );
+      on("members", (members) => handlers.onMembers(members));
+      events.onopen = () => handlers.onConnectionChange("connected");
+      events.onerror = () =>
+        handlers.onConnectionChange(
+          events.readyState === EventSource.CLOSED ? "offline" : "reconnecting",
+        );
+      const state = await api(`/api/templates/${templateId}/join`, {
+        method: "POST",
+        headers: { "X-Session-Id": sessionId },
+      });
+      return { ...state, leave: () => events.close() };
     },
     submit: (templateId, batch) =>
       api(`/api/templates/${templateId}/operations`, {
-        method: 'POST',
-        headers: { 'X-Session-Id': sessionId },
+        method: "POST",
+        headers: { "X-Session-Id": sessionId },
         body: JSON.stringify(batch),
       }),
     operationsAfter: (templateId, revision) =>
       api(`/api/templates/${templateId}/operations?after=${revision}`, {
-        headers: { 'X-Session-Id': sessionId },
+        headers: { "X-Session-Id": sessionId },
       }),
     acquireLock: (templateId, blockId, locale) =>
       api(`/api/templates/${templateId}/locks`, {
-        method: 'POST',
-        headers: { 'X-Session-Id': sessionId },
+        method: "POST",
+        headers: { "X-Session-Id": sessionId },
         body: JSON.stringify({ blockId, locale: locale ?? null }),
       }),
     renewLock: (templateId, blockId, locale) =>
       api(lockUrl(templateId, blockId, locale), {
-        method: 'PUT',
-        headers: { 'X-Session-Id': sessionId },
+        method: "PUT",
+        headers: { "X-Session-Id": sessionId },
       }),
     releaseLock: async (templateId, blockId, locale) => {
       await fetch(lockUrl(templateId, blockId, locale), {
-        method: 'DELETE',
-        headers: { 'X-Session-Id': sessionId },
+        method: "DELETE",
+        headers: { "X-Session-Id": sessionId },
         keepalive: true,
       });
     },
   },
 });
 
-await editor.load('tpl_123');
+await editor.load("tpl_123");
 ```
 
-`api` is your own fetch helper; a refused request must reject with the HTTP status as `statusCode` and the response's `code`, `holder` and `holders` (see [Refusals](#refusals)), because a missing status counts as a network failure and is retried.
+This complete TypeScript example needs `@templatical/editor` and a backend with the routes it calls. Server-sent events carry the other sessions' changes: `join` subscribes first, then asks the backend for the revision, the unexpired locks and the members. The editor calls `join` again after a reconnect, so a second call replaces the subscription. `releaseLock` uses `fetch` with `keepalive`, so the request survives a closing page.
+
+`api` is the sample's fetch helper: a refused request rejects with the HTTP status as `statusCode` and the response's `code`, `holder` and `holders` (see [Refusals](#refusals)), because a missing status counts as a network failure and is retried.
 
 The backend combines `X-Session-Id` with the authenticated user to identify the lock owner.
 
@@ -6260,6 +6359,13 @@ Only title and paragraph `content` use `format: "html"`; every other eligible fi
 
 The editor masks whole merge/logic chips in HTML, and raw tags matched by the active syntax in either format. Text content uses `<x id="n"/>`; HTML attribute values use `__xn__`, sharing ids from 1 in source order per field. Return each id exactly once, in either accepted form; `<x id="n"></x>` is also accepted. Placeholders may move for word order. Missing, duplicate or extra ids keep the old value and report `tags_changed`. Existing translations are masked with source token ids. If their tags no longer match, the old translation is not sent and the field is translated from the current default. `localeStrings` retains its masked current source and `sourceHash`, omitting `text`; coverage alone selects gaps or all fields. Returned HTML goes through the editor’s DOMPurify-based `sanitizeHtml` with tokens protected, then original tags are restored byte for byte. The pure helpers do not sanitize HTML; headless callers own that step.
 
+A translation may keep, move or drop the inline styles of its default, but not add or change one: a style can fetch a remote file or overlay the email, and the sanitizer keeps `style`. The editor and `strings import` both enforce this, with two comparisons:
+
+- **The editor's Translate** compares every `style` value in the returned HTML, on any element, with the `style` values of the field's default, after the browser's HTML parser has decoded character references. The values must be equal, byte for byte, as decoded, so `AT&#38;T` and `AT&amp;T` are the same value while `color: red` and `color:red` are not. A field with a new or changed style isn't written: it keeps its previous value and counts under `TranslationRunResult.tagsChanged`, the result notice's "kept because their tags changed" group, the same as a changed placeholder.
+- **`strings import`** compares the attribute text as written, without decoding character references, so `AT&#38;T` is refused where the default has `AT&amp;T`. It refuses such a string as `unsafe_html`; see [Template tools](/api/template-tools#strings).
+
+A translation that keeps, moves or drops a default style, or has no styles, passes both. `localeStrings` and `applyLocaleStrings` stay pure and don't check styles or sanitize.
+
 `localization.doNotTranslate?: string[]` protects configured terms with the same exact placeholder check. Omit it to protect only merge and logic tags. `init()` accepts at most 500 terms, each 1–100 characters after trimming; invalid input rejects with `SdkError`: `localization.doNotTranslate must be an array of at most 500 terms, each 1–100 characters.` Matching is case-sensitive and uses whole words: Unicode letters, numbers and `_` are word characters. In `html` fields, terms match the decoded text: numeric references, the HTML 4.01 named references, `&apos;` and the uppercase aliases `&AMP;`, `&COPY;`, `&GT;`, `&LT;`, `&QUOT;` and `&REG;` are decoded before matching, so `&apos;` matches a term's `'`. Other named references stay as written, and reference names are case-exact (`&Amp;` stays literal). In `text` fields, terms match the text as written. Longer terms match first, without overlap, in text content and HTML attribute values. Merge tags and whole chips take precedence over overlapping terms. Every match joins the field's source-order id sequence; successful unmasking restores the original term bytes. A missing or changed placeholder rejects that field with `tags_changed` and keeps its previous value. An extra literal occurrence of a term is plain text: with `["Cloud"]`, the source `Templatical Cloud stores cloud files` masks to `Templatical <x id="1"/> stores cloud files`, and the German `Templatical <x id="1"/> speichert Cloud-Dateien` is accepted, because every placeholder returns exactly once. `TranslationRequest` is unchanged.
 
 For headless flows, pass the same `doNotTranslate?: readonly string[]` to `localeStrings` and `applyLocaleStrings`; `maskTags(text, syntax, format, { doNotTranslate })` also accepts it. The helpers trim terms when matching; the size limits are validated by `init()`. Existing translations reuse the source's ids. If a stored translation lacks or changes a protected term, a selected field remains eligible: the old translation is not sent, and translation starts from the current default. Check a configured term by translating a field containing it: the provider receives a placeholder and the saved translation contains the original term.
@@ -6318,7 +6424,7 @@ export async function handleTranslation(
 }
 ```
 
-`readTranslationRequest(request)` validates the JSON body and call bounds; `readAiRequest` also recognizes the `translate` route. `translateFields({ request, model, signal? })` collects text from `model.stream` with `tools: []`. It checks each requested id exactly once and its placeholder multiset, makes one repair attempt for failed fields, and returns the fields that pass in request order. A cut-off, refusal or malformed JSON is repaired once; if no field passes, it rejects with `translation_failed`. `AbortError` propagates unchanged. The kit does not sanitize returned HTML.
+`readTranslationRequest(request)` validates the JSON body and call bounds; `readAiRequest` also recognizes the `translate` route. `translateFields({ request, model, signal? })` collects text from `model.stream` with `tools: []`. It sends the fields to the model under short aliases (`f1`, `f2`, …) and maps the answer back to the field ids. It checks each requested id exactly once and its placeholder multiset, makes one repair attempt for failed fields, and returns the fields that pass in request order. A cut-off, refusal or malformed JSON is repaired once; if no field passes, it rejects with `translation_failed`. `AbortError` propagates unchanged. The kit does not sanitize returned HTML.
 
 Without the kit, implement `translate` against your service. For DeepL, group the fields by format, send `tag_handling=html` for `html` fields and `tag_handling=xml` for `text` fields, then map the results back to the field ids. DeepL documents [HTML handling](https://developers.deepl.com/docs/xml-and-html-handling/html) and [XML handling](https://developers.deepl.com/docs/xml-and-html-handling/xml) (checked 2026-10-26): its XML examples keep placeholder ids and empty elements, and HTML handling keeps markup with lenient parsing. These settings don't replace the editor's exact placeholder check; run the conformance suite below against your provider.
 
@@ -9525,7 +9631,7 @@ To create blocks programmatically, see [Programmatic Templates](/guide/programma
 | Multi-column layout | [Section](#section) | The only block that holds other blocks |
 | Visual separation | [Divider](#divider) | Horizontal line with style options |
 | Vertical spacing | [Spacer](#spacer) | Empty space between blocks |
-| Social links | [Social Icons](#social-icons) | 17 platforms, 5 icon styles |
+| Social links | [Social Icons](#social-icons) | Platform list and six icon styles (solid, outlined, rounded, square, circle, plain) |
 | Navigation links | [Menu](#menu) | Horizontal link list with separators |
 | Tabular data | [Table](#table) | Data table with optional header styling |
 | Video preview | [Video](#video) | Clickable thumbnail (email clients don't support embedded video) |
@@ -9568,6 +9674,7 @@ Displays an image with optional link wrapping.
 | `src` | `string` | Image URL |
 | `alt` | `string` | Alt text |
 | `width` | `number \| 'full'` | Display width in px, or `'full'` for 100%. See [Width on phones](/guide/images#width-on-phones) |
+| `fluidOnMobile` | `boolean` | Omit for the automatic rule: full width on a phone only when the image fills its column on desktop. `true` always emits MJML `fluid-on-mobile`; `false` never does. See [Width on phones](/guide/images#width-on-phones) |
 | `height` | `number` | Display height in px. Omit to derive it from the width and keep the aspect ratio |
 | `align` | `'left' \| 'center' \| 'right'` | Horizontal alignment |
 | `borderRadius` | `BorderRadiusValue` | Corner radius in px, or `{ topLeft, topRight, bottomRight, bottomLeft }` per corner. Omit or 0 for square corners |
@@ -9593,6 +9700,7 @@ A call-to-action button with customizable appearance.
 | `fontSize` | `number` | Font size in px |
 | `buttonPadding` | `SpacingValue` | Inner padding |
 | `fontFamily` | `string` | Font family override |
+| `fontWeight` | `'regular' \| 'medium' \| 'bold'` | Label weight: 400, 500 or 700. Omit for bold, which is how a button with no weight renders. |
 | `openInNewTab` | `boolean` | Link target behavior |
 | `width` | `number \| 'full'` | Fixed width in px, or `'full'` for 100%. Omit to size to content. |
 | `align` | `'left' \| 'center' \| 'right'` | Placement within the column. No visible effect when `width` is `'full'`. |
@@ -9643,7 +9751,7 @@ A row of social media icons linking to platform profiles.
 
 Email clients that switch to dark mode, such as the Gmail app and Outlook, change the background but leave images as they are. A dark `plain` or `outlined` icon therefore carries a faint white halo that is barely visible on light backgrounds and keeps the icon visible as an outline once the background turns dark. Light icons have no halo, so they stay clean on colored bands, but clients that turn a dark background light (the Gmail app on iOS, Outlook for Windows) can hide a light `plain` or `outlined` icon. A filled shape avoids both, since its badge brings its own contrast.
 
-17 platforms are supported: Facebook, Twitter/X, Instagram, LinkedIn, YouTube, TikTok, Pinterest, Email, Website, WhatsApp, Telegram, Discord, Snapchat, Reddit, GitHub, Dribbble, and Behance.
+These platforms are supported: Facebook, Twitter/X, Instagram, LinkedIn, XING, YouTube, TikTok, Pinterest, Email, Website, WhatsApp, Telegram, Discord, Snapchat, Reddit, GitHub, Dribbble, and Behance.
 
 Each `SocialIcon` has:
 
@@ -9754,14 +9862,14 @@ A layout container that holds one or more columns. See [Sections and Columns](/g
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `columns` | `ColumnLayout` | Column layout preset |
+| `columns` | `ColumnLayout` | Column layout preset: `"1"`, `"2"`, `"3"`, `"4"`, `"1-2"`, `"2-1"`, `"1-3"`, `"3-1"`, `"1-2-1"`. Widths and column counts are in [Sections and Columns](/guide/sections-and-columns). |
 | `children` | `Block[][]` | Array of block arrays, one per column |
 | `stackOnMobile` | `boolean` | Omit or `true`: columns stack on mobile (MJML default). `false`: stay side by side (`mj-group`) |
 | `borderRadius` | `BorderRadiusValue` | Corner radius in px, or one per corner (optional; omit or `0` for square corners) |
 | `border` | `BorderValue` | `{ top, right, bottom, left }`, each `{ width, style, color }`, drawn around the section box (optional; omit for no border) |
 | `backgroundImage` | `BackgroundImage` | Optional image behind the section — `{ url, size, position: { x, y }, repeat }` — rendered as `background-url` plus size, position and repeat on the `mj-section`. `size` is `"cover"`, `"contain"` or `"auto"`; `x` is `"left"`, `"center"` or `"right"`; `y` is `"top"`, `"center"` or `"bottom"`. `styles.backgroundColor` is its fallback. `naturalWidth` / `naturalHeight` (optional) are the image file's own size in px; a hero uses them to match its shape. |
 | `hero` | `SectionHero` | Optional. Renders a one-column section with a background image as an `mj-hero`, the image filling the box behind the content: `{ height, verticalAlign }`. `height` is `"image"` (the box is as tall as the image drawn across its desktop width, from `backgroundImage.naturalWidth` / `naturalHeight`) or a fixed height in px, padding included; `verticalAlign` is `"top"`, `"middle"` or `"bottom"`. The image always fills the box (`size` and `repeat` don't apply) and no `border` is drawn. With more than one column, no image, or `"image"` without the size, the section renders as a regular one, and the `structure.hero-not-applied` warning says why. |
-| `wrapper` | `SectionWrapper` | Optional outer frame — `{ backgroundColor?, padding?, borderRadius?, backgroundImage? }` — rendered as an `mj-wrapper` band around the section. An embedder-owned card around the authored sections is a [layout](/guide/layout) overlay. |
+| `wrapper` | `SectionWrapper` | Optional outer frame — `{ backgroundColor?, padding?, borderRadius?, backgroundImage?, fullWidth? }` — rendered as an `mj-wrapper` band around the section. `fullWidth: true` spans the recipient's window (`full-width` on `mj-wrapper`) while the section stays at `settings.width`; a corner radius is ignored while it is on. Absent or false keeps the band at the email width. An embedder-owned card around the authored sections is a [layout](/guide/layout) overlay. |
 
 ::: tip Email client note: borders and corners in Outlook
 - Outlook on Windows ignores `border-radius`, including the four-value (per-corner) form.
@@ -10467,7 +10575,7 @@ Toggle switch.
 
 ### repeatable
 
-A repeatable group of sub-fields. Users can add or remove items within the configured bounds. Each entry in `fields` follows the same field configuration as top-level fields. Nested repeatables are not supported.
+A repeatable group of sub-fields. Users can add or remove items within the configured bounds. Each entry in `fields` follows the same field configuration as top-level fields. `template-tools custom-block validate` rejects a `minItems` or `maxItems` above 100 (`field.items-limit`); the editor doesn't enforce that ceiling. Nested repeatables are not supported.
 
 ```ts
 {
@@ -10622,6 +10730,10 @@ Liquid treats an empty string as true, and a field the user cleared holds an emp
 **Comparisons:** `==`, `!=`, `>`, `<`, `>=`, `<=`, `and`, `or`, `contains`
 
 For the full syntax reference, see the [Liquid documentation](https://liquidjs.com/tags/overview.html).
+
+### Liquid budgets
+
+`CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT` is `1e7` Liquid allocation units per render. Liquid counts range elements and the strings and arrays filters build toward this limit; literal HTML in the template isn't counted. `CUSTOM_BLOCK_LIQUID_RENDER_LIMIT` is a 2000 ms deadline per render, checked before each template step, so a single slow filter can run past it. The same limits apply to custom-block templates and preview recipe URL and body rendering. An exceeded limit raises a Liquid error: the editor shows a render error, `renderToMjml` rejects, `custom-block validate` reports `liquid.render`, and a preview recipe returns `ok: false` before making a request.
 
 ### Output escaping
 
@@ -10870,7 +10982,7 @@ import { createCustomBlockLiquid } from '@templatical/types';
 const liquid = createCustomBlockLiquid(liquidjs);
 ```
 
-Its fixed options are `strictVariables: false`, `strictFilters: false`, `outputEscape: 'escape'`, and `templates: {}`. The empty template map makes `{% include %}`, `{% render %}` and `{% layout %}` refuse partial loading from disk or the network. It HTML-escapes <code v-pre>{{ }}</code>, `{% echo %}`, `{% liquid %}` echo and `{% cycle %}` output, while a final `| raw` on an output, an echo value or a cycle candidate opts that value out. The optional `liquidjs` peer range is `^10.30.1`, the first release that applies `outputEscape` to `{% echo %}` and `{% cycle %}`; with 10.30.0 those two tags print their values unescaped. Run the factory's exact-output suite with `pnpm --filter @templatical/types exec vitest run tests/custom-block-liquid.test.ts`. `dataSource.onFetch` runs only in the editor; the server renders the saved field values.
+Its fixed options are `strictVariables: false`, `strictFilters: false`, `outputEscape: 'escape'`, `memoryLimit: CUSTOM_BLOCK_LIQUID_MEMORY_LIMIT`, `renderLimit: CUSTOM_BLOCK_LIQUID_RENDER_LIMIT`, and `templates: {}`. The empty template map makes `{% include %}`, `{% render %}` and `{% layout %}` refuse partial loading from disk or the network. It HTML-escapes <code v-pre>{{ }}</code>, `{% echo %}`, `{% liquid %}` echo and `{% cycle %}` output, while a final `| raw` on an output, an echo value or a cycle candidate opts that value out. The optional `liquidjs` peer range is `^10.30.1`, the first release that applies `outputEscape` to `{% echo %}` and `{% cycle %}`; with 10.30.0 those two tags print their values unescaped. Run the factory's exact-output suite with `pnpm --filter @templatical/types exec vitest run tests/custom-block-liquid.test.ts`. `dataSource.onFetch` runs only in the editor; the server renders the saved field values.
 
 ## In the playground
 
@@ -11187,6 +11299,7 @@ interface DisplayCondition {
   after: string;
   group?: string;
   description?: string;
+  data?: unknown;
 }
 ```
 
@@ -11197,17 +11310,76 @@ interface DisplayCondition {
 | `after` | Yes | Markup inserted after the block output |
 | `group` | No | Group name for organizing conditions in the dropdown |
 | `description` | No | Explanatory text shown below the label |
+| `data` | No | Opaque host state. The editor stores it and hands it back as `current.data` when the host builder reopens. It must survive `JSON.stringify` (content is cloned with `safeClone`). The editor never reads it. |
 
 ## DisplayConditionsConfig
 
 ```ts
+interface DisplayConditionRequestContext {
+  current?: DisplayCondition;
+  block: Block;
+}
+
 interface DisplayConditionsConfig {
-  conditions: DisplayCondition[];
+  conditions?: DisplayCondition[];
   allowCustom?: boolean;
+  onRequest?: (
+    context: DisplayConditionRequestContext,
+  ) => Promise<DisplayCondition | null>;
 }
 ```
 
-When `allowCustom` is `true`, users can write their own `before` and `after` strings directly in the editor instead of choosing from the predefined list. Defaults to `false`.
+When `allowCustom` is `true`, users can write their own `before` and `after` strings directly in the editor instead of choosing from the predefined list. Defaults to `false`. `conditions` may be omitted.
+
+## Host condition builder
+
+`displayConditions.onRequest` replaces the built-in condition list. The block settings show **Add condition**, and **Edit** plus **Remove condition** when a condition is set. The callback receives `{ block }` when the block has no condition, and `{ current, block }` when one is set. Both values are copies. Return a `DisplayCondition`, or `null` to leave the block unchanged.
+
+`current.data` is the opaque state from the condition, so the builder can reopen filled in. A resolved value needs string `label`, `before` and `after`. Empty strings are valid. `description`, `group` and `data` are kept. With `onRequest` set, `conditions` and `allowCustom` are ignored.
+
+```ts
+import { init } from '@templatical/editor';
+
+function openConditionBuilder({
+  data,
+}: {
+  blockId: string;
+  data?: unknown;
+}) {
+  const saved =
+    data !== null && typeof data === 'object'
+      ? (data as { field?: string; operator?: string; value?: string })
+      : undefined;
+  const field = saved?.field ?? 'customer.vip';
+  const operator = saved?.operator ?? '==';
+  const value = saved?.value ?? 'true';
+  return Promise.resolve({
+    label: `${field} ${operator} ${value}`,
+    before: `{% if ${field} ${operator} ${value} %}`,
+    after: '{% endif %}',
+    data: { field, operator, value },
+  });
+}
+
+const editor = await init({
+  container: '#editor',
+  displayConditions: {
+    onRequest: async ({ block, current }) => {
+      const chosen = await openConditionBuilder({
+        blockId: block.id,
+        data: current?.data,
+      });
+      if (!chosen) return null;
+      return {
+        label: chosen.label,
+        before: chosen.before,
+        after: chosen.after,
+        data: chosen.data,
+      };
+    },
+  },
+});
+```
 
 ## Grouping conditions
 
@@ -11305,6 +11477,21 @@ Two ways, and they answer different questions:
 The **Display conditions** setup passes `displayConditions`, so any block can be shown or hidden per recipient.
 
 [Open in playground](https://play.templatical.com/scenes/display-conditions)
+
+## Check it
+
+Mount an editor with `displayConditions.onRequest` and open a block's settings. The section shows an **Add condition** button. Resolve the callback with a condition that includes `data`, then read the stored block from `getContent()`:
+
+```ts
+const stored = editor.getContent().blocks.find((block) => block.id === 'title');
+if (stored?.displayCondition?.label !== 'VIP') {
+  throw new Error('expected label VIP');
+}
+const data = stored.displayCondition.data as { tier: string };
+if (data.tier !== 'vip') {
+  throw new Error('expected displayCondition.data.tier vip');
+}
+```
 
 ---
 
@@ -11493,6 +11680,7 @@ const editor = await init({
 | `fr` | French |
 | `nl` | Dutch |
 | `ja` | Japanese |
+| `da` | Danish |
 
 ## Locale resolution
 
@@ -11822,7 +12010,9 @@ A `'full'` image fills its column on every screen. A pixel width keeps that widt
 
 A pixel width at or above the room its column gives it renders like `'full'`: at the column's width on desktop, and across the whole column on a phone. That room is the column less the side padding and border of the wrapper band, the section and the image itself.
 
-Video thumbnails follow the same rule.
+`fluidOnMobile` overrides that rule. Omit it and the rule above applies. `true` always emits MJML `fluid-on-mobile="true"`, so the image fills its stacked column on a phone even when it is narrower on desktop. `false` never emits it, so a column-filling image keeps its desktop width on a phone and only shrinks to fit. There is no separate breakpoint: MJML's own mobile breakpoint applies.
+
+Video thumbnails follow the automatic rule. They have no `fluidOnMobile` field.
 
 ::: tip
 When a section's columns stack on a phone, each column there is wider than on desktop. An image whose width falls between the two fills the phone's column, while the mobile preview draws it at its set width.
@@ -11875,10 +12065,10 @@ import {
   createWrapperBlock,
   createParagraphBlock,
   createDefaultTemplateContent,
-} from '@templatical/editor';
+} from "@templatical/editor";
 
 const layout = createDefaultTemplateContent();
-layout.settings.backgroundColor = '#f3f4f6';
+layout.settings.backgroundColor = "#f3f4f6";
 layout.blocks = [
   createParagraphBlock({
     content:
@@ -11886,7 +12076,7 @@ layout.blocks = [
   }),
   createWrapperBlock({
     styles: {
-      backgroundColor: '#ffffff',
+      backgroundColor: "#ffffff",
       padding: { top: 24, right: 24, bottom: 24, left: 24 },
     },
     borderRadius: 12,
@@ -11899,7 +12089,7 @@ layout.blocks = [
 ];
 
 const editor = await init({
-  container: '#editor',
+  container: "#editor",
   layout,
   sectionWrapper: false,
 });
@@ -11938,7 +12128,9 @@ mj-body                         ← grey mat (layout.settings.backgroundColor)
 
 **`slot`** is where authored `content.blocks` land. Exactly one in the layout tree. Legal as a top-level `layout.blocks` child or as a `wrapper.children` child. Illegal in a section column, in a nested wrapper, and in editor content. The palette omits it. A `slot` that reaches `renderToMjml` without `layout` throws.
 
-**`wrapper`** is the layout card: `styles.backgroundColor` / `styles.padding` / `borderRadius` / `backgroundImage` map to `mj-wrapper`. In Outlook on Windows, a band's background color paints over the background image of a section inside it — set the image on the band, or leave the band without a color. The editor's linter doesn't see the layout, so it can't warn about this. Layout-only. Refused in editor content (`setContent` / `load` / `addBlock` / `createBlock('wrapper')`). Authors still use `section.wrapper` as the per-section shorthand.
+**`wrapper`** is the layout card: `styles.backgroundColor` / `styles.padding` / `borderRadius` / `backgroundImage` / `fullWidth` map to `mj-wrapper`. `fullWidth: true` spans the recipient's window while the children stay at `settings.width`; a corner radius is ignored while it is on. Absent or false keeps the band at the email width. In Outlook on Windows, a band's background color paints over the background image of a section inside it — set the image on the band, or leave the band without a color. The editor's linter doesn't see the layout, so it can't warn about this. Layout-only. Refused in editor content (`setContent` / `load` / `addBlock` / `createBlock('wrapper')`). Authors still use `section.wrapper` as the per-section shorthand. The same **Full-width background** switch is on the wrapper block's Background panel.
+
+Headless `applyOperations` and `template-tools edit` can address existing wrapper children with `parent: { wrapperId: string }`; sections without `section.wrapper` may be direct wrapper children. Sections with `section.wrapper` must stay at the top level: `addBlock`, `moveBlock`, and `updateBlock` refuse to nest them in a wrapper. This edits a layout tree outside the visual editor. The visual editor still refuses authored wrappers. Run `validateLayout` on a layout after applying operations; it also rejects nested section wrappers. `setContent` itself checks shape only.
 
 Layout factories and helpers (`createSlotBlock`, `createWrapperBlock`, `createParagraphBlock`, `createDefaultTemplateContent`, `applyLayout`, `validateLayout`, `isSlot`, `isWrapper`, `layoutWrapsSlot`) are exported from `@templatical/editor`. Headless rendering can import `applyLayout` from `@templatical/types` without the editor.
 
@@ -11948,6 +12140,7 @@ Layout factories and helpers (`createSlotBlock`, `createWrapperBlock`, `createPa
 [Templatical] layout: must contain exactly one slot block
 [Templatical] layout: slot must be a top-level or wrapper child, not nested in a section
 [Templatical] layout: a wrapper cannot contain a wrapper
+[Templatical] layout: a wrapper cannot contain a section with its own wrapper (section.wrapper)
 ```
 
 `setContent` / `load` / `addBlock` refuse `slot` and `wrapper` in content.
@@ -12025,18 +12218,75 @@ You can copy the content settings onto the layout and override `backgroundColor`
 
 ## Headless use
 
+This complete TypeScript example needs `@templatical/renderer` and `@templatical/types`. It builds a template and a layout that each have a German version, then composes and renders both. It prints `true true 2 de`: the default render holds the layout's `Legal notice` and the German render its `Impressum`, the composed default has two blocks (the template's title in the slot, then the footer), and the German composition's `settings.locale` is `de`.
+
 ```ts
-import { renderToMjml } from '@templatical/renderer';
-import { applyLayout, resolveLocale } from '@templatical/types';
+import { renderToMjml } from "@templatical/renderer";
+import {
+  applyLayout,
+  applyOperations,
+  createDefaultTemplateContent,
+  createParagraphBlock,
+  createSlotBlock,
+  createTitleBlock,
+  resolveLocale,
+  sourceHash,
+  type TemplateContent,
+} from "@templatical/types";
+
+// The template and its layout each carry their own German version.
+const title = createTitleBlock({ content: "Welcome" });
+const email: TemplateContent = createDefaultTemplateContent("Arial", {
+  locale: "en",
+});
+email.blocks.push(title);
+const content = applyOperations(email, [
+  { op: "addLocale", locale: "de" },
+  {
+    op: "updateBlockLocale",
+    blockId: title.id,
+    locale: "de",
+    text: {
+      content: { value: "Willkommen", sourceHash: sourceHash(title.content) },
+    },
+  },
+]);
+
+const footer = createParagraphBlock({ content: "<p>Legal notice</p>" });
+const shell: TemplateContent = createDefaultTemplateContent("Arial", {
+  locale: "en",
+});
+shell.blocks.push(createSlotBlock(), footer);
+const layout = applyOperations(shell, [
+  { op: "addLocale", locale: "de" },
+  {
+    op: "updateBlockLocale",
+    blockId: footer.id,
+    locale: "de",
+    text: {
+      content: {
+        value: "<p>Impressum</p>",
+        sourceHash: sourceHash(footer.content),
+      },
+    },
+  },
+]);
 
 const mjml = await renderToMjml(content, { layout });
 const composed = applyLayout(layout, content);
 
 // One language version of a localized template, as renderToMjml composes it:
-const germanMjml = await renderToMjml(content, { layout, locale: 'de' });
+const germanMjml = await renderToMjml(content, { layout, locale: "de" });
 const german = applyLayout(
-  resolveLocale(layout, 'de', { missing: 'default' }),
-  resolveLocale(content, 'de'),
+  resolveLocale(layout, "de", { missing: "default" }),
+  resolveLocale(content, "de"),
+);
+
+console.log(
+  mjml.includes("Legal notice"),
+  germanMjml.includes("Impressum"),
+  composed.blocks.length,
+  german.settings.locale,
 );
 ```
 
@@ -12109,7 +12359,7 @@ Languages imported from [Beefree](/guide/migration-from-beefree#languages), [Unl
 
 Pass a [`TranslationProvider`](/backend/translation) as `init({ translation })` next to `localization`; without it there is no Translate UI. In an enabled language view, **Translate {count} fields** in the language bar sends the missing and out-of-date fields (the gaps), so current translations and manual edits survive; it's hidden when there are no gaps. **Translate everything again…** sends every eligible field after a confirmation that names the field count and says that manual edits are replaced; it's disabled when no field is eligible. A block's status badge offers **Translate** for missing text and **Re-translate** for out-of-date text or differing merge tags.
 
-Translate masks merge tags, logic tags and the terms in `localization.doNotTranslate` (for example `["Sable"]`) as numbered placeholders, and applies a returned field only when it carries exactly the placeholders it was sent; any other field keeps its previous value and is reported. HTML blocks, empty defaults, `set` overrides and hidden blocks aren't sent: translate HTML blocks by hand. The [translation contract](/backend/translation#provider-contract) defines the placeholders, batch limits, errors and the DeepL settings.
+Translate masks merge tags, logic tags and the terms in `localization.doNotTranslate` (for example `["Sable"]`) as numbered placeholders, and applies a returned field only when it carries exactly the placeholders it was sent; any other field keeps its previous value and is reported. A returned HTML field must also keep to the `style` values of its default: a new or changed value keeps the previous value too, and counts with the fields kept because their tags changed. HTML blocks, empty defaults, `set` overrides and hidden blocks aren't sent: translate HTML blocks by hand. The [translation contract](/backend/translation#provider-contract) defines the placeholders, batch limits, errors and the DeepL settings.
 
 While a run lasts, the language bar shows **Translating {done} of {total}…** with **Cancel**, and the editor stays editable. Fields returned before Cancel or an error apply together as one undo step; a run that changes nothing records nothing. With collaboration, a run is an ordinary edit, and blocks another session holds in that language or structurally are skipped. The dismissible result notice reports translated fields, fields kept because their tags changed, fields not returned, blocks skipped because someone is editing them, and the translation service's error message. Dismiss it to see the counts again; changing the view clears it.
 
@@ -12123,6 +12373,8 @@ npx -y @templatical/template-tools strings import template.json strings.de.json 
 ```
 
 Set each entry's `text` and keep its `id`, `sourceHash` and placeholders unchanged. An out-of-date entry has no `text`: its old translation is in `previous`, which import never reads, so translate it again from `source`. Import applies every string whose `sourceHash` still matches the current default and whose placeholders come back exactly, writes the accepted strings, and exits `1` when any string was rejected. Both commands refuse the default language, and import refuses a file exported before another language became the default. Pass the same `--do-not-translate` and `--definitions` files to both commands; see [Strings](/api/template-tools#strings).
+
+`strings import` refuses `a<b` in a `text` field unless the default contains that markup: a `<` directly before a letter reads as markup, so write `a < b` with a space for a comparison. The human output adds that hint under the refused entry; `--json` keeps each rejection as `{ id, reason }`. In HTML fields, every translated `style` value must equal a `style` value in the default, byte for byte as written (Translate in the editor decodes character references first); a new or changed value is `unsafe_html`. The result’s `skipped` list names every entry without `text`, with `reason: "stale"` for an out-of-date field and `reason: "missing"` otherwise; human output prints one `Skipped` line each. A skipped entry leaves its field unchanged and doesn't change the exit code.
 
 In code, the same round trip is `localeStrings` → JSON → `applyLocaleStrings` from `@templatical/types`. This complete TypeScript example extracts the gaps with `Sable` protected, simulates a translator's JSON edit and applies the returned locale operations; pass the same `doNotTranslate` list to both helpers. `localeStrings` returns an out-of-date entry's stored translation in `text`, and `applyLocaleStrings` stamps every `text` it receives with the extraction-time hash, so applying that entry unchanged marks the field current, as **Keep** does. Drop `text` from out-of-date entries before handing them to a translator, as the example does by moving it to `previous`, or use `strings export`. With `only: "gaps"`, only out-of-date entries carry `text`; with `only: "all"`, `localeCoverage(content, locale).stale` lists them. A default edited while the file is out makes that string out of date. The pure helpers don't sanitize returned HTML: sanitize it, keeping the placeholders, before applying it.
 
@@ -12192,7 +12444,7 @@ console.log(JSON.stringify(content), JSON.stringify(german));
 
 ## Checking a language
 
-The header's language button names the active language; in a language view with gaps it adds a warning icon and the number of gaps, with "{missing} missing, {stale} out of date" in its tooltip. Its accessible name reads the language name, then the visible gap count, the language tag and the same breakdown; without gaps it stays, for example, "Deutsch (de)". The language bar shows the same counts or **Complete**. A block with a localization state carries an icon badge in its top-right corner (top-left in a right-to-left view); its tooltip and accessible name give the label below. Select the badge, or **Jump to block** on a localization finding in the Issues panel, to open its popover. On a short selected block in a narrow canvas, the action bar sits beside the badge slot, leaving the badges and their focus rings visible.
+The header's language button names the active language; in a language view with gaps it adds a warning icon and the number of gaps, with "{missing} missing, {stale} out of date" in its tooltip. Its accessible name reads the language name, then the visible gap count, the language tag and the same breakdown; without gaps it stays, for example, "Deutsch (de)". The language bar shows the same counts or **Complete**. A block with a localization state carries an icon badge in its top-right corner (top-left in a right-to-left view); its tooltip and accessible name give the label below. Select the badge, or **Jump to block** on a localization finding in the Issues panel, to open its popover. The badge shows the first state that applies; **Jump to block** opens the popover on the finding's own state, for `localization.untranslated`, `localization.stale` or `localization.merge-tags-differ`, with that state's explanation and actions, and the badge keeps its state. Closing the popover and selecting the badge returns to the badge's state. On a short selected block in a narrow canvas, the action bar sits beside the badge slot, leaving the badges and their focus rings visible.
 
 | Badge label | Meaning | Actions |
 | --- | --- | --- |
@@ -12303,7 +12555,7 @@ Set each entry's `text` in `layout.de.json` between export and import, as in [Tr
 
 ## Default language
 
-`settings.locale` is the default language: the text every version falls back to and is translated from. To promote a version, open **Languages**, select the version's **More actions for {language}** and choose **Make default language**. The confirmation, **Make {language} the default language?**, counts the fields that have no text in that language, when there are any: "{count} fields have no {language} text and keep their {default} text. Translate them first. {default} keeps a copy; later {language} edits mark it out of date." **Make default** applies the change as one undo step, switches the view to the new default and reports "{language} is now the default language."; undoing it removes that notice. The item is disabled, with the reason under it, while the current default isn't in `localization.locales` ("Add {default} to the enabled languages first"), because the old default would become a version nobody can edit or promote back; and while blocks are hidden in that language ("Show the {count} blocks hidden in {language} first"). It isn't offered in a read-only editor or for a version that isn't enabled.
+`settings.locale` is the default language: the text every version falls back to and is translated from. To promote a version, open **Languages**, select the version's **More actions for {language}** and choose **Make default language**. The confirmation, **Make {language} the default language?**, counts the fields that have no text in that language, when there are any (it recounts from the current content and closes if the language is removed or can no longer become the default, for example after a collaboration recovery or AI replaces the content): "{count} fields have no {language} text and keep their {default} text. Translate them first. {default} keeps a copy; later {language} edits mark it out of date." **Make default** applies the change as one undo step, switches the view to the new default and reports "{language} is now the default language."; undoing it removes that notice. The item is disabled, with the reason under it, while the current default isn't in `localization.locales` ("Add {default} to the enabled languages first"), because the old default would become a version nobody can edit or promote back; and while blocks are hidden in that language ("Show the {count} blocks hidden in {language} first"). It isn't offered in a read-only editor or for a version that isn't enabled.
 
 The change is one operation, `{ "op": "setDefaultLocale", "locale": "de" }`:
 
@@ -13155,19 +13407,19 @@ This package is in active development. Some block types and advanced features ma
 ::: code-group
 
 ```bash [npm]
-npm install @templatical/import-beefree
+npm install @templatical/import-beefree @templatical/editor @templatical/renderer
 ```
 
 ```bash [pnpm]
-pnpm add @templatical/import-beefree
+pnpm add @templatical/import-beefree @templatical/editor @templatical/renderer
 ```
 
 ```bash [yarn]
-yarn add @templatical/import-beefree
+yarn add @templatical/import-beefree @templatical/editor @templatical/renderer
 ```
 
 ```bash [bun]
-bun add @templatical/import-beefree
+bun add @templatical/import-beefree @templatical/editor @templatical/renderer
 ```
 
 :::
@@ -13178,7 +13430,7 @@ You can also load it from a CDN:
 
 ```html
 <script type="module">
-  import { convertBeeFreeTemplate } from 'https://cdn.jsdelivr.net/npm/@templatical/import-beefree/+esm';
+  import { convertBeeFreeTemplate } from "https://cdn.jsdelivr.net/npm/@templatical/import-beefree/+esm";
   // ...then convert as shown in Usage below
 </script>
 ```
@@ -13186,20 +13438,26 @@ You can also load it from a CDN:
 ## Usage {#usage}
 
 ```ts
-import { convertBeeFreeTemplate } from '@templatical/import-beefree';
+import { convertBeeFreeTemplate } from "@templatical/import-beefree";
+import { init } from "@templatical/editor";
+import { renderToMjml } from "@templatical/renderer";
 
 // Load your BeeFree template JSON
-const res = await fetch('/api/beefree-templates/123');
+const res = await fetch("/api/beefree-templates/123");
 const beefreeJson = await res.json();
 
 // Convert to Templatical format
-const { content, report } = convertBeeFreeTemplate(beefreeJson);
+const { content, report, customFonts } = convertBeeFreeTemplate(beefreeJson);
 
 // Use in the editor
 const editor = await init({
-  container: '#editor',
+  container: "#editor",
   content,
+  fonts: { customFonts },
 });
+
+// Load the same faces when rendering
+const mjml = await renderToMjml(content, { customFonts });
 
 // Check the conversion report for any issues
 console.log(report);
@@ -13208,15 +13466,17 @@ console.log(report);
 [Open in playground](https://play.templatical.com/scenes/import-beefree)
 
 The function returns an `ImportResult` with:
+
 - `content` — the converted `TemplateContent` ready for the editor
 - `report` — a conversion report with the status of each block (`converted`, `approximated`, `html-fallback`, or `skipped`)
+- `customFonts` — `{ name, url }[]` from `page.body.webFonts` entries that have a URL. Pass the array to `init({ fonts: { customFonts } })` and to `renderToMjml`. System stacks (`Arial`, `Helvetica Neue`, …) and `inherit` are omitted. A font the template uses that has no URL, and is not one of those stacks, is named in `report.warnings`.
 
-| Status | Meaning |
-|---|---|
-| `converted` | Mapped to a Templatical block with no loss of fidelity. |
-| `approximated` | Mapped, with a clamp or flatten — `note` states what changed. |
-| `html-fallback` | No block equivalent — an unknown module type, forms included. Output is an `HtmlBlock`; see [Block Mapping](#block-mapping) for its content. |
-| `skipped` | No output. This converter does not emit it: every module produces a block. |
+| Status          | Meaning                                                                                                                                                                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `converted`     | Mapped to a Templatical block with no loss of fidelity.                                                                                                                                                                                                                 |
+| `approximated`  | A lossy mapping. The `note`, when set, names the exact change, such as a clamp, a button letter-spacing or percentage width that is not carried, or an image percentage width stored as px. Table-cell HTML reduced to plain text is reported here and named in `report.warnings`. |
+| `html-fallback` | No block equivalent — an unknown module type (forms included), an [Icons](#icons) module with icons other than one icon with no text, a non-empty image and positive px file width and height, or an [addon](#addons) with no payload the importer reads. Output is an `HtmlBlock`; see [Block Mapping](#block-mapping) for its content. |
+| `skipped`       | No output, and `templaticalBlockType` is `null`: an empty module, an Icons module with no icons, or a [divider that draws no line](#undrawn-dividers) and takes no space.                                                                                               |
 
 The JSON BeeFree's editor persists (`page.rows`) is the input. A compiled HTML export is a different envelope — use [`@templatical/import-html`](/guide/migration-from-html).
 
@@ -13244,92 +13504,183 @@ export interface ConvertBeeFreeOptions {
 
 BeeFree block types map to Templatical equivalents:
 
-| BeeFree Module | Templatical Block | Status |
-|---|---|---|
-| Text | `paragraph` | Converted |
-| Paragraph | `paragraph` | Converted |
-| Heading | `title` | Converted |
-| List | `paragraph` | Converted |
-| Image | `image` | Converted |
-| Button | `button` | Converted |
-| Divider | `divider` | Converted (approximated when a partial-width divider is aligned left or right) |
-| Spacer | `spacer` | Converted |
-| Social | `social` | Converted |
-| Html | `html` | Converted |
-| Menu | `menu` | Approximated (styles may differ) |
-| Video | `video` | Converted |
-| Table | `table` | Converted |
+| BeeFree Module | Templatical Block                                                     | Status                                                                                                                           |
+| -------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Text           | `paragraph`                                                           | Converted                                                                                                                        |
+| Paragraph      | `paragraph`                                                           | Converted                                                                                                                        |
+| Heading        | `title`                                                               | Converted                                                                                                                        |
+| List           | `paragraph`                                                           | Converted                                                                                                                        |
+| Image          | `image`                                                               | Converted                                                                                                                        |
+| Button         | `button`                                                              | Converted (approximated when letter-spacing, partial bold in the label or a percentage width other than 100% is not carried)     |
+| Divider        | `divider`, or `spacer` when it [draws no line](#undrawn-dividers)     | Converted (approximated when a partial-width divider is aligned left or right; skipped when it draws no line and takes no space) |
+| Spacer         | `spacer`                                                              | Converted                                                                                                                        |
+| Social         | `social`                                                              | Converted                                                                                                                        |
+| Icons          | `image` for one icon with no text, a non-empty image and positive px file width and height; otherwise `html` ([Icons](#icons)) | Converted, or HTML fallback |
+| Addon          | the block for the payload it carries ([Addons](#addons))              | As that module                                                                                                                   |
+| Empty          | none                                                                  | Skipped                                                                                                                          |
+| Html           | `html`                                                                | Converted                                                                                                                        |
+| Menu           | `menu`                                                                | Approximated (styles may differ)                                                                                                 |
+| Video          | `video`                                                               | Converted                                                                                                                        |
+| Table          | `table`                                                               | Converted (approximated when cell HTML is reduced to plain text)                                                                 |
 
 Unknown module types — forms included — are converted to HTML blocks as a fallback, reported `html-fallback`. The block's content is the module's `descriptor.text.html`, `descriptor.html.html` or `descriptor.heading.text`, the first one set. With none of them, it is a `<!-- Unsupported BeeFree module: <type> -->` comment and renders nothing.
 
+Text and list modules set `paragraphSpacing` to `0`: BeeFree text paragraphs are margin 0, and an omitted gap would render as 8px. A `<p>` with an explicit px `margin-bottom`, or the bottom length of a `margin` shorthand, sets that gap instead. A non-px length is ignored. The first such length wins when paragraphs disagree. A paragraph module's `computedStyle.paragraphSpacing` (the gap BeeFree renders between its paragraphs, usually `16px`) sets `paragraphSpacing` and wins over a margin in the HTML.
+
+A text, paragraph or list module's `style` is applied to each block root in its HTML (`p`, `h1`–`h6`, `div`, `ul`, `ol`, `li`). `text-align`, `line-height` and `font-size` go on the element. The line box uses the element's font size, and rendered text defaults to 14px, so a size that lived only on an inner span would make every line taller than BeeFree. `color`, a CSS `font-weight` (`normal`, `bold`, `bolder`, `lighter`, a CSS-wide keyword such as `inherit`, or a number from 1 to 1000; the importer drops any other value, including a `var()` reference), `font-family` stacks of at most 256 characters, `letter-spacing` and the same `font-size` wrap the text of a root that holds no nested block. A longer font stack is dropped with an `approximated` note. A declaration the HTML already sets on that element stays. `line-height` comes from the module and replaces any `line-height` in the HTML; a percentage is stored as a unitless ratio (`120%` is `1.2`, `200%` is `2`). `letter-spacing` of `0` or `normal` is omitted. An `<a>` keeps a `color` it already sets. Otherwise the module's `linkColor` or `link-color`, from `style` and then `computedStyle`, is written on the anchor. With neither, the link takes `settings.linkColor`.
+
+A list module also writes BeeFree's list box inline on each `<ul>`, `<ol>` and `<li>`, so it wins over the renderer's list spacing (8px on the list, 4px on an item, 24px of indent). The list's `margin-top` and `margin-bottom` are `0`, and each item's `margin` is `0`. `list-style-type` is `revert`. `padding-left` is half of `computedStyle.liIndent` on the outer list and the full indent on a nested list (`40px` when that indent is missing, so 20px and 40px); a right-to-left list uses `padding-right`. A `margin`, padding or marker the HTML already sets stays. A list inside a text or paragraph module is left as written.
+
+### Buttons {#buttons}
+
+A button keeps its colours, radius, padding, font size, font family, width and border. Each side uses a readable, non-negative px `padding-<side>` longhand first, then that side of a readable `padding` shorthand with one to four values. An explicit `0px` stays 0. A shorthand with any negative side is discarded as a whole; a negative longhand leaves the shorthand value available. A missing or unreadable side uses 12px on top and bottom or 24px on left and right.
+
+`font-weight` maps to `fontWeight`: a number at or under 450, or `normal`, is `"regular"` (400); from 451 through 600, including `600`, is `"medium"` (500); above 600, or `bold` / `bolder`, is omitted and the label renders bold (700). A tie between two steps takes the lighter one. When every non-whitespace text run in the label is bold through `<strong>`, `<b>` or an inline `font-weight` of at least 600, `fontWeight` is omitted regardless of the style weight. A missing or unreadable weight otherwise imports as `"regular"`. The label is flattened to plain text. When only part of it is bold and the mapped weight is `"regular"` or `"medium"`, that partial bold is lost and one `note` records the imported button weight. A `letter-spacing` other than `0` or `normal` is not carried, and neither is a percentage width other than `100%`. One short `note` names what was left out, and the module is reported `approximated`.
+
+The label renders at 1.2× its font size. A taller line-height — a percentage of the font size, a unitless ratio, or a px length — is split across the top and bottom padding, rounded to whole pixels after the padding values above are read. The added padding is never negative, so `120%` or less leaves the padding as written. BeeFree's usual `200%` is what makes the button taller.
+
+| BeeFree `width`                               | `ButtonBlock.width`                         | Status       |
+| --------------------------------------------- | ------------------------------------------- | ------------ |
+| missing, or `auto`                            | omitted (sizes to the label)                | Converted    |
+| `100%`                                        | `"full"`                                    | Converted    |
+| a percentage other than `100%`, such as `50%` | omitted (sizes to the label), with a `note` | Approximated |
+| a positive px width                           | that many pixels, rounded                   | Converted    |
+
+The button's place in the column is the module's `text-align` (`left`, `center` or `right`), or the button style's `text-align` when the module sets none. `border-top`, `border-right`, `border-bottom` and `border-left` become `border`. A side that paints nothing — width 0, `none`, `hidden` or transparent — is stored with width 0. When no side paints, `border` is omitted. A style other than `solid`, `dashed` or `dotted` is imported as `solid`.
+
 ### Image width {#image-width}
 
-| BeeFree image | `ImageBlock.width` | Status |
-|---|---|---|
-| `computedStyle.class` includes `autowidth` | `"full"` | Converted |
-| `computedStyle.width` narrower than the image's room | the px number, rounded | Converted |
-| `computedStyle.width` as wide as the room or wider | `"full"` | Converted |
-| no `computedStyle` | `image.width`, by the same rule | Converted |
-| no width at all | `"full"` | Converted |
+| BeeFree image                                                  | `ImageBlock.width`                                   | Status       |
+| -------------------------------------------------------------- | ---------------------------------------------------- | ------------ |
+| `computedStyle.class` includes `fullwidth`                     | `"full"`                                             | Converted    |
+| `computedStyle.width` narrower than the image's room           | the px number, rounded                               | Converted    |
+| `computedStyle.width` as wide as the room or wider             | `"full"`                                             | Converted    |
+| `computedStyle.width` a percentage under `100%`, such as `50%` | that share of the room in px, rounded, with a `note` | Approximated |
+| `computedStyle.width` `100%` or more                           | `"full"`                                             | Converted    |
+| no `computedStyle.width`                                       | `image.width`, by the same rule                      | Converted    |
+| no width at all                                                | `"full"`                                             | Converted    |
 
-`image.width` and `image.height` are the image file's size, and `computedStyle.width` is the width BeeFree shows it at. The image's room is its column's content width less the image's left and right padding. `image.height` is not imported, so the image keeps the file's aspect ratio at the width it is shown at. An image with no `text-align` takes its alignment from `computedStyle.class` (`left`, `center` or `right`).
+`image.width` and `image.height` are the image file's size, and `computedStyle.width` is the width BeeFree shows it at, for both of BeeFree's sizing classes: a `fixedwidth` image at the width set in the editor, and an `autowidth` image at its file's width, capped at the column. Older exports write `computedStyle.width` as a number of pixels (`187.5`) and class an image that fills its column `fullwidth`. Their computed width leaves out the column's padding, so the class decides. The image's room is its column's content width less the image's left and right padding. On a snapped row that room is the snapped column: padding given back from the inner edge is part of it, and column padding the module keeps on either side is not, including when none of that padding comes back. `ImageBlock` stores px, which keeps its size on a phone where a percentage would shrink with the column, so a percentage width is reported `approximated`. `image.height` is not imported, so the image keeps the file's aspect ratio at the width it is shown at. An image with no `text-align` takes its alignment from `computedStyle.class` (`left`, `center` or `right`).
+
+BeeFree keeps an image at its desktop width on a phone when that image sits in a column narrower than the email. The import sets `fluidOnMobile` to `false` on such an image when it fills that column, so it does not grow to the stacked column. An image in a full-width row, and one that does not fill its column, leaves `fluidOnMobile` unset. See [Width on phones](/guide/images#width-on-phones).
 
 ### Divider width
 
-| BeeFree `width` | `DividerBlock.width` | Status |
-|---|---|---|
-| missing, or `100%` | `"full"` | Converted |
-| a percentage under `100%`, such as `50%` | the same percentage to two decimals, `"50%"` | Converted |
-| below `0%` or above `100%` | clamped to `"0%"` or `"full"` | Approximated |
-| px, narrower than its column's content width | the px number | Converted |
-| px, as wide as its column's content width or wider | `"full"` | Converted |
-| a negative px width | `0` | Approximated |
-| any other value | `"full"` | Approximated |
+| BeeFree `width`                                    | `DividerBlock.width`                         | Status       |
+| -------------------------------------------------- | -------------------------------------------- | ------------ |
+| missing, or `100%`                                 | `"full"`                                     | Converted    |
+| a percentage under `100%`, such as `50%`           | the same percentage to two decimals, `"50%"` | Converted    |
+| below `0%` or above `100%`                         | clamped to `"0%"` or `"full"`                | Approximated |
+| px, narrower than its column's content width       | the px number                                | Converted    |
+| px, as wide as its column's content width or wider | `"full"`                                     | Converted    |
+| a negative px width                                | `0`                                          | Approximated |
+| any other value                                    | `"full"`                                     | Approximated |
 
-A column's content width is its share of `settings.width`, by the section's column layout, less the divider's left and right padding. A row of four or more columns is flattened, and its modules span the whole `settings.width`.
+A column's content width is its share of `settings.width`, by the section's column layout, less the divider's left and right padding. A row of five or more columns is flattened, and its modules span the whole `settings.width`. A four-column row keeps four columns. The warning names the source ratio.
 
 Templatical centres every divider. A partial-width divider that BeeFree aligns left or right (`computedStyle.align`) is approximated, and its `note` names the alignment.
 
-## Column Layout Conversion
+### Dividers that draw no line {#undrawn-dividers}
+
+A divider draws no line when its `border-top` is 0 wide, `none` or `hidden`, or transparent: `transparent`, or a colour with an alpha of 0 such as `rgba(0, 0, 0, 0)` or `#ffffff00`. BeeFree templates use these dividers to add space.
+
+| BeeFree divider                                                               | Result                        | Status                                     |
+| ----------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------ |
+| draws a line                                                                  | `divider`, by the rules above | Converted                                  |
+| draws no line, and its padding and transparent border add up to more than 0px | `spacer`                      | Converted, with a `note` naming the height |
+| draws no line and takes no space                                              | no block                      | Skipped                                    |
+
+The spacer's `height` is the divider's `padding-top` plus `padding-bottom` plus the width of a transparent border. A `none` or `hidden` border takes no space, so its width doesn't count. A spacer renders no padding, so its own padding is 0, and the divider's `background-color` carries over. A divider with no `border-top` at all imports as a 1px solid black line.
+
+### Icons {#icons}
+
+The Icons module (`mailup-bee-newsletter-modules-icons`) shows a row of icons, each with optional text. BeeFree draws every icon at `computedStyle.iconHeight` (32px when unset), its width following the file's size in the icon's `width` and `height`, inside the padding in `computedStyle.iconSpacing`.
+
+| Icons module                                               | Result                                      | Status                                                                  |
+| ---------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------- |
+| one icon, no text, a non-empty image, positive px `width` and `height` | `image` at the icon height                  | Converted                                                               |
+| several icons, text, or one icon missing the image or a positive px `width` or `height` | `html`: a table with the icons side by side | HTML fallback, with the `note` `Icons module rebuilt as an HTML table.` |
+| no icons                                                   | no block                                    | Skipped                                                                 |
+
+The image keeps the icon's `alt` and links to its `href`. It sits where the module's `text-align` puts it, its padding is the module's padding plus `iconSpacing`, and the file's size becomes `naturalWidth` and `naturalHeight`.
+
+The table puts each icon's `text` on the side `textPosition` names (`left`, `right`, `top` or `bottom`), in the module's `color`, `font-family`, `font-size` and `font-weight`, with `computedStyle.itemsSpacing` between icons. Icon and text link to `href` and open in `target`. Templatical has no block that lays icons out in a row, so the table is edited as HTML.
+
+Both results drop an icon's `href` or `image` when the editor's HTML URL policy (`isSafeHtmlUrl` in `@templatical/types`) rejects it, such as a `javascript:`, `vbscript:` or non-image `data:` URL, and add a `report.warnings` entry naming it. The table is markup the importer writes, and an HTML block renders unsanitized.
+
+### Addons {#addons}
+
+An addon module (`mailup-bee-newsletter-modules-addon`) keeps the payload of the module it stands in for, so it converts as that module: the payload decides the block and its status. Its report entry keeps `beeFreeModuleType: "mailup-bee-newsletter-modules-addon"`. The importer looks for these payloads in the descriptor, in this order:
+
+| Payload               | Converts as |
+| --------------------- | ----------- |
+| `image`               | Image       |
+| `html`                | Html        |
+| `heading`             | Heading     |
+| `paragraph` or `text` | Paragraph   |
+| `list`                | List        |
+| `button`              | Button      |
+| `divider`             | Divider     |
+| `menu`                | Menu        |
+| `iconsList`           | Icons       |
+
+An image addon links to `image.href` only. GIPHY's addon also writes `image.url`, the GIF's page on giphy.com, which isn't imported. An addon with none of these payloads becomes the `<!-- Unsupported BeeFree module: … -->` comment, reported `html-fallback`. The image payload is checked against a real GIPHY export; the others follow BeeFree's [addon content types](https://docs.beefree.io/beefree-sdk/builder-addons/custom-addons/custom-addon-types).
+
+## Column Layout Conversion {#column-layout-conversion}
 
 BeeFree organizes content into rows with columns. These map to Templatical's `SectionBlock` with the appropriate `ColumnLayout`:
 
-| BeeFree Columns | Templatical Layout |
-|---|---|
-| 1 column (100%) | `'1'` |
-| 2 equal columns | `'2'` |
-| 3 equal columns | `'3'` |
-| 2 columns (~33/66) | `'1-2'` |
-| 2 columns (~66/33) | `'2-1'` |
+| BeeFree Columns    | Templatical Layout |
+| ------------------ | ------------------ |
+| 1 column (100%)    | `'1'`              |
+| 2 equal columns    | `'2'`              |
+| 3 equal columns    | `'3'`              |
+| 2 columns (~33/66) | `'1-2'`            |
+| 2 columns (~66/33) | `'2-1'`            |
+| 2 columns (25/75)  | `'1-3'`            |
+| 2 columns (75/25)  | `'3-1'`            |
+| 3 columns (25/50/25) | `'1-2-1'`        |
+| 4 equal columns    | `'4'`              |
 
-Column widths that don't match a standard ratio are mapped to the closest available layout.
+Column widths that don't match a standard ratio are mapped to the closest layout of the same column count, measured in the same thousandths as an exact match. A 7/12 row and a 5/12 row map to the even split `2` (7/12 is 583 thousandths: 83 from even, 84 from 2/3). A 6-4-2 row maps to `3` and a 2-8-2 row maps to `1-2-1`. That snap is one `report.warnings` line naming the source ratio, for example `Column ratio 6-4-2 was mapped to the nearest layout "3"`. `8-4`, `4-8`, `6-6`, an even `4-4-4`, `3-9`, `9-3`, `3-6-3` and an even `3-3-3-3` match `2-1`, `1-2`, `2`, `3`, `1-3`, `3-1`, `1-2-1` and `4` and do not warn. A row of five or more columns is flattened to one column; the warning names that ratio too (`3-3-3-3-3`).
+
+A column's padding, background and border live on the column. A single-column row folds that padding into the section padding (added to the row's own padding, which is not imported, so it starts at 0), uses the column `background-color` when it is set and otherwise the row's content background, and maps `border-top` / `border-right` / `border-bottom` / `border-left` onto the section border. The row is wrapped in a one-column section when any of those is set. A non-px or negative padding is ignored. A border style other than `solid`, `dashed` or `dotted` is imported as `solid`.
+
+A multi-column row, including one flattened from five or more columns, adds each column's padding to its modules: left and right on every module, top on the first, bottom on the last. When the snapped layout makes a column narrower than its BeeFree grid share of the row, that shortfall comes back out of the padding facing the next column: the right side of a left column, the left side of a right column, and the right side then the left side of a middle column. The outer edge stays, and the padding does not go below 0. A column the snap makes wider, and a ratio that already matches, keep the summed padding.
+
+In a row with two to four columns, the first column's drawn left border and the last column's drawn right border become the section's left and right border. A drawn top or bottom border becomes the section border when every column draws that side with the same width, style and color. Promotion requires at least one drawn column side, no painted column background, no drawn inner border, no top or bottom border that differs between columns, and no overlap with a drawn row-border side. When one of these fails, every column side is dropped, the outer left and right edges included. Promoted borders add no column-box warning. Otherwise column backgrounds and borders are dropped with one `report.warnings` entry per row: `Column background/border was dropped; a multi-column row has no per-column box.` A row flattened from five or more columns keeps this drop behavior. A transparent background or a border that paints nothing does not warn. When columns stack on a phone, BeeFree draws the left edge only beside the first column and the right edge only beside the last, and a top or bottom border drawn on every column appears between the stacked columns too. The section border frames the whole stack, with no lines between its columns, and the import adds no warning for this.
 
 ## Template Settings
 
 Global template settings are converted where possible:
 
 - **Width** -- `page.body.content.computedStyle.messageWidth` maps to `settings.width`, with `page.body.content.style.width` as the fallback and 600 when neither is set
-- **Background color** -- `page.body.content.style.background-color` maps to `settings.backgroundColor`, with `page.body.container.style.background-color` as the fallback and `#ffffff` when neither is set. A row's `content.style.background-color` becomes its section's `backgroundColor`; a single-column row with one is wrapped in a one-column section so the color survives. A row's `container.style` color — the full-width band behind the row — is not read, so it's dropped.
-- **Background images** -- A row's `content.style` `background-image` becomes its section's `backgroundImage`, with `background-size`, `background-position` and `background-repeat` (CSS's initial values where unset), and wraps a single-column row in a section as a color does. The `container.style` band's image shows only while the content area has neither an image nor a color: then the section paints it at the content width; otherwise it's dropped. A size that fills a side (`100%`, or a px width at least the email's) becomes `cover` and any other length or percentage `auto`; a percentage position snaps to the nearest of left, center and right (top, center and bottom); `repeat-x` and `repeat-y` become `repeat`. `report.warnings` names every band image and every value with no exact keyword.
+- **Background color** -- `page.body.content.style.background-color` maps to `settings.backgroundColor`, with `page.body.container.style.background-color` as the fallback and `#ffffff` when neither is set. A row's `content.style.background-color` becomes its section's `backgroundColor` (the inner box); a single-column row with one is wrapped in a one-column section so the color survives. A single column's own `background-color` replaces it when set. A row's `container.style.background-color` — the band outside that box — becomes `section.wrapper.backgroundColor` with `wrapper.fullWidth: true`. The band runs to the window edge and the section fill stays the content color, so the copy stays in the content box. The wrapper is omitted when the band is transparent, or the same color as the section fill and the container has no image.
+- **Row visibility** -- `content.computedStyle.hideContentOnMobile` and `hideContentOnDesktop` set the section's `visibility` (`{ desktop, mobile }`). Either flag wraps the row in a section. Both unset or false leaves `visibility` unset.
+- **Mobile stacking** -- `content.computedStyle.rowColStackOnMobile: false` sets `stackOnMobile: false` on a multi-column section, so the columns stay side by side on a phone. `true` or an omitted flag leaves `stackOnMobile` unset, and the columns stack. On a one-column row, or a row flattened from five or more columns, the flag is dropped with one warning: `rowColStackOnMobile false was dropped; Templatical keeps columns side by side only on a multi-column section.`
+- **Row width** -- `content.style.width` is the content box. A px width other than `settings.width`, or a non-px width, adds one warning naming both and leaves the section at the email width. A section has no width of its own.
+- **Row border** -- `content.style` `border-top`, `border-right`, `border-bottom` and `border-left` map onto the section border with the same rules as a column border. On a single-column row the column border wins when both paint and they differ, with one warning: `Row border was dropped; the column border is kept on the section.` In a multi-column row, drawn row-border sides merge with promoted column sides when they do not overlap, without a warning. If they overlap, the row border stays and the column borders are dropped with the column-box warning.
+- **Background images** -- A row's `content.style` `background-image` becomes its section's `backgroundImage`, with `background-size`, `background-position` and `background-repeat` (CSS's initial values where unset), and wraps a single-column row in a section as a color does. The `container.style` band's image becomes `wrapper.backgroundImage` with `wrapper.fullWidth: true`, including behind a painted content area. A content image stays on the section. A size that fills a side (`100%`, or a px width at least the email's) becomes `cover` and any other length or percentage `auto`; a percentage position snaps to the nearest of left, center and right (top, center and bottom); `repeat-x` and `repeat-y` become `repeat`. `report.warnings` names every value with no exact keyword.
 - **Text color** -- `page.body.content.style.color` maps to `settings.textColor`, `#1a1a1a` when it is unset. Text, paragraph, list, heading, menu and table modules with no color of their own follow it.
 - **Links** -- `page.body.content.computedStyle.linkColor` maps to `settings.linkColor`. `settings.linkUnderline` is `true`: BeeFree sets underlines per link, in each link's markup.
-- **Font family** -- The default font family carries over to `settings.fontFamily`. The whole stack carries over, so its fallbacks survive; a stack that is exactly a built-in font's own (`Arial, sans-serif`) is stored as the bare name. A module whose `font-family` is `inherit`, `initial`, `unset` or `revert` sets no font of its own and takes `settings.fontFamily`.
+- **Font family** -- The default font family carries over to `settings.fontFamily`. The whole stack carries over, so its fallbacks survive; a stack that is exactly a built-in font's own (`Arial, sans-serif`) is stored as the bare name. A module whose `font-family` is `inherit`, `initial`, `unset` or `revert` sets no font of its own and takes `settings.fontFamily`. A heading keeps that family, plus its color and alignment (from the heading style, then the heading tag, then the module). The title block has no font size, weight, line height or letter spacing fields, so a heading's `font-size`, `font-weight`, `line-height` and `letter-spacing` are written on the text and override the level's size, the bold weight and the 1.3 line-height. The level is the nearest of h1–h4 (36, 28, 22 and 18px) to that font size — the module style, or the font-size on the heading tag when the style omits it — and a tie stays on the source level, so the line box follows the size. A chosen size more than 1px away is reported approximated (`h4 chosen for 16px (source h1); line box differs`). A percentage line-height becomes a unitless ratio. `letter-spacing` of `0` or `normal` is omitted. A `font-size` on the heading tag is kept when the style omits it.
+- **Merge tags** -- HTML character references inside <code v-pre>{{ }}</code>, `{% %}` and `{# #}` are decoded on every copied string: rich text, headings, button labels, links and image addresses, alt text, HTML and the preheader. `&#39;` becomes `'`, `&quot;` a quote, `&gt;` `>`, `&amp;` `&`, and `&nbsp;` a plain space (Twig does not read a non-breaking space as whitespace). A double quote inside a token in an HTML attribute stays encoded as `&quot;`. The same references outside a token stay encoded in rich text, except a doubled `&amp;nbsp;` (and `&amp;#160;` / `&amp;#xa0;`), which is written back as the single reference. A button label and a table cell are plain text, so references there are decoded as well: the renderer escapes the label, and an encoded `&nbsp;` would show as the letters `&amp;nbsp;`. A token with no closer is left as written. A `<code data-bee-type="mergetag">` wrapper around a merge tag in text, a heading, a list or a button label is removed and the token inside is kept; any other `<code>` stays. A chip that holds only spaces becomes one plain space. A chip that holds one token drops a plain leading space, keeps a leading non-breaking space, and keeps a space after the token. A `<code>` that only highlights one token drops that same plain leading space, and the `<code>` stays.
 
 ## Known Limitations
 
-- **Custom fonts** -- BeeFree custom font declarations are not automatically imported. Add them manually via the `fonts` config option.
+- **Custom fonts** -- `customFonts` on the result lists every BeeFree web font that has a URL. Pass that array to the editor `fonts.customFonts` option and to `renderToMjml`, or the face falls back. A font the template uses that has no URL, other than a system stack, is named in `report.warnings`.
 - **Conditional display** -- BeeFree dynamic content rules do not have a direct equivalent and are dropped during conversion.
-- **Icons** -- BeeFree custom icon uploads are not migrated. Standard social platform icons are mapped by name.
+- **Icons** -- An Icons module becomes an HTML table, edited as HTML, unless it is one icon with no text, a non-empty image and positive px file width and height ([Icons](#icons)). In a Social module, the platform is read from the icon id, then its name, alt text, title, or the link host. Xing (`xing`, including a `xing.com` host) maps to the `xing` platform. A network with no Templatical icon is kept as an image, or as a link when the icon has no image, and named in the report. The row's `text-align` becomes `align`. The gap between icons is the left and right of `computedStyle.padding` added together. `iconsDefaultWidth` picks the nearest of small (24px), medium (32px) and large (48px). An icon set in the icon file URL maps when the shape matches (`circle`, `rounded` or `square`); a black or white set sets the dark or light tone, and `circle-dark-gray` uses the dark tone. A set with no matching shape stays the solid brand icons.
 - **Forms** -- BeeFree form modules have no Templatical equivalent. Each becomes an `html-fallback` HTML block, and the form's fields and submit action are not reproduced.
-- **Per-block link colors** -- A text module's own link color (`computedStyle.linkColor`) is dropped; its links take `settings.linkColor`.
-- **Advanced styling** -- Some granular BeeFree style properties (e.g., per-column padding overrides) may not be fully preserved.
+- **Column box on multi-column rows** -- Padding is folded into the modules. A painted background or a drawn border that cannot be promoted to the section border is dropped with one warning per row (see [Column Layout Conversion](#column-layout-conversion)). A spacer ignores `styles.padding`, so column padding folded onto a spacer does not render.
+- **Mobile breakpoint** -- BeeFree stacks at `messageWidth + 20` (620px when the email is 600px). Templatical keeps MJML's 480px breakpoint. Import does not change it.
 
 ## Verifying Converted Templates
 
 After conversion, review the output in the editor to check for:
 
 1. Missing images (re-upload or update URLs if needed)
-2. Font rendering (add custom fonts to the editor config)
+2. Font rendering (pass `customFonts` to the editor `fonts` config and to `renderToMjml`)
 3. Column proportions (adjust layouts if the automatic mapping doesn't match)
 4. Spacing and padding (fine-tune in the block settings panel)
 
@@ -13497,9 +13848,9 @@ There is no round-trip oracle. Templatical does not render Chamaileon JSON, and 
 | Chamaileon | Templatical block | Notes |
 |---|---|---|
 | `body` | Template `settings` | `bodyWidth` → `settings.width`; `backgroundColor` → `settings.backgroundColor`; `previewText` → `settings.preheaderText` when non-empty; a `backgroundImage` is dropped and named in `report.warnings`. |
-| `fullwidth` | `SectionBlock` | Outer `backgroundColor` → `wrapper.backgroundColor`; `contentBackgroundColor` → `section.styles.backgroundColor`; `contentPadding*` → padding. A fullwidth with no `multicolumn` is `columns: "1"`. `contentBackgroundImage` → `backgroundImage`; the band's `backgroundImage` and colour follow [Background images](#background-images). |
+| `fullwidth` | `SectionBlock` | Outer `backgroundColor` → `wrapper.backgroundColor` with `wrapper.fullWidth: true`; `contentBackgroundColor` → `section.styles.backgroundColor`; `contentPadding*` → padding. A fullwidth with no `multicolumn` is `columns: "1"`. `contentBackgroundImage` → `backgroundImage`; the band's `backgroundImage` and colour follow [Background images](#background-images). |
 | `box` | Flattened into the parent | Transparent boxes vanish with no entry. A painted box that is the sole child of a fullwidth whose content fill is unset copies that paint onto the section. A painted box among siblings flattens, `approximated`. A lone box's background image moves to the section when the fullwidth has no `contentBackgroundImage`; with one, or among siblings, the box image is dropped and noted, `approximated`. |
-| `multicolumn` + `column` | Section `columns` / `children[i]` | Pixel widths convert to percent-of-`bodyWidth` and match Templatical's five layouts. Nested `multicolumn` cannot become a nested `SectionBlock` — inner columns flatten into the parent column, `approximated`. |
+| `multicolumn` + `column` | Section `columns` / `children[i]` | Pixel widths convert to percent-of-`bodyWidth` and match Templatical's layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`). Nested `multicolumn` cannot become a nested `SectionBlock` — inner columns flatten into the parent column, `approximated`. |
 | `text` | `TitleBlock` or `ParagraphBlock` | Inferred from `attrs.text` HTML: a sole heading wrapping the whole content becomes a title; anything else becomes a paragraph. |
 | `typed-text` | `TitleBlock` or `ParagraphBlock` | `style.subType === "title"` → title; `"list"` → paragraph, `approximated`; otherwise paragraph. |
 | `button` | `ButtonBlock` | `href` → `url`; label stripped of tags. An unset fill is an outlined button — fill becomes `#ffffff` (not the factory `#333333`) and the entry is `approximated`. |
@@ -13520,16 +13871,16 @@ A fullwidth's section image is, nearest first:
 
 1. `contentBackgroundImage`, the content area the section paints.
 2. The `backgroundImage` of a box that is the fullwidth's only child, which moves up while there is no `contentBackgroundImage`.
-3. The band's `backgroundImage`, only while the content area has no colour. The section paints it at the content width, takes the band colour as its fill, and the entry is `approximated`.
+3. The band's `backgroundImage` becomes `wrapper.backgroundImage` with `wrapper.fullWidth: true`, including behind a painted content area. When that image is the only paint, the band colour sits on the wrapper with it and the section background stays unset.
 
-A band image the content area covers is dropped, and the entry notes it. When the section has its own image, the band colour is dropped too, with a note, instead of becoming `wrapper.backgroundColor`: Outlook desktop paints a wrapper colour over the section's image.
+When the section has its own image, the band colour is dropped with a note instead of becoming `wrapper.backgroundColor`: Outlook desktop paints a wrapper colour over the section's image. The band image still sits on the wrapper.
 
 `backgroundSize`, `backgroundPosition` and `backgroundRepeat` (and their `content…` forms) come along, with CSS's initial values where unset. A size that fills a side (`100%`, `100% auto`, or a px width at least the email's) becomes `cover` and any other length or percentage `auto`; a percentage position snaps to the nearest of left, center and right (top, center and bottom), and a length to the left or top edge; `repeat-x`, `repeat-y`, `round` and `space` become `repeat`. Each such value is noted.
 
 ## Lossy conversions
 
 - **Nested `multicolumn`** — a row inside a column cannot become a nested `SectionBlock`. Inner column children splice into the parent column in document order, `approximated`, note `"nested multicolumn flattened (N columns)"`. Leaves convert; geometry is the loss.
-- **4+ columns** — Templatical supports five column layouts (`1`, `2`, `3`, `2-1`, `1-2`). A 4-, 5-, or 6-column `multicolumn` folds to `"3"`; overflow children append onto the last slot, `approximated`, original widths in the note.
+- **5+ columns** — Templatical supports these column layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`). Four equal columns stay `"4"`. A `multicolumn` of five or more columns folds onto `"4"`; overflow children append onto the last slot, `approximated`, and the note names the four-column limit.
 - **Outlined buttons** — `background-color` unset plus a coloured border has no Templatical equivalent. After `createButtonBlock`, fill is written `#ffffff` so the factory `#333333` does not turn a ghost button into a dark pill. The outline is dropped; the entry is `approximated`.
 - **Loops and conditionals** — Chamaileon `attrs.expression` is not Liquid and is not MJML display-condition syntax. Empty nodes `skipped`. Populated nodes convert their children and drop the branching; stuffing the expression into `displayCondition` would lie about the dialect.
 - **Box paint among siblings** — a nested box with a real fill, padding, radius, or background image that is not the sole child of an otherwise unpainted fullwidth flattens. The paint is dropped, `approximated`, and a dropped background image is noted. A new top-level section would split the row; a nested section is illegal in a column.
@@ -13732,7 +14083,7 @@ There is no round-trip oracle. Templatical does not render Easy Email Pro JSON, 
 |---|---|---|
 | `page` | Template `settings` | `width` → `settings.width`; `background-color` → `settings.backgroundColor` after `$var`; `globalAttributes["font-family"]` / `color` → `fontFamily` (the whole stack, so its fallbacks survive) / `textColor`; `link-color` → `linkColor` when set; `preheader` → `settings.preheaderText` when non-empty. `content-background-color` is the default section fill, not the page background. |
 | `standard-section` | `SectionBlock` | Own `background-color` → `section.styles.backgroundColor`; else the page `content-background-color`. `padding-*` → padding. Direct `standard-column` children, or the columns inside a single `standard-group`. `background-url` with its size, position and repeat → `backgroundImage` (see [Background images](#background-images)). |
-| `standard-column` | Section `columns` / `children[i]` | Percent widths (`"50%"`, `"33.33%"`) match Templatical's five layouts. No report entry of its own. |
+| `standard-column` | Section `columns` / `children[i]` | Percent widths (`"50%"`, `"33.33%"`, `"25%"`) match Templatical's layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`). No report entry of its own. |
 | `standard-group` | Flattened columns; `stackOnMobile: false` | A group of columns on a section is that section's column structure. Nested group-in-column flattens, `approximated`. |
 | `standard-wrapper` | Inner section(s) `wrapper` | Outer `background-color` / `background-url` / padding → `section.wrapper`. One inner section → converted. Several inners → wrapper copied onto each, `approximated`. |
 | `standard-hero` | 1-col `SectionBlock` with `hero` | Children walk as h1 / paragraph / button. `background-color` onto the section, `background-url` onto its `backgroundImage`, behind the content. `mode`, `height`, `background-width` / `background-height` and `vertical-align` map onto `hero` as for an MJML `mj-hero`; a `fixed-height` hero without a `height` (Easy Email Pro's default) is a regular section with the background image. `inner-padding` and `inner-background-color` are dropped (see [Lossy conversions](#lossy-conversions)). |
@@ -13764,7 +14115,7 @@ There is no round-trip oracle. Templatical does not render Easy Email Pro JSON, 
 
 ### Background images {#background-images}
 
-`background-url` on a `standard-section` becomes the section's `backgroundImage`, and on a `standard-wrapper` or a page header / footer band the `wrapper.backgroundImage` of each section it holds. `background-size`, `background-position` (and `-x` / `-y`) and `background-repeat` come along, read through the same attribute cascade as every other attribute; one the node leaves out takes MJML's default (`auto`, `top center`, `repeat`), which is what Easy Email Pro renders.
+`background-url` on a `standard-section` becomes the section's `backgroundImage`, and on a `standard-wrapper` or a page header / footer band the `wrapper.backgroundImage` of each section it holds. `background-size`, `background-position` (and `-x` / `-y`) and `background-repeat` come along, read through the same attribute cascade as every other attribute; one the node leaves out takes MJML's default (`auto`, `top center`, `repeat`), which is what Easy Email Pro renders. `full-width="full-width"` on a `standard-section` moves that section's own background colour and image onto `section.wrapper` with `fullWidth: true` and leaves the section background unset. The page `content-background-color` stays on the section when the section states no colour of its own. The same attribute on a `standard-wrapper`, page header or page footer sets `wrapper.fullWidth`. A full-width section inside a wrapper that is not full width keeps its background on the section.
 
 A value with no exact Templatical keyword maps to the nearest one, `approximated` with a note. A size that fills a side (`100%`, `100% auto`, `auto 100%`, or a px width at least the email's) becomes `cover`, and any other length or percentage becomes `auto`. A percentage position snaps to the nearest of left, center and right (top, center and bottom), and a length to the left or top edge. `repeat-x`, `repeat-y`, `round` and `space` become `repeat`.
 
@@ -13772,10 +14123,10 @@ A `standard-hero`'s `background-url` becomes its section's `backgroundImage`, pa
 
 ## Lossy conversions
 
-- **`$var` unresolved leftovers** — `$var(name)` resolves against widget `data.input`, then page `variables[]`. A name with no value is unset (`""` / leftover `$var(…)` do not become merge tags). One document-level warning names how many values resolved and how many were left unresolved.
+- **`$var` unresolved leftovers** — `$var(name)` resolves against widget `data.input`, then page `variables[]`. A replacement is made only while the attribute, with the text still after the reference, stays within 65,536 characters; a reference that would take it past that stays verbatim and counts as unresolved. Literal text in the attribute is never cut. A name with no value is unset (`""` / leftover `$var(…)` do not become merge tags). One document-level warning names how many values resolved and how many were left unresolved.
 - **`mobileAttributes`** — a second attribute bag for the mobile viewport. Templatical has no per-viewport padding. Dropped. One document-level warning when any node carried them.
 - **Outlined buttons** — `border-enabled: true` plus an unset fill has no Templatical equivalent. After `createButtonBlock`, fill is written `#ffffff` so the factory `#333333` does not turn a ghost button into a dark pill. The outline is dropped; the entry is `approximated`.
-- **4+ columns** — Templatical supports five column layouts (`1`, `2`, `3`, `2-1`, `1-2`). A 4-, 5-, or 6-column section folds to `"3"`; overflow children append onto the last slot, `approximated`, original widths in the note.
+- **5+ columns** — Templatical supports these column layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`). Four equal columns stay `"4"`. A section of five or more columns folds onto `"4"`; overflow children append onto the last slot, `approximated`, and the note names the four-column limit.
 - **Nested group flatten** — a `standard-group` inside a column cannot become a nested `SectionBlock`. Inner column children splice into the parent column in document order, `approximated`, note `"nested group flattened (N columns)"`. Leaves convert; geometry is the loss.
 - **Custom social PNGs** — `standard-social-element` carries a custom PNG `src`. `SocialIconsBlock` has no custom src — it picks an icon from `platform` + `iconStyle`. The PNG is the loss; the entry is `approximated` when a custom `src` was present.
 - **AMP** — `AMP_*` nodes have no Templatical equivalent. Preserved as JSON inside an `HtmlBlock`, `html-fallback`.
@@ -13904,7 +14255,7 @@ HTML elements map to Templatical equivalents:
 | `<a>` styled as button (background color, padding, border-radius, or `display: inline-block`) | `button` | Converted |
 | `<a>` (text link) | folded into the surrounding `paragraph` | Converted |
 | `<a>` wrapping an `<img>` | `image` with `linkUrl` | Converted |
-| `<hr>` | `divider` | Converted (approximated when the width is clamped or unreadable, or a partial-width divider is aligned left or right) |
+| `<hr>` | `divider`, or `spacer` when it [draws no line](#hr-lines) | Converted (approximated when the width is clamped or unreadable, or a partial-width divider is aligned left or right; skipped when it draws no line and takes no space) |
 | Empty `<td>` with explicit height | `spacer` | Converted |
 | `<td>` whose entire content is one styled text `<a>` | `button` | Converted (cell-as-button pattern) |
 | `<table>` (layout, multi-row/column) | `section` (one per `<tr>`) | Converted |
@@ -13950,6 +14301,20 @@ The line's room is the column's share of `settings.width`, by the section's colu
 
 Templatical centres every divider. A partial-width `<hr>` that its `align` attribute or its margins place at the left or the right is approximated, and its `note` names the alignment.
 
+### `<hr>` lines and spacing {#hr-lines}
+
+An `<hr>` imports as the line it draws. Its line is the top border (`border-top`, else the `border` shorthand), or the bottom border when the top draws nothing, as in `border: 0; border-bottom: 1px solid #cccccc`. Each side's longhands (`border-top-color`, `border-width: 0 0 1px` and the like) apply over its shorthand. A border draws nothing when it's 0 wide, `none` or `hidden`, or transparent: `transparent`, or a colour with an alpha of 0 such as `rgba(0, 0, 0, 0)` or `#ffffff00`.
+
+| `<hr>` | Result | Status |
+|---|---|---|
+| no border declared for the top or bottom: no `border`, `border-top` or `border-bottom`, and none of their width, style or colour longhands | `divider`, 1px solid black | Converted |
+| a border that draws | `divider` in the border's width and colour; `dashed` and `dotted` keep their style, any other style is `solid` | Converted |
+| no border that draws, and a `background` or `background-color` with a `height` | `divider` in the background colour, as thick as `height`, solid | Converted |
+| no border that draws, no background, and room taken | `spacer` | Converted, with a `note` naming the height |
+| no border that draws, no background, and no room taken | no block | Skipped |
+
+The usual email `<hr>`, `border: 0; height: 1px; background: #cccccc`, is the background row. A background that is transparent, or a `height` of 0, draws no line. The spacer's `height` is the `<hr>`'s top and bottom margins and padding, its `height`, and the widths of transparent top and bottom borders; a `none` or `hidden` border takes no room. A negative padding or `height` counts as 0, since CSS drops it; a negative margin counts. It never goes below 0, so negative margins that add up to less are skipped. A spacer renders no padding, so its own padding is 0. The width rules above apply to every divider row.
+
 ## Inline Formatting
 
 `<br>`, `<em>`, `<strong>`, `<i>`, `<b>`, `<u>`, `<small>`, `<sub>` and `<sup>` stay inside the text they belong to. A run of them, together with the bare text around it, becomes one `paragraph` whose colour, size and alignment come from the containing cell — so `Hello<br>World` in a `<td>` imports as a single paragraph holding both words and the line break.
@@ -13967,18 +14332,19 @@ Each `<tr>` in a layout table becomes a `SectionBlock`. The row's direct `<td>` 
 | Cells per row | Templatical Layout |
 |---|---|
 | 1 | `'1'` |
-| 2 | `'2'` or `'2-1'` / `'1-2'`, by declared width |
-| 3 | `'3'` |
-| 4+ | merged into `'1'`, with a warning and an `approximated` report entry |
+| 2 | `'2'`, `'2-1'`, `'1-2'`, `'3-1'` or `'1-3'`, by declared width |
+| 3 | `'3'` or `'1-2-1'`, by declared width |
+| 4 | `'4'` |
+| 5+ | merged into `'1'`, with a warning and an `approximated` report entry |
 
 ### Column ratios
 
-A two-cell row picks between `'2'`, `'2-1'` and `'1-2'` from the widths its cells declare — a `width` attribute, a `style="width:…"`, or the share in an `mj-column-per-*` class name. The closest of those layouts wins, so `350` / `190` reads as `'2-1'` and `33.33%` / `66.66%` as `'1-2'`.
+A row picks among the layouts that hold its column count, from the widths its cells declare — a `width` attribute, a `style="width:…"`, or the share in an `mj-column-per-*` class name. Two cells choose among `'2'`, `'2-1'`, `'1-2'`, `'3-1'` and `'1-3'`; three cells between `'3'` and `'1-2-1'`; four cells are `'4'`. The closest wins when it sits within 6 percentage points on the worst column, so `350` / `190` reads as `'2-1'`, `25%` / `75%` as `'1-3'` and `130` / `280` / `130` as `'1-2-1'`. Where two layouts are both that close, the smaller worst-column deviation wins.
 
-A ratio no layout expresses is imported as the equal split for that cell count and reported as `approximated`, with a note naming the widths that were measured:
+A ratio no layout is that close to is imported as the equal split for that cell count and reported as `approximated`, with a note naming the widths that were measured:
 
 ```txt
-Column widths 24.1% / 51.9% / 24.1% have no Templatical equivalent.
+Column widths 10% / 80% / 10% have no Templatical equivalent.
 The section was imported as 3 equal columns.
 ```
 
@@ -13987,6 +14353,8 @@ The section was imported as 3 equal columns.
 Table-based emails wrap their real layout in one-cell tables. A row holding a single cell whose content is nothing but tables is descended instead of becoming a section, so the column count is read off the row that declares it. The descent applies only when that cell holds no content beside its tables and the row's `style` sets no background colour, no background image and no padding — a row failing any of those becomes a section of its own, because the section is what carries a row's background and padding.
 
 A fill the descent passes, from the row's `bgcolor`, the cell or the table, carries to the sections below it. So does a background image on the cell or the table; when one lands on more than one section, each of those entries is `approximated` with a note.
+
+A packaging row whose table or single cell has `width="100%"` (attribute or style), and a background colour or image, and whose every inner table has a fixed px width, is a full-width band. Each section inside it gets `section.wrapper` with that colour and image and `wrapper.fullWidth: true`, so the band runs to the window edge while the content stays at the email width. Fills on the inner tables stay on the sections. A band colour is left off that wrapper when the section keeps its own background image, and that section's report entry is `approximated` with a note: Outlook desktop paints a wrapper colour over the section image. The band image still sits on the wrapper. A band reached from inside a column is not viewport-wide. Page chrome that matches the pattern — an outer `width="100%"` table around a fixed-width content table — becomes a wrapper on each section; `settings.backgroundColor` still comes from the `<body>`.
 
 ### Gutter rows
 
@@ -14066,7 +14434,7 @@ Global template settings are extracted from the document:
 - **External resources** — `<link>`, external stylesheets, web fonts, and remote images are not fetched. Image `src` URLs are preserved as-is.
 - **Outlook MSO conditional comments** — preserved as HTML inside their containing block (they're inert in non-Outlook clients anyway).
 - **`<form>` / `<input>` / `<button>` form controls** — preserved as HTML-fallback. Most email clients block form submission; rebuild the call-to-action as a button linking to a hosted form.
-- **Rows of more than three cells** — `ColumnLayout` holds at most three columns, so a wider row is merged into one and reported. Ratios outside `'2'` / `'2-1'` / `'1-2'` / `'3'`, such as a `1-2-1` sidebar pair, have no equivalent either and import as the equal split.
+- **Rows of more than four cells** — `ColumnLayout` holds at most four columns, so a wider row is merged into one and reported. Ratios no layout is within 6 percentage points of, such as `90%` / `10%`, have no equivalent either and import as the equal split.
 - **AMP for Email** — not currently supported in Templatical.
 
 ## Verifying Converted Templates
@@ -14274,7 +14642,7 @@ Run a diff between the original and Templatical-generated MJML to spot structura
 | `mj-navbar` (with `mj-navbar-link`) | `MenuBlock` | Each link → `MenuItemData`. |
 | `mj-table` | `TableBlock` | Maps `<tr>`/`<td>`/`<th>` rows and cells to Templatical's table data; a leading `<th>` row sets `hasHeaderRow`. |
 | `mj-raw` | `HtmlBlock` | Inner markup preserved verbatim. |
-| `mj-wrapper` | `SectionBlock.wrapper` | The section's outer band, **not a section of its own**. One section inside folds into its `wrapper`; several share the same band, flagged `approximated`. `background-color`, `background-url` (with its size, position and repeat), `padding` and `border-radius` carry over; a `border` is dropped and reported. |
+| `mj-wrapper` | `SectionBlock.wrapper` | The section's outer band, **not a section of its own**. One section inside folds into its `wrapper`; several share the same band, flagged `approximated`. `background-color`, `background-url` (with its size, position and repeat), `padding` and `border-radius` carry over; a `border` is dropped and reported. `full-width="full-width"` sets `wrapper.fullWidth`, so the band runs to the window edge. |
 | `mj-hero` | `SectionBlock` with `hero` | A one-column hero section. `fluid-height` → `height: "image"`, with `background-width` / `background-height` as the image's `naturalWidth` / `naturalHeight`; `fixed-height` → that `height`; a `fixed-height` hero as tall as its image drawn across the hero's box, which is how Templatical exports **Match image**, comes back as `height: "image"`. A `fluid-height` hero without `background-width` / `background-height` still imports as `height: "image"`, with a note: until its image has a size it renders as a regular section, and the `structure.hero-not-applied` warning gives the size as the reason. A `fixed-height` hero without a `height` (MJML's default) is a regular section with the background image. `background-position` carries over; `inner-padding` and `inner-background-color` are dropped and reported. Inside an `mj-wrapper`, the hero takes the wrapper's band. |
 | `mj-carousel`, `mj-accordion` | `HtmlBlock` | Converted to an HTML block with the original markup preserved. |
 | `mjml` | Template `settings` | `lang` → `locale`; `dir` → `direction`, kept only when it differs from the direction the language implies. |
@@ -14334,7 +14702,7 @@ A side's own `border-<side>` wins over `border`, as it does in MJML. A missing c
 
 ### Background images {#background-images}
 
-`background-url` on an `mj-section` becomes the section's `backgroundImage`, and on an `mj-wrapper` the band's `wrapper.backgroundImage`. `background-size`, `background-position` (and `-x` / `-y`) and `background-repeat` come along, and an attribute the element leaves out takes MJML's own default (`auto`, `top center`, `repeat`), so the image paints where it did.
+`background-url` on an `mj-section` becomes the section's `backgroundImage`, and on an `mj-wrapper` the band's `wrapper.backgroundImage`. `background-size`, `background-position` (and `-x` / `-y`) and `background-repeat` come along, and an attribute the element leaves out takes MJML's own default (`auto`, `top center`, `repeat`), so the image paints where it did. An `mj-section` with `full-width="full-width"` and its own background moves that background onto `section.wrapper` with `fullWidth: true` and leaves the section background unset. A wrapper that already paints keeps its paint, and the section keeps its background. A full-width section inside a wrapper that is not itself full width keeps its background on the section.
 
 A value with no exact Templatical keyword maps to the nearest one, and the entry is `approximated` with a note:
 
@@ -14348,7 +14716,7 @@ A value with no exact Templatical keyword maps to the nearest one, and the entry
 
 MJML produced by Templatical's own renderer round-trips through the importer with no approximations to layout, style, or display conditions. The one gap is block type: a `VideoBlock` and an `HtmlBlock` both render as plain MJML with no marker of their origin, so each re-imports as a different kind of block (see below). Hand-written MJML converts cleanly for every tag in the mapping table above; anything the table doesn't cover lands as an `HtmlBlock` holding the original markup. Within what the table does cover, a few conversions are approximations rather than exact matches:
 
-- **Column geometry** — Templatical supports five column layouts (`1`, `2`, `3`, `2-1`, `1-2`). MJML allows any number of columns at any width, so a ratio outside those five resolves to the nearest layout, and a fourth or later column's content folds into the last column.
+- **Column geometry** — Templatical supports these column layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`). MJML allows any number of columns at any width, so a ratio outside those layouts resolves to the nearest layout of the same column count, and a fifth or later column's content folds into the fourth column. The note names the four-column limit only on that overflow.
 - **Social icon sizes** — `SocialIconsBlock` supports three sizes (24px, 32px, 48px). An `mj-social-element`'s `icon-size` outside those three resolves to the nearest one.
 - **Heading levels** — an `<h5>` or `<h6>` inside `mj-text` clamps to heading level 4, the highest a `TitleBlock` supports.
 - **Divider width and alignment** — an `mj-divider` `width` outside 0–100% or below 0px is clamped into range, an unreadable one becomes `"full"`, and a partial-width divider aligned left or right is centred. See [Divider width](#divider-width).
@@ -14500,14 +14868,14 @@ Plugin storage is a table tree labelled with `esd-*` classes. Each `esd-structur
 
 | Stripo marker | Templatical block | Notes |
 |---|---|---|
-| `esd-structure` with 1–3 `esd-container-frame`s | `SectionBlock` (`columns` `"1"` / `"2"` / `"3"`) | Frames are the columns. Padding comes from `es-p*` on the structure (default 0); an inline `padding` overrides the sides it states. |
-| `esd-structure` with 4+ frames | `SectionBlock` `columns: "1"` | Flattened; `approximated`. |
+| `esd-structure` with 1–4 `esd-container-frame`s | `SectionBlock` (`columns` `"1"` / `"2"` / `"3"` / `"4"`) | Frames are the columns. Padding comes from `es-p*` on the structure (default 0); an inline `padding` overrides the sides it states. |
+| `esd-structure` with 5+ frames | `SectionBlock` `columns: "1"` | Flattened; `approximated`. |
 | `esd-block-text` | `title` / `paragraph` | Generic HTML mapping of the inner markup. |
 | `esd-block-image` | `image` | Generic HTML mapping of the inner `<img>`, including its [width rule](/guide/migration-from-html#image-width). |
 | `esd-block-button` | `button` | `href`, text, `target="_blank"` → `openInNewTab`. Inline `background` / `color` / `border-radius` when present. |
 | `esd-block-menu` (2+ item cells) | `menu` | One `MenuItemData` per item cell. |
 | `esd-block-menu` (1 item cell) | `paragraph` (or the inner mapping) | A stacked step, not a nav — Password-reset rows stay copy. |
-| `esd-block-social` | `social` | Platform from `title` / `src` / `alt`; unknown names become `website`. |
+| `esd-block-social` | `social` | Platform from `title` / `src` / `alt`. An unmatched network becomes a website icon and the block is reported `approximated`. |
 | `esd-block-spacer` | `spacer` or `divider` | A visible `border-bottom` or `border-top` on the spacer or its inner cell becomes a divider (style, colour, thickness, and the width rule below). Otherwise a spacer: height from `style`, the `height` attribute, or vertical padding. |
 | `esd-block-html` | `html` | Inner markup preserved. |
 
@@ -14519,16 +14887,16 @@ Compiled export drops `esd-*` from elements and keeps `es-*` leftovers. Each dir
 |---|---|---|
 | `es-header` / `es-content` / `es-footer` | one or more `SectionBlock`s | One section per direct row of the stripe's `es-*-body`. A stripe with no `es-*-body` uses its own rows. An empty row is skipped. |
 | Content beside the columns in the same cell | one-column `SectionBlock` | Leading content stays before the column section and trailing content after it. Content that sat between the columns is placed after the column section (`approximated`). Splitting one padded cell into more than one section is `approximated`; the top padding stays on the first section, the bottom on the last, and the sides on each. |
-| 1–3 `es-left` / `es-right` in one row | `columns` `"1"` / `"2"` / `"3"` | Floated tables in that row, including tables nested in a wrapper. Columns nested inside another `es-left` / `es-right` stay inside it. |
-| 4+ floated tables in one row | `columns: "3"` | Extra columns merge into the third slot; `approximated`. |
+| 1–4 `es-left` / `es-right` in one row | `columns` `"1"` / `"2"` / `"3"` / `"4"` | Floated tables in that row, including tables nested in a wrapper. Columns nested inside another `es-left` / `es-right` stay inside it. |
+| 5+ floated tables in one row | `columns: "4"` | Extra columns merge into the fourth slot; `approximated`. |
 | `a.es-button` | `button` | Inline `background` / `color` / `border-radius`, including from the wrapping `es-button-border`. Widgets stay in document order with the copy around them. |
 | `table.es-menu` (2+ item cells) | `menu` | |
 | `table.es-menu` (1 item cell) | inner mapping | A stacked step, same rule as the plugin path. |
-| `table.es-social` | `social` | Same platform mapping as the plugin path. |
+| `table.es-social` | `social` | Same platform mapping as the plugin path. An unmatched network becomes a website icon and the block is reported `approximated`. |
 | `es-spacer` with a visible border | `divider` | Style, colour and thickness from `border-bottom` or `border-top`. Width follows the rule below. |
 | `es-spacer` with no border | `spacer` | Height from `style`, the `height` attribute, or vertical padding. |
 
-`settings.backgroundColor` is the first painted `es-wrapper` or `es-wrapper-color` (`#ffffff` when neither is set). An `es-*-body` fill is the section's background. A transparent body leaves the stripe fill on the section. A stripe fill that differs from both the page and the body becomes `section.wrapper.backgroundColor`, and that section is `approximated`. Background images, and what they do to that band colour, follow [Background images](#background-images).
+`settings.backgroundColor` is the first painted `es-wrapper` or `es-wrapper-color` (`#ffffff` when neither is set). An `es-*-body` fill is the section's background. A stripe (`esd-stripe`, or `es-header` / `es-content` / `es-footer`) around that body whose colour differs from the page is a full-width band: the colour becomes `section.wrapper.backgroundColor` with `wrapper.fullWidth: true`, so the band runs to the window edge and the content stays at the email width, including when the stripe colour matches the body. A transparent body moves that colour off the section onto the wrapper. A stripe colour the same as the page stays off the wrapper. A stripe with no inner body keeps its colour on the section. Background images, and what they do to that band colour, follow [Background images](#background-images).
 
 The structure cell's padding is the section's padding. The default is 0. On plugin HTML, `es-p20` sets every side and `es-p10t` / `es-p10r` / `es-p10b` / `es-p10l` override one side; an inline padding overrides the sides it states. Those classes are read on the structure element.
 
@@ -14543,15 +14911,15 @@ An element's image is read from its inline `background-image`, the image in its 
 1. The structure's own image: the row cell, `esd-structure` in plugin HTML.
 2. The `es-*-body` image, the content area behind every structure in the stripe.
 3. The containers' images (`es-left` / `es-right`, or `esd-container-frame`), when there is one container or they all share the same image. Otherwise, or beside a nearer image, they're dropped, and the note names the columns.
-4. The stripe's image, only while the body is transparent. The section paints it at the content width, and the entry is `approximated`. A stripe image the body covers is dropped with a note.
+4. The stripe's image becomes `wrapper.backgroundImage` with `wrapper.fullWidth: true`, including when the body covers it. A stripe with no inner body keeps its colour on the section and still puts that image on the wrapper.
 
-An image behind several sections, such as a body image across several structures, is copied onto each, and each entry is `approximated` with a note. When a section has an image, a stripe colour that would have become `section.wrapper.backgroundColor` is dropped with a note instead, because Outlook desktop paints a wrapper colour over the section's image. An `es-wrapper` image has no Templatical equivalent, and `report.warnings` names it.
+An image behind several sections, such as a body image or a stripe image across several structures, is copied onto each, and each entry is `approximated` with a note. When a section has an image, a stripe colour that would have become `section.wrapper.backgroundColor` is dropped with a note instead, because Outlook desktop paints a wrapper colour over the section's image. The stripe image stays on the wrapper. An `es-wrapper` image has no Templatical equivalent, and `report.warnings` names it.
 
 `background-size`, `background-position` and `background-repeat` come along, with CSS's initial values where unset. A size that fills a side (`100%`, `100% auto`, or a px width at least the body's) becomes `cover`, and any other length or percentage becomes `auto`. A percentage position snaps to the nearest of left, center and right (top, center and bottom), and a length to the left or top edge. `repeat-x`, `repeat-y`, `round` and `space` become `repeat`. Each such value is noted.
 
 ## Where the mapping is lossy
 
-- **Column geometry** — Templatical supports five column layouts (`1`, `2`, `3`, `2-1`, `1-2`). Plugin HTML with 4+ frames flattens to one column. Compiled HTML with 4+ floated tables in one row keeps three slots and folds the rest into the last. Content between those columns becomes its own one-column section after them, and a padded cell split across the resulting sections is `approximated`.
+- **Column geometry** — Templatical supports these column layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`). Stripo states columns by count, so a row maps to the equal layout `1`, `2`, `3` or `4`. Unequal px widths on a plugin frame or a compiled `es-left` / `es-right` column are reported `approximated`. A column with no readable width is named in that note when the readable widths differ; fewer than two readable widths, or readable widths within 1px, stay `converted`. Plugin HTML with 5 or more frames flattens to one column. Compiled HTML with 5 or more floated tables in one row keeps four slots and folds the rest into the last. Content between those columns becomes its own one-column section after them, and a padded cell split across the resulting sections is `approximated`.
 - **Social icon `alt`** — platforms are inferred; the original `alt` string is not stored on `SocialIcon`.
 - **Block IDs** — every imported block gets a freshly generated ID.
 - **AMP / timers / modules** — no Templatical equivalent; inner markup lands as `html` or is skipped with a warning.
@@ -14690,7 +15058,7 @@ A `note` on an `approximated` entry always names the value it replaced, so diffi
 
 ## Conversion model
 
-Topol's own JSON tree already speaks in MJML-shaped tags — `mj-section`, `mj-column`, `mj-text`, `mj-button`, and so on — even though Topol is not MJML itself. Its root node is `mj-global-style`, not MJML's `<mjml>`/`<mj-body>` pair, and a few tags pack information differently: a single `mj-social` node carries every icon as `<platform>-href` attributes, rather than nesting child `mj-social-element`s the way hand-written MJML does. Rich content sits in a `content` field beside each node's `attributes`, not inside it.
+Topol's own JSON tree already speaks in MJML-shaped tags — `mj-section`, `mj-column`, `mj-text`, `mj-button`, and so on — even though Topol is not MJML itself. Its root node is `mj-global-style`, not MJML's `<mjml>`/`<mj-body>` pair. The root's sections may sit under `mj-container` or `mj-body`; the importer accepts both. A few tags pack information differently: a single `mj-social` node carries every icon as `<platform>-href` attributes, rather than nesting child `mj-social-element`s the way hand-written MJML does. Rich content sits in a `content` field beside each node's `attributes`, not inside it.
 
 - **Topol** stores a design as this tree of tag-shaped nodes, plus a root-level `attributes` object holding per-tag and per-selector style defaults — the same role MJML's `<mj-attributes>` plays, flattened onto the root instead of nested under `<mj-head>`.
 - **Templatical** stores templates as a JSON tree of typed blocks (`SectionBlock`, `ParagraphBlock`, etc.) and renders that tree to MJML at export time.
@@ -14728,7 +15096,7 @@ A visual comparison catches what the report can't. Several of the losses below a
 
 | Topol tag | Templatical block | Notes |
 |---|---|---|
-| `mj-section` (with `mj-column` children) | `SectionBlock` with `columns` | Column widths come from each column's `width` percentage, or are distributed equally; a shape outside Templatical's five layouts resolves to the nearest one. `background-url` becomes `backgroundImage` (see [Background images](#background-images)). |
+| `mj-section` (with `mj-column` children) | `SectionBlock` with `columns` | Column widths come from each column's `width` percentage, or are distributed equally; a shape outside Templatical's layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`) resolves to the nearest one of the same column count. `background-url` becomes `backgroundImage` (see [Background images](#background-images)). |
 | `mj-column` | Section column | Holds a list of nested blocks. |
 | `mj-text` | `TitleBlock` or `ParagraphBlock` | A single heading wrapping the whole content becomes a `TitleBlock`; anything else becomes a `ParagraphBlock`. |
 | `mj-button` | `ButtonBlock` | `href`, `background-color`, `color`, font, and `padding` as the block's outer spacing — its `margin` does not survive. |
@@ -14737,7 +15105,7 @@ A visual comparison catches what the report can't. Several of the losses below a
 | `mj-divider` | `DividerBlock` | `border-color`, `border-width`, `border-style`, padding. |
 | `mj-spacer` | `SpacerBlock` | `height`. |
 | `mj-social` | `SocialIconsBlock` | Each platform named in the node's `display` list with a matching `<platform>-href` becomes a `SocialIcon`. Topol packs every icon onto this one node's attributes, rather than nesting `mj-social-element` children the way hand-written MJML does. |
-| Root `attributes` (plus `mj-container`'s `background-color`) | Template `settings` | A bare `:color` / `a:color` sets the document's text/link colour; per-selector defaults (`h1:font-family` and similar) seed a heading's font when the heading sets none itself. A node's own attribute always wins over these. A font stack carries over whole, so its fallbacks survive. |
+| Root `attributes` (plus the `background-color` of `mj-container` or `mj-body`) | Template `settings` | A bare `:color` / `a:color` sets the document's text/link colour; per-selector defaults (`h1:font-family` and similar) seed a heading's font when the heading sets none itself. A node's own attribute always wins over these. A font stack carries over whole, so its fallbacks survive. |
 | Anything else | `HtmlBlock` | No Templatical block exists for the tag; the raw node is preserved as JSON, flagged `html-fallback`. |
 
 ### Background images {#background-images}
@@ -14750,7 +15118,7 @@ A value with no exact Templatical keyword maps to the nearest one, and the secti
 
 Every leaf tag in the mapping table above converts — Topol's own editor doesn't emit anything this importer treats as `html-fallback` in practice. Within that, a few conversions are approximations rather than exact matches, each recorded as an `approximated` entry with a `note` in `report.entries`:
 
-- **Column geometry** — Templatical supports five column layouts (`1`, `2`, `3`, `2-1`, `1-2`). Topol allows any column count at any width, so a shape outside those five — most often four equal columns — resolves to the nearest layout, and any column past the third folds its content into the last one.
+- **Column geometry** — Templatical supports these column layouts (`1`, `2`, `3`, `4`, `2-1`, `1-2`, `3-1`, `1-3`, `1-2-1`). Topol allows any column count at any width, so a shape outside those layouts resolves to the nearest layout of the same column count. Four equal columns stay `"4"`. Any column past the fourth folds its content into the last one, and the note names the four-column limit.
 - **Background images** — a `background-size`, `background-position` or `background-repeat` with no exact keyword maps to the nearest one. See [Background images](#background-images).
 - **GIFs** — `mj-gif` imports as an `ImageBlock`, the same block `mj-image` produces. Templatical has no dedicated GIF block.
 - **Heading levels** — `TitleBlock` supports levels 1 through 4. An `mj-text` wrapping a sole `<h5>` or `<h6>` clamps to level 4.
@@ -14760,7 +15128,7 @@ Every leaf tag in the mapping table above converts — Topol's own editor doesn'
 
 ## Things that don't map automatically
 
-- **`full-width`, `layout` and `vertical-align`** — `full-width` and `layout` on an `mj-section`, and `vertical-align` on `mj-column`, are never read, so nothing in `report.entries` points at them.
+- **`layout` and `vertical-align`** — `layout` on an `mj-section` and `vertical-align` on `mj-column` are never read, so nothing in `report.entries` points at them. `full-width="full-width"` on an `mj-section` moves that section's background colour and image onto `section.wrapper` with `fullWidth: true` and leaves the section background unset. With no background the attribute is ignored.
 - **A button's margin** — `ButtonBlock`'s `styles.padding` is its only outer-spacing field. Topol writes both `padding` and `margin` on every `mj-button`; `padding` fills that field, and `margin` is dropped rather than folded in, which would double the vertical space. The button's inner label padding (`buttonPadding`) keeps Templatical's default too, since Topol has no separate attribute for it.
 - **A paragraph's node-level color, font, and alignment** — `ParagraphBlock` accepts only `content` plus the block's `styles` (padding, background); there's no field for a node-level `color`, `font-family`, or `align`. An `mj-text` node that infers as a paragraph keeps those attributes only where the `content` HTML itself carries them inline — a bare node attribute is dropped silently, and the entry still reports `converted`, since there's nowhere in the block model to note the drop against. The asymmetry is worth knowing: a heading built from the same tag does honor a node's own `color` and `font-family` (`TitleBlock`, see the tag mapping table above), so a design that colours headings and paragraphs identically keeps that colour only on the headings after import.
 - **Imported webfonts** — Templatical has no webfont-import concept. The design root's top-level `fonts` array lists the webfonts imported into the Topol project (one design measures `["\"Cabin\", sans-serif"]`; another carries two entries), and the array is dropped — text that depended on it renders in its fallback face, with no warning at runtime. This is a different field from `attributes.fonts`, a comma-separated fallback stack on the same root that the importer does read, feeding the template's default `fontFamily` when nothing more specific sets one.
@@ -14852,7 +15220,7 @@ Each `report.entries` item is one source module:
 | `converted` | Mapped to a Templatical block with no loss of fidelity. |
 | `approximated` | Mapped, with a clamp or flatten — `note` states what changed. |
 | `html-fallback` | No block equivalent; original markup is an `HtmlBlock`. |
-| `skipped` | No output (forms, and anything the converter refuses). |
+| `skipped` | No output (forms, a [divider that draws no line](#undrawn-dividers) and takes no space, and anything the converter refuses). |
 
 The design JSON Unlayer's hosted editor and `editor.saveDesign()` emit is the input. A compiled HTML export is a different envelope — use [`@templatical/import-html`](/guide/migration-from-html).
 
@@ -14892,7 +15260,7 @@ Unlayer content types map to Templatical equivalents:
 | Heading | `title` | Converted |
 | Image | `image` | Converted (approximated when a `maxWidth` under 100% becomes px; see [Image width](#image-width)) |
 | Button | `button` | Converted |
-| Divider | `divider` | Converted (approximated when a partial-width divider is aligned left or right) |
+| Divider | `divider`, or `spacer` when it [draws no line](#undrawn-dividers) | Converted (approximated when a partial-width divider is aligned left or right; skipped when it draws no line and takes no space) |
 | Spacer | `spacer` | Converted |
 | Html | `html` | Converted |
 | Menu | `menu` | Approximated (styles may differ) |
@@ -14938,6 +15306,18 @@ A px width is compared with the line's span: its column's width less the divider
 
 Templatical centres every divider. A partial-width divider that Unlayer aligns left or right (`textAlign`) is approximated, and its `note` names the alignment.
 
+### Dividers that draw no line {#undrawn-dividers}
+
+A divider draws no line when its `border.borderTopWidth` is 0, its `borderTopStyle` is `none` or `hidden`, or its `borderTopColor` is transparent: `transparent`, or a colour with an alpha of 0 such as `rgba(0, 0, 0, 0)` or `#ffffff00`. Such a divider only adds space.
+
+| Unlayer divider | Result | Status |
+|---|---|---|
+| draws a line | `divider`, by the rules above | Converted |
+| draws no line, and its padding and transparent border add up to more than 0px | `spacer` | Converted, with a `note` naming the height |
+| draws no line and takes no space | no block | Skipped |
+
+The spacer's `height` is the top plus bottom `containerPadding` plus the width of a transparent border. A `containerPadding` with a negative side counts as no padding, since CSS drops it. A `none` or `hidden` border takes no space, so its width doesn't count. A spacer renders no padding, so its own padding is 0. A divider with no `border` at all imports as a 1px solid black line.
+
 ## Column Layout Conversion
 
 Unlayer organizes content into rows with columns whose widths come from a `cells` weight array. These map to Templatical's `SectionBlock` with the appropriate `ColumnLayout`:
@@ -14949,21 +15329,25 @@ Unlayer organizes content into rows with columns whose widths come from a `cells
 | `[1, 1, 1]` (equal thirds) | `'3'` |
 | `[1, 2]` | `'1-2'` |
 | `[2, 1]` | `'2-1'` |
-| 4+ cells | flattened to single column with a warning |
+| `[1, 3]` | `'1-3'` |
+| `[3, 1]` | `'3-1'` |
+| `[1, 2, 1]` | `'1-2-1'` |
+| `[1, 1, 1, 1]` (equal quarters) | `'4'` |
+| 5+ cells | flattened to a single column with a warning |
 
-Cell ratios that don't match a standard layout are mapped to the closest available one.
+Cell ratios that don't match a layout above are mapped to the closest one with the same column count. Four cells stay four columns, and unequal four-cell ratios (for example `[6, 2, 2, 2]`) are named in `report.warnings` because layout `4` is four equal quarters. Unlayer does not otherwise warn when the ratio is only near that layout.
 
 ### Section background
 
 | Unlayer row values | `section.styles.backgroundColor` |
 |---|---|
 | `columnsBackgroundColor` set | `columnsBackgroundColor` |
-| only `backgroundColor` set | `backgroundColor` |
+| only `backgroundColor` set | unset; the colour is the full-width wrapper |
 
-When a row sets both to different colours, the section takes `columnsBackgroundColor` and `report.warnings` names the dropped `backgroundColor`.
+When a row sets `backgroundColor`, that colour becomes `section.wrapper.backgroundColor` with `wrapper.fullWidth: true`, including when it matches `columnsBackgroundColor`. The section keeps `columnsBackgroundColor`. With no content colour the section background stays unset, so the band shows through the content box.
 
 ::: tip
-`columnsBackgroundColor` fills the content width, the area a section paints. `backgroundColor` fills the band outside it, and a Templatical section has no full-width band.
+`columnsBackgroundColor` fills the content width, the area a section paints. `backgroundColor` fills the band outside it and is stored on `section.wrapper` with `fullWidth: true`, so the band runs to the window edge.
 :::
 
 ### Section background image {#background-images}
@@ -14973,8 +15357,9 @@ A row's `backgroundImage` becomes the section's `backgroundImage`:
 | `backgroundImage.fullWidth` | Result |
 |---|---|
 | `false` (the content area) | The section's image, exactly. |
-| `true`, `columnsBackgroundColor` unset | The section's image, painted at the content width, and `report.warnings` says so. |
-| `true`, `columnsBackgroundColor` set | Dropped, since in Unlayer the content colour covers it inside the content width, and `report.warnings` names it. |
+| omitted or `true` | `wrapper.backgroundImage` with `wrapper.fullWidth: true`. The section keeps `columnsBackgroundColor`, or stays unset when that colour is absent. |
+
+A band colour is left off the wrapper when the section keeps a content-area image (`fullWidth: false`): Outlook desktop paints a wrapper colour over that image, and `report.warnings` names the dropped colour.
 
 `size` `cover` and `contain` carry over, and `custom` is the image at its own size (`auto`). The nine `position` keywords map to the matching grid point. A `custom` position's `customPosition` percentage snaps to the nearest of left, center and right (top, center and bottom), and a length to the left or top edge. `repeat-x` and `repeat-y` become `repeat`. Older designs' `cover` and `center` flags are read when `size` and `position` are absent: `cover` maps to `cover` (`false` to `auto`), and `center` to center top (`false` to left top). Each value with no exact keyword adds a line to `report.warnings`.
 
@@ -15529,21 +15914,25 @@ The `SectionBlock` is the layout primitive in Templatical. Every multi-column la
 ## Column layouts
 
 ::: tip Email best practice
-Stick to 1-2 columns for most emails. Three-column layouts become cramped on mobile when columns stack vertically, and some email clients handle 3-column layouts inconsistently.
+Stick to 1-2 columns for most emails. Three-column layouts become cramped on mobile when columns stack vertically, and some email clients handle 3-column layouts inconsistently. Four columns are tighter still.
 :::
 
-The `columns` property accepts one of five layout presets:
+The `columns` property accepts one of these layout presets:
 
 | Value | Description | Column widths |
 |-------|-------------|---------------|
 | `'1'` | Single column | 100% |
 | `'2'` | Two equal columns | 50% / 50% |
 | `'3'` | Three equal columns | 33% / 33% / 33% |
+| `'4'` | Four equal columns | 25% / 25% / 25% / 25% |
 | `'2-1'` | Two-thirds / one-third | 66% / 33% |
 | `'1-2'` | One-third / two-thirds | 33% / 66% |
+| `'3-1'` | Three-quarters / one-quarter | 75% / 25% |
+| `'1-3'` | One-quarter / three-quarters | 25% / 75% |
+| `'1-2-1'` | One-quarter / half / one-quarter | 25% / 50% / 25% |
 
 ```ts
-type ColumnLayout = '1' | '2' | '3' | '2-1' | '1-2';
+type ColumnLayout = '1' | '2' | '3' | '4' | '2-1' | '1-2' | '3-1' | '1-3' | '1-2-1';
 ```
 
 ## Creating sections
@@ -15684,7 +16073,7 @@ banner.styles.backgroundColor = '#1f2937';
 
 ### Outer frame (wrapper)
 
-To frame a section in a colored band — e.g. a white card sitting on a blue background — set `wrapper`. It renders an `mj-wrapper` around the section, with its own background, padding, and corner radius. The band is as wide as the email body (`settings.width`), not the recipient's whole window:
+To frame a section in a colored band — e.g. a white card sitting on a blue background — set `wrapper`. It renders an `mj-wrapper` around the section, with its own background, padding, and corner radius. The band is as wide as the email body (`settings.width`), unless `fullWidth` is set. `fullWidth: true` is MJML's `full-width="full-width"`: the band's background color and background image span the recipient's window, and the section stays at `settings.width`. A corner radius is ignored while `fullWidth` is on — a window-wide band has no visible corners — and the stored radius is used again when `fullWidth` is off:
 
 ```ts
 const card = createSectionBlock({ columns: '1', borderRadius: 12 });
@@ -15697,7 +16086,7 @@ card.wrapper = {
 };
 ```
 
-The wrapper's padding is what makes the band show around the section. In the editor, enable it from the **Wrapper** panel in the section toolbar. The wrapper is a styling layer, not a container — sections still cannot be nested. An embedder-owned card around the authored sections is a [layout](/guide/layout) overlay.
+The wrapper's padding is what makes the band show around the section. In the editor, enable it from the **Wrapper** panel in the section toolbar. **Full-width background** in the section's **Background** panel sets `fullWidth`. With no wrapper yet, turning it on moves the section's own background color and image onto a new wrapper and clears them on the section, so the content sits transparent over the band. While the switch is on, that panel's color and image edit the band (`wrapper.backgroundColor` and `wrapper.backgroundImage`), and **Content background** under them sets the section fill (`styles.backgroundColor`; empty leaves the content transparent over the band). The Wrapper panel shows the same band color and image. While the switch is off, color and image edit the section fill and **Content background** is hidden. Turning the switch off clears `fullWidth`. A wrapper that holds only that band is removed and its current color and image return to the section. If the section already has a content fill, the wrapper stays with `fullWidth` cleared so neither color is discarded. The wrapper is a styling layer, not a container — sections still cannot be nested. An embedder-owned card around the authored sections is a [layout](/guide/layout) overlay.
 
 ---
 
@@ -16228,6 +16617,7 @@ Every token follows the same shape: declare `--tpl-user-<name>` on the container
 | `--tpl-user-overlay`         | Modal backdrop overlay                | ✓    |
 | `--tpl-user-ring`            | Focus ring                            | ✓    |
 | `--tpl-user-transition`      | Spring easing transition              |      |
+| `--tpl-user-panel-transition` | Side-panel slide and the layout it moves |      |
 
 `--tpl-user-on-primary` needs no twin. Left unset, it follows the active background, so text on primary surfaces is near-white in light mode and near-black in dark mode. Setting it fixes one color for both modes, and a near-white label fails contrast on the default dark-mode primary, which is lighter.
 
@@ -18258,7 +18648,7 @@ The 8 rules `lintStructure` ships. Each rule lives in `packages/quality/src/stru
 
 | Rule | Default severity | Auto-fix | What it checks |
 |---|---|---|---|
-| `structure.section-column-mismatch` | error | — | The section's `columns` value implies a column count that doesn't match `children.length`. `"1"` expects 1 inner array, `"2"`/`"2-1"`/`"1-2"` expect 2, `"3"` expects 3. A mismatch means either the layout key or the children array is wrong — both yield broken render output. The editor's section toolbar rebalances `children` automatically when the layout changes; this rule catches data that bypassed the toolbar (imports, manual JSON edits, stale snapshots). |
+| `structure.section-column-mismatch` | error | — | The section's `columns` value implies a column count that doesn't match `children.length`. `"1"` expects 1 inner array, `"2"`/`"2-1"`/`"1-2"`/`"1-3"`/`"3-1"` expect 2, `"3"`/`"1-2-1"` expect 3, `"4"` expects 4. A mismatch means either the layout key or the children array is wrong — both yield broken render output. The editor's section toolbar rebalances `children` automatically when the layout changes; this rule catches data that bypassed the toolbar (imports, manual JSON edits, stale snapshots). |
 
 ## Content presence
 
@@ -18327,7 +18717,7 @@ You're not building a customer-facing product — you need a controlled tool for
 
 **Templatical fits because:**
 - Self-hostable in full. The SDK has no required cloud dependency.
-- UI in 8 languages and language versions of a template: English, German, Portuguese, Spanish, Catalan, French, Dutch and Japanese UI, plus opt-in [template language versions](/guide/localized-templates).
+- UI in 9 languages and language versions of a template: English, German, Portuguese, Spanish, Catalan, French, Dutch, Japanese and Danish UI, plus opt-in [template language versions](/guide/localized-templates).
 - TypeScript-strict end-to-end, which makes it easy to wire into existing internal tooling and codegen pipelines.
 
 **Likely setup:** [`@templatical/editor`](https://www.npmjs.com/package/@templatical/editor) inside your internal portal, [`@templatical/renderer`](https://www.npmjs.com/package/@templatical/renderer) in your job runners or send pipeline.

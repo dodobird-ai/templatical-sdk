@@ -11,8 +11,21 @@ import {
   parsePxValue,
   readMjmlBackgroundImage,
 } from "../attribute-parser";
+import { expectLinear } from "./expectLinear";
 
 describe("parsePxValue", () => {
+  it("rejects a long invalid whitespace suffix linearly", () => {
+    expect(parsePxValue("1" + " ".repeat(80_000) + "x")).toBe(0);
+    expect(parsePxValue(" 12 px ")).toBe(12);
+    expectLinear(
+      (n) => {
+        const value = "1" + " ".repeat(n) + "x";
+        return () => parsePxValue(value);
+      },
+      250,
+      8_000,
+    );
+  });
   it("reads a px length", () => {
     expect(parsePxValue("24px")).toBe(24);
   });
@@ -456,20 +469,25 @@ describe("readMjmlBackgroundImage", () => {
 });
 
 describe("readMjmlBackgroundImage on adversarial input", () => {
-  const digits = "0".repeat(100_000);
-
-  it("reads runs of digits in linear time", () => {
+  const run = (length: number) => {
+    const digits = "0".repeat(length);
     const attrs: Record<string, string> = {
       "background-url": "u",
       "background-size": `${digits}!`,
       "background-position": `${digits}! ${digits}!`,
       "background-position-x": `${digits}!`,
     };
-    const run = () =>
-      readMjmlBackgroundImage((name) => attrs[name], "Section", 600);
-    const started = performance.now();
-    run();
-    expect(performance.now() - started).toBeLessThan(1000);
+    return readMjmlBackgroundImage((name) => attrs[name], "Section", 600);
+  };
+
+  it("reads runs of digits in linear time", () => {
+    expect(run(100_000)?.image).toEqual({
+      url: "u",
+      size: "auto",
+      position: { x: "center", y: "top" },
+      repeat: true,
+    });
+    expectLinear((n) => () => run(n), 8_000);
   });
 });
 

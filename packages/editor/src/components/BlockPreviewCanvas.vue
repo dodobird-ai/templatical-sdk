@@ -21,10 +21,12 @@ import {
   IMAGE_URL_RESOLVER_KEY,
   MERGE_TAG_SAMPLE_MODE_KEY,
   MERGE_TAG_SYNTAX_KEY,
+  READ_ONLY_SURFACE_KEY,
   USE_MERGE_TAG_SAMPLES_KEY,
   requireInject,
 } from "../keys";
 import {
+  EMAIL_FRAME_WIDTH_VAR,
   resolveBlockComponent,
   getCachedBlockWrapperStyle,
   getDocumentStyle,
@@ -90,6 +92,10 @@ const mergeTagSyntax = inject(MERGE_TAG_SYNTAX_KEY, SYNTAX_PRESETS.liquid);
  * inside a dialog may sit under an editing `Canvas` that provides `false`.
  */
 const mergeTagSampleMode = inject(MERGE_TAG_SAMPLE_MODE_KEY, null);
+provide(
+  READ_ONLY_SURFACE_KEY,
+  computed(() => true),
+);
 provide(
   USE_MERGE_TAG_SAMPLES_KEY,
   computed(() => mergeTagSampleMode?.value ?? false),
@@ -240,7 +246,7 @@ function previewBlockStyle(block: Block): Record<string, string> {
        carried the width itself. -->
   <div
     data-testid="block-preview-stage"
-    class="tpl:pointer-events-none tpl:mx-auto tpl:flex tpl:select-none tpl:justify-center tpl:rounded-lg"
+    class="tpl-canvas-pane tpl:pointer-events-none tpl:mx-auto tpl:flex tpl:select-none tpl:justify-center tpl:rounded-lg"
     :style="{
       width: `${stageWidth}px`,
       minWidth: `${frameWidth}px`,
@@ -258,6 +264,7 @@ function previewBlockStyle(block: Block): Record<string, string> {
       :dir="contentDir"
       :style="{
         width: `${frameWidth}px`,
+        [EMAIL_FRAME_WIDTH_VAR]: `${frameWidth}px`,
         transition: EMAIL_FRAME_WIDTH_TRANSITION,
         ...documentStyle,
       }"

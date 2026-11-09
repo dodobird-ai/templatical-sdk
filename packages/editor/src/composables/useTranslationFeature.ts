@@ -32,7 +32,7 @@ import {
   type TranslationResult,
 } from "@templatical/types";
 import type { UseCollaborationFeatureReturn } from "./useCollaborationFeature";
-import { sanitizeHtml } from "../utils/sanitizeHtml";
+import { sanitizeHtmlForStorage } from "../utils/sanitizeHtml";
 
 export interface TranslationRunResult {
   translated: number;
@@ -102,6 +102,26 @@ function translationError(error: unknown): {
   };
 }
 
+/** Every `style` attribute value of an HTML fragment, as a browser reads it. */
+function styleValues(html: string): Set<string> {
+  const values = new Set<string>();
+  if (typeof DOMParser === "undefined") return values;
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  for (const element of parsed.querySelectorAll("[style]"))
+    values.add(element.getAttribute("style") ?? "");
+  return values;
+}
+
+/**
+ * A translation may keep its default's inline styles, move them or drop them,
+ * but not add or change one: a style can fetch a remote file or overlay the
+ * email, and the sanitizer keeps `style`.
+ */
+function keepsStyles(translation: string, source: string): boolean {
+  const allowed = styleValues(source);
+  return [...styleValues(translation)].every((style) => allowed.has(style));
+}
+
 /** Keep placeholder bytes out of the DOM parser, including in attributes. */
 function sanitizeTranslation(text: string): string {
   const prefix = `tpl-translation-${crypto.randomUUID()}-`;
@@ -110,7 +130,7 @@ function sanitizeTranslation(text: string): string {
     /<x id="\d+"\s*\/>|<x id="\d+"><\/x>|__x\d+__/g,
     (token) => `${prefix}${placeholders.push(token)}-end`,
   );
-  let clean = sanitizeHtml(protectedText);
+  let clean = sanitizeHtmlForStorage(protectedText);
   placeholders.forEach((token, index) => {
     clean = clean.replaceAll(`${prefix}${index + 1}-end`, token);
   });
@@ -294,7 +314,13 @@ export function useTranslationFeature(
             result.missing.push(field.id);
             continue;
           }
-          if (unmaskTags(returned.text, extraction.tokens[field.id]) === null) {
+          const tokens = extraction.tokens[field.id];
+          const restored = unmaskTags(returned.text, tokens);
+          if (
+            restored === null ||
+            (field.format === "html" &&
+              !keepsStyles(restored, unmaskTags(field.source, tokens)!))
+          ) {
             result.tagsChanged.push(field.id);
             continue;
           }
