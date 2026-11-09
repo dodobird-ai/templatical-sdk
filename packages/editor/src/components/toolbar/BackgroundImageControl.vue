@@ -58,8 +58,12 @@ const url = computed(() =>
 const hasImage = computed(() => url.value.trim() !== "");
 
 const measureNaturalSize = useMeasureNaturalSize();
-let measureTimer: ReturnType<typeof setTimeout> | undefined;
-onScopeDispose(() => clearTimeout(measureTimer));
+// The browser's timer, by name: a bare setTimeout takes Node's typing wherever
+// @types/node is visible (a dependency's `/// <reference types="node" />`
+// resolves it from any enclosing node_modules), and older Node typings make
+// clearTimeout reject `undefined`.
+let measureTimer: number | undefined;
+onScopeDispose(() => window.clearTimeout(measureTimer));
 
 /**
  * Measure `url` once typing settles. A result for a url the author has since
@@ -67,7 +71,7 @@ onScopeDispose(() => clearTimeout(measureTimer));
  */
 function scheduleMeasure(url: string): void {
   if (!props.measure || containsMergeTag(url, mergeTagSyntax)) return;
-  measureTimer = setTimeout(async () => {
+  measureTimer = window.setTimeout(async () => {
     const size = await measureNaturalSize(url);
     const current = props.modelValue;
     if (!size || current?.url !== url) return;
@@ -82,7 +86,7 @@ function scheduleMeasure(url: string): void {
  * typing settles. Any measurement still pending for an earlier url stops.
  */
 function setUrl(value: string, size: NaturalSize | null = null): void {
-  clearTimeout(measureTimer);
+  window.clearTimeout(measureTimer);
   if (value.trim() === "") {
     emit("update:modelValue", undefined);
     return;

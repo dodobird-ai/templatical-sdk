@@ -133,6 +133,15 @@ describe("template values in MJML attributes", () => {
     expect(mjml).toContain('height="24&quot; data-unsafe=&quot;yespx"');
   });
 
+  it("keeps a body width from untrusted JSON inside its attribute", async () => {
+    const content = createDefaultTemplateContent();
+    content.settings.width = `600" data-unsafe="yes` as unknown as number;
+
+    const mjml = await renderToMjml(content);
+    expect(mjml).toContain('<mj-body width="600&quot; data-unsafe=&quot;yespx"');
+    expect(mjml).not.toContain('data-unsafe="yes');
+  });
+
   it("keeps a colour to one CSS declaration", async () => {
     const content = createDefaultTemplateContent();
     content.settings.backgroundColor = "red;background-image:url(//x.test/a)";
